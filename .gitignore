@@ -1,0 +1,10 @@
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+
+# Regenerable machine snapshots. Durable context and baselines stay tracked.
+.backend/inventory.json
+.backend/findings.json
+.backend/plan.json
+.backend/next.json

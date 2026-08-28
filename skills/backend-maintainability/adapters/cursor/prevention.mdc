@@ -1,0 +1,13 @@
+---
+description: Prevent new backend architecture debt during ordinary feature work.
+---
+
+Before adding a service, abstraction, DTO, helper, dependency, boolean, fallback, compatibility path, or layer: search for the existing authoritative concept or representation.
+
+After implementing: search for code the change made obsolete.
+
+Never preserve architecture only because many files already use it. Never merge two concepts only because they have similar shapes.
+
+If a baseline exists, run `coherent check` (or `backend check`) and answer: did this feature make the system conceptually harder to change?
+
+Do not run a full legacy cleanup for a small feature. Existing debt is allowed; new debt is not ignored.

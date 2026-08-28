@@ -1,0 +1,15 @@
+{
+  "name": "express-app",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "src/index.ts",
+  "bin": {
+    "express-app": "src/cli.ts"
+  },
+  "dependencies": {
+    "express": "^4.21.0"
+  },
+  "devDependencies": {
+    "vitest": "^3.0.0"
+  }
+}

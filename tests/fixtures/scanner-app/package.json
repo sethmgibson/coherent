@@ -1,0 +1,19 @@
+{
+  "name": "scanner-app",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "src/index.ts",
+  "bin": {
+    "scanner-app": "src/cli.ts"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./public-api": "./src/public-api.ts"
+  },
+  "dependencies": {
+    "express": "^4.21.0",
+    "moment": "^2.30.0",
+    "lodash": "^4.17.21",
+    "underscore": "^1.13.0"
+  }
+}

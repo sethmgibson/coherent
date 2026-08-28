@@ -1,0 +1,11 @@
+---
+description: Prevent new backend architecture debt during ordinary feature work.
+---
+
+Follow `skills/backend-maintainability/reference/prevention.md` and the template at `skills/backend-maintainability/adapters/cursor/prevention.mdc`.
+
+Before adding a service, abstraction, DTO, helper, dependency, boolean, fallback, compatibility path, or layer: search for the existing authoritative concept.
+
+After implementing: search for code the change made obsolete.
+
+If a baseline exists, run `coherent check` and answer whether the feature made the system conceptually harder to change.

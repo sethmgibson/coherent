@@ -1,0 +1,51 @@
+{
+  "name": "coherent",
+  "version": "0.1.0",
+  "description": "Impeccable-style maintainability tooling for backend and large AI-built codebases.",
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "pnpm@10.13.1",
+  "bin": {
+    "coherent": "./dist/cli.js",
+    "backend": "./dist/cli.js"
+  },
+  "exports": {
+    "./catalog/rules": "./dist/catalog/rules.js",
+    "./catalog/phases": "./dist/catalog/phases.js",
+    "./catalog/types": "./dist/catalog/types.js",
+    "./finding": "./dist/domain/finding.js"
+  },
+  "files": [
+    "dist",
+    "skills",
+    "LICENSE",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "generate:skill-docs": "tsx scripts/generate-skill-docs.ts"
+  },
+  "keywords": [
+    "maintainability",
+    "architecture",
+    "backend",
+    "dead-code",
+    "cleanup",
+    "ai"
+  ],
+  "dependencies": {
+    "commander": "^14.0.0",
+    "ts-morph": "^28.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.3.0",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
+  }
+}
