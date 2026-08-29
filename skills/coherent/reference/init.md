@@ -12,10 +12,9 @@ coherent init --force
 
 `backend init` is the same command. `--force` and `refresh` replace only `<!-- coherent:discovered -->` interiors from the current inventory. They must not overwrite confirmed semantic prose, including mixed-section addenda. Never silently overwrite a completed `ARCHITECTURE.md`.
 
-The CLI writes:
+Unfenced files (one-release migration from leftover `.backend/` or a pre-fence `ARCHITECTURE.md`) are reconstructed onto the current template. Confirmed prose in known sections is kept. Unknown human-authored `##` sections survive verbatim. After fences exist, only fence interiors are replaced.
 
-- `.coherent/inventory.json` — regenerable snapshot
-- `.coherent/ARCHITECTURE.md` — durable context that should be committed
+The CLI keeps inventory in memory and writes only `.coherent/ARCHITECTURE.md`, durable context that should be committed when the team wants shared architecture guidance.
 
 If only `.backend/` exists, the CLI uses it for this run and tells you to rename it to `.coherent/`. If both exist, it uses `.coherent/` and warns about the leftover directory.
 

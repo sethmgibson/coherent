@@ -7,9 +7,10 @@ Run:
 ```bash
 coherent plan
 coherent plan --json
+coherent plan --output path/to/plan.json
 ```
 
-The CLI rebuilds the DAG from a fresh audit, writes `.coherent/plan.json`, and prints ready vs blocked nodes. It does not execute the plan.
+The CLI rebuilds the DAG from a fresh audit and prints ready vs blocked nodes. It writes nothing by default and does not execute the plan. `--output` is an explicit export, not required workflow state.
 
 ## What every node contains
 

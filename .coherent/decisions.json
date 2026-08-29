@@ -7,7 +7,10 @@
       "identity": "duplicate-rep:CleanupPhase+RuleCategory",
       "decision": "dismissed",
       "reason": "RuleCategory and CleanupPhase share id/title/summary by coincidence. They are intentionally different catalog concepts; do not merge.",
-      "reviewedAt": "2026-08-28T23:13:14.604Z"
+      "reviewedAt": "2026-08-28T23:13:14.604Z",
+      "fingerprintVersion": 2,
+      "detectorRevision": 2
     }
-  ]
+  ],
+  "findings": []
 }

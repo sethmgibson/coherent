@@ -14,8 +14,8 @@ of a changed design.
 
 Success today means a working inventory, a single typed rule catalog, a
 default cleanup-phase model, `init` / `refresh`, a scanner (`audit`,
-`baseline`, `check`), a review loop (`reviews.json` +
-`semantic-findings.json`), a finding-specific cleanup DAG (`plan`), a
+`baseline`, `check`), a durable decision loop (`decisions.json`), a
+finding-specific cleanup DAG (`plan`), a
 one-node work brief (`fix next`), and a read-only `doctor`. The coding
 agent performs semantic reasoning; there is no hosted LLM service.
 
@@ -36,7 +36,7 @@ Detected frameworks:
 
 Languages: TypeScript
 
-Approximate size: 143 files, 8787 source lines.
+Approximate size: 141 files, 9374 source lines.
 
 Dependencies: 2 runtime, 4 development.
 <!-- /coherent:discovered -->
@@ -127,11 +127,10 @@ Observed top-level modules:
 > Status: confirmed
 
 - Catalog data is owned by `src/catalog/rules.ts` and `src/catalog/phases.ts`.
-- Inventory is owned by `collectInventory` and may be snapshotted to `.coherent/inventory.json`.
+- Inventory is owned by `collectInventory` and remains in memory.
 - Architecture prose is owned by `.coherent/ARCHITECTURE.md`. Machine-owned facts live in `<!-- coherent:discovered -->` fences.
-- Audit findings are owned by `runAudit` and snapshotted to `.coherent/findings.json` (regenerable, gitignored).
-- Reviews are owned by `coherent review` and stored in `.coherent/reviews.json` (committed).
-- Semantic-only findings are agent-authored in `.coherent/semantic-findings.json` (committed).
+- Audit findings are owned by `runAudit` and remain in memory unless the user explicitly supplies `--output`.
+- Reviews and semantic-only findings are stored together in `.coherent/decisions.json` (committed).
 - Baseline fingerprints are owned by `runBaseline` and stored in `.coherent/baseline.json` (committed).
 
 ## Authoritative representations
@@ -140,9 +139,9 @@ Observed top-level modules:
 
 - A rule exists only in `src/catalog/rules.ts`. Skill markdown is generated.
 - A cleanup phase exists only in `src/catalog/phases.ts`.
-- A cleanup node exists only in the generated `.coherent/plan.json` (regenerable).
-- `RuleCategory` and `CleanupPhase` share `id`/`title`/`summary` by coincidence. They are intentionally different; do not merge. That decision is also recorded in `.coherent/reviews.json`.
-- `FindingStatus` (`confirmed` | `candidate`) is the typed status protocol. Review decisions are a separate durable file, not a second Finding shape.
+- A cleanup node exists only in the plan built from current findings and decisions; JSON is written only through explicit `--output`.
+- `RuleCategory` and `CleanupPhase` share `id`/`title`/`summary` by coincidence. They are intentionally different; do not merge. That decision is also recorded in `.coherent/decisions.json`.
+- `FindingStatus` (`confirmed` | `candidate`) is the typed status protocol. Review decisions remain distinct from Finding status inside the consolidated decisions file.
 - A Finding's identity is its fingerprint of rule ID, `identity`, files, and symbols. Line and column are presentation only.
 - Discovered repository facts live in the inventory object; `ARCHITECTURE.md` may quote them but must not become a second inventory.
 
@@ -152,9 +151,9 @@ Observed top-level modules:
 
 - Semantic questions must not be reported as deterministic conclusions.
 - `init` must not invent architecture. Unknown sections stay incomplete.
-- `init --force` and `refresh` replace only fenced discovered interiors. Semantic prose stays.
+- `init --force` and `refresh` replace only fenced discovered interiors. Semantic prose stays. Unfenced migration (one-release `.backend/` / pre-fence files) keeps unknown human-authored `##` sections verbatim.
 - Hybrid and semantic findings are not `fix next` targets until `coherent review confirm`.
-- Dismissed findings are absent from the cleanup DAG. Architecture prose alone does not dismiss them.
+- Dismissed findings are absent from the cleanup DAG. Architecture prose alone does not dismiss them. Identity fallback for a review requires a matching `detectorRevision`.
 - `check` fails only on new confirmed high/critical deterministic findings. Version-skewed baselines are stale and must be regenerated.
 - Taxonomy ID order is not cleanup execution order. The cleanup DAG is authoritative.
 - Dead-code (A08) is re-scanned after A07, after canonicalization, and after architecture collapse.
@@ -173,10 +172,7 @@ install` is Cursor-first. There is no multi-provider install pipeline.
 
 > Status: confirmed
 
-No database. Files under `.coherent/` are the only project-local state.
-`ARCHITECTURE.md`, `baseline.json`, `reviews.json`, and
-`semantic-findings.json` are durable and should be committed.
-`inventory.json` is a regenerable snapshot.
+No database. Durable project-local state is limited to `.coherent/ARCHITECTURE.md`, optional `.coherent/baseline.json`, and `.coherent/decisions.json`. Other Coherent commands write no metadata unless the user supplies an explicit output or integration flag.
 
 <!-- coherent:discovered -->
 Observed persistence libraries:
@@ -219,16 +215,16 @@ None. The CLI is synchronous process work. No queues, cron, or subscriptions.
 
 > Status: confirmed
 
-- `coherent init [root]` writes inventory and architecture context.
+- `coherent init [root]` keeps inventory in memory and writes architecture context.
 - `coherent refresh [root]` updates fenced discovered facts only.
-- `coherent audit [root]` parses TypeScript once, runs implemented detectors, writes `.coherent/findings.json`.
-- `coherent review dismiss|confirm|defer <fingerprint>` writes `.coherent/reviews.json`.
+- `coherent audit [root]` parses TypeScript once and runs implemented detectors without writing metadata; `--output` is explicit.
+- `coherent review dismiss|confirm|defer <fingerprint>` writes `.coherent/decisions.json`.
 - `coherent baseline [root]` snapshots finding fingerprints with portable schema versions.
 - `coherent plan [root]` builds a cleanup DAG from a fresh audit merged with reviews and semantic findings.
-- `coherent fix next [root]` selects one unlocked `ready` node and writes a work brief.
+- `coherent fix next [root]` selects one unlocked `ready` node and prints a work brief.
 - `coherent check [root]` compares a fresh audit to the baseline and classifies new debt. `--changed` parses git-diff files plus importers and does not treat unscoped baseline findings as resolved.
-- `coherent install [root]` copies the Cursor adapter, optional prevention rule, and `check --changed` hooks. `update` refreshes those files without overwriting user edits.
-- `coherent doctor [root]` reports stale discovery, uniqueness, orphan reviews, invalid semantic findings, and leftover `.backend/` state.
+- `coherent install [root]` and `update` write nothing without explicit adapter, rule, Cursor hook, or Git hook flags.
+- `coherent doctor [root]` reports stale discovery, decision integrity, orphan or stale reviews, baseline integrity when present, and leftover `.backend/` state.
 - `pnpm test` covers catalog integrity, inventory fixtures, init, detectors, fingerprints, baseline/check, planner, review merge, and CLI behavior.
 - `pnpm generate:skill-docs` must keep `skills/coherent/reference/taxonomy.md` and `cleanup-phases.md` identical to the catalog renderer.
 

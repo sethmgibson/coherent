@@ -1,65 +1,89 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { RULE_IDS, type RuleId } from "../catalog/types.js";
-import { REVIEWS_FILE, SEMANTIC_FINDINGS_FILE } from "../config.js";
+import {
+  DECISIONS_FILE,
+  REVIEWS_FILE,
+  SEMANTIC_FINDINGS_FILE,
+} from "../config.js";
 import { resolveStateDir } from "../state-dir.js";
 import {
   createFinding,
+  parseFindingInput,
+  SEMANTIC_FINDING_MODES,
   type Finding,
-  type FindingInput,
 } from "../domain/finding.js";
-import { REVIEW_DECISIONS, type FindingReview, type ReviewsFile, type SemanticFindingsFile } from "./types.js";
+import {
+  REVIEW_DECISIONS,
+  type DecisionsFile,
+  type FindingReview,
+  type ReviewsFile,
+  type SemanticFindingsFile,
+} from "./types.js";
 
-export function reviewsPath(root: string): string {
+export function decisionsPath(root: string): string {
+  return join(resolveStateDir(root).path, DECISIONS_FILE);
+}
+
+function legacyReviewsPath(root: string): string {
   return join(resolveStateDir(root).path, REVIEWS_FILE);
 }
 
-export function semanticFindingsPath(root: string): string {
+function legacySemanticFindingsPath(root: string): string {
   return join(resolveStateDir(root).path, SEMANTIC_FINDINGS_FILE);
 }
 
-export async function readReviews(root: string): Promise<ReviewsFile> {
+export async function readDecisions(root: string): Promise<DecisionsFile> {
   try {
-    const raw = JSON.parse(await readFile(reviewsPath(root), "utf8")) as unknown;
-    return parseReviewsFile(raw);
+    const raw = JSON.parse(await readFile(decisionsPath(root), "utf8")) as unknown;
+    return parseDecisionsFile(raw);
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
-      return { schemaVersion: 1, reviews: [] };
-    }
-    throw error;
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
   }
+
+  const [reviews, findings] = await Promise.all([
+    readLegacyReviews(root),
+    readLegacySemanticFindings(root),
+  ]);
+  return { schemaVersion: 1, reviews: reviews.reviews, findings: findings.findings };
 }
 
-export async function writeReviews(root: string, file: ReviewsFile): Promise<string> {
-  const path = reviewsPath(root);
+export async function writeDecisions(root: string, file: DecisionsFile): Promise<string> {
+  const path = decisionsPath(root);
   await mkdir(resolveStateDir(root).path, { recursive: true });
   await writeFile(path, `${JSON.stringify(file, null, 2)}\n`, "utf8");
   return path;
 }
 
-export async function upsertReview(root: string, review: FindingReview): Promise<ReviewsFile> {
-  const file = await readReviews(root);
+export async function upsertReview(root: string, review: FindingReview): Promise<DecisionsFile> {
+  const file = await readDecisions(root);
   const next = file.reviews.filter(
     (existing) =>
       existing.fingerprint !== review.fingerprint &&
       !(existing.ruleId === review.ruleId && existing.identity === review.identity),
   );
   next.push(review);
-  const written: ReviewsFile = { schemaVersion: 1, reviews: next };
-  await writeReviews(root, written);
+  const written: DecisionsFile = { ...file, reviews: next };
+  await writeDecisions(root, written);
   return written;
 }
 
-export async function readSemanticFindings(root: string): Promise<Finding[]> {
-  try {
-    const raw = JSON.parse(await readFile(semanticFindingsPath(root), "utf8")) as unknown;
-    return parseSemanticFindingsFile(raw).findings;
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
-      return [];
-    }
-    throw error;
+export function parseDecisionsFile(raw: unknown): DecisionsFile {
+  if (
+    !isRecord(raw) ||
+    raw.schemaVersion !== 1 ||
+    !Array.isArray(raw.reviews) ||
+    !Array.isArray(raw.findings)
+  ) {
+    throw new Error(
+      "Invalid decisions.json: expected { schemaVersion: 1, reviews: [], findings: [] }",
+    );
   }
+  return {
+    schemaVersion: 1,
+    reviews: raw.reviews.map(parseReview),
+    findings: raw.findings.map(findingFromUnknown),
+  };
 }
 
 export function parseReviewsFile(raw: unknown): ReviewsFile {
@@ -77,22 +101,39 @@ export function parseSemanticFindingsFile(raw: unknown): SemanticFindingsFile {
 }
 
 export function findingFromUnknown(raw: unknown): Finding {
-  if (!isRecord(raw)) throw new Error("Invalid finding: expected an object");
-  if (typeof raw.ruleId !== "string" || !isRuleId(raw.ruleId)) {
-    throw new Error("Invalid finding: missing ruleId");
+  const input = parseFindingInput(raw);
+  if (!(SEMANTIC_FINDING_MODES as readonly string[]).includes(input.detectionMode)) {
+    throw new Error(
+      `Invalid finding: semantic-only findings must use detectionMode ${SEMANTIC_FINDING_MODES.join(" or ")}`,
+    );
   }
-  if (typeof raw.identity !== "string" || !raw.identity) {
-    throw new Error("Invalid finding: missing identity");
-  }
-  if (typeof raw.title !== "string" || typeof raw.explanation !== "string") {
-    throw new Error("Invalid finding: missing title or explanation");
-  }
-  if (!Array.isArray(raw.locations) || !Array.isArray(raw.affectedSymbols)) {
-    throw new Error("Invalid finding: locations and affectedSymbols must be arrays");
-  }
-  const input = { ...raw } as FindingInput & { fingerprint?: string };
-  delete input.fingerprint;
   return createFinding(input);
+}
+
+async function readLegacyReviews(root: string): Promise<ReviewsFile> {
+  try {
+    return parseReviewsFile(
+      JSON.parse(await readFile(legacyReviewsPath(root), "utf8")) as unknown,
+    );
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+      return { schemaVersion: 1, reviews: [] };
+    }
+    throw error;
+  }
+}
+
+async function readLegacySemanticFindings(root: string): Promise<SemanticFindingsFile> {
+  try {
+    return parseSemanticFindingsFile(
+      JSON.parse(await readFile(legacySemanticFindingsPath(root), "utf8")) as unknown,
+    );
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+      return { schemaVersion: 1, findings: [] };
+    }
+    throw error;
+  }
 }
 
 function parseReview(raw: unknown): FindingReview {
@@ -100,13 +141,19 @@ function parseReview(raw: unknown): FindingReview {
   if (typeof raw.fingerprint !== "string" || !raw.fingerprint) {
     throw new Error("Invalid review: missing fingerprint");
   }
-  if (typeof raw.ruleId !== "string" || !isRuleId(raw.ruleId)) {
+  if (
+    typeof raw.ruleId !== "string" ||
+    !(RULE_IDS as readonly string[]).includes(raw.ruleId)
+  ) {
     throw new Error("Invalid review: missing ruleId");
   }
   if (typeof raw.identity !== "string" || !raw.identity) {
     throw new Error("Invalid review: missing identity");
   }
-  if (typeof raw.decision !== "string" || !isDecision(raw.decision)) {
+  if (
+    typeof raw.decision !== "string" ||
+    !(REVIEW_DECISIONS as readonly string[]).includes(raw.decision)
+  ) {
     throw new Error(`Invalid review: decision must be ${REVIEW_DECISIONS.join(", ")}`);
   }
   if (typeof raw.reason !== "string") {
@@ -115,13 +162,17 @@ function parseReview(raw: unknown): FindingReview {
   if (typeof raw.reviewedAt !== "string" || !raw.reviewedAt) {
     throw new Error("Invalid review: missing reviewedAt");
   }
+  const fingerprintVersion = optionalVersion(raw.fingerprintVersion, "fingerprintVersion");
+  const detectorRevision = optionalVersion(raw.detectorRevision, "detectorRevision");
   return {
     fingerprint: raw.fingerprint,
-    ruleId: raw.ruleId,
+    ruleId: raw.ruleId as RuleId,
     identity: raw.identity,
-    decision: raw.decision,
+    decision: raw.decision as FindingReview["decision"],
     reason: raw.reason,
     reviewedAt: raw.reviewedAt,
+    ...(fingerprintVersion !== undefined ? { fingerprintVersion } : {}),
+    ...(detectorRevision !== undefined ? { detectorRevision } : {}),
     ...(typeof raw.semanticEquivalence === "string"
       ? { semanticEquivalence: raw.semanticEquivalence }
       : {}),
@@ -131,14 +182,14 @@ function parseReview(raw: unknown): FindingReview {
   };
 }
 
+function optionalVersion(value: unknown, field: string): number | undefined {
+  if (value === undefined) return undefined;
+  if (typeof value !== "number" || !Number.isInteger(value)) {
+    throw new Error(`Invalid review: ${field} must be an integer`);
+  }
+  return value;
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function isRuleId(value: string): value is RuleId {
-  return (RULE_IDS as readonly string[]).includes(value);
-}
-
-function isDecision(value: string): value is FindingReview["decision"] {
-  return (REVIEW_DECISIONS as readonly string[]).includes(value);
 }

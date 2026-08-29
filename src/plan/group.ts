@@ -26,8 +26,11 @@ export function groupFindings(findings: Finding[]): FindingGroup[] {
 
 function groupKey(finding: Finding): string {
   const file = finding.locations[0]?.file ?? "unknown";
-  if (finding.ruleId === "A08" || finding.ruleId === "A07") {
+  if (finding.ruleId === "A08") {
     return `${finding.ruleId}:${finding.status}:${file}`;
+  }
+  if (finding.ruleId === "A07") {
+    return `${finding.ruleId}:${file}`;
   }
   if (finding.ruleId === "E06" || finding.ruleId === "E05") {
     const symbol = finding.affectedSymbols[0] ?? finding.identity;

@@ -1,153 +1,140 @@
 # Coherent
 
-Impeccable-style maintainability tooling for backend and large AI-built codebases.
+Maintainability guidance and tooling for backend and large AI-built codebases.
 
-Repeated agent feature additions do not usually rewrite a design. They add a path, a helper, a flag, a compatibility shim, and another name for a concept that already existed. The repository still compiles. The architecture becomes a fossil of every prompt that landed.
+Coherent helps a coding agent understand the architecture that is actually in use, find code and concepts that have drifted, choose a safe cleanup order, and keep new work from adding more debt.
 
-Coherent’s job is to make that entropy visible and to clean it up in an order that does not make things worse. It is not a frontend design skill, a SaaS product, or a plugin platform. It is not a hosted LLM service. The coding agent itself performs semantic reasoning using repository context, deterministic findings, skill instructions, and targeted inspection.
+> Quick start: install the skill and CLI from your project root, then run `/coherent init` in your coding tool.
 
-## The problem
+## Install
 
-AI-built backends grow by accretion:
+Requires Node.js 20+ and pnpm.
 
-- A new module appears beside the one that should have changed.
-- The same behavior is implemented twice because the first copy was hard to find.
-- Terms drift until nobody can tell which type is authoritative.
-- Dead compatibility and unused exports stay in the tree, so the next agent imitates them.
-- Tests lock the accidental structure in place.
+```bash
+npx skills add sethmgibson/coherent
+pnpm add --save-dev github:sethmgibson/coherent
+```
 
-The result is architectural entropy: more representations of the same information, more forwarding layers, and more cleanup risk every week.
+Restart your coding tool so it discovers the skill. The core skill is provider-neutral; Coherent's optional hook and project-rule installer currently targets Cursor.
 
-## Deterministic, semantic, and hybrid
+## Use it
 
-Not every maintainability question can be answered by a scanner.
+Start with three commands:
 
-- **Deterministic** rules conclude only from mechanical evidence. Dead code is the main example, and even there Coherent stays conservative around reflection, dynamic imports, framework registration, and public APIs.
-- **Semantic** rules need judgment about meaning, ownership, or intent. Architecture fossilization and premature abstraction are semantic. They must not be turned into fake lint failures.
-- **Hybrid** rules can gather signals (duplicate files, flag counts, unused packages) but still need a person or an agent to decide what the signal means.
+```text
+/coherent init
+/coherent audit
+/coherent fix next
+```
 
-Never convert a semantic question into a fake deterministic conclusion. A successful audit result may be: “Superficially similar but intentionally different; do not merge.”
+- `init` records the repository's living architecture so later work has context.
+- `audit` finds maintainability problems without changing code or writing project files.
+- `fix next` chooses one safe, unblocked cleanup instead of rewriting the repository wholesale.
 
-## Taxonomy is not cleanup order
+For an existing codebase, record today's debt once so future changes can be judged separately:
 
-Coherent has a 30-rule catalog with stable IDs (`A01`–`A08`, `B01`–`B06`, `C01`–`C05`, `D01`–`D05`, `E01`–`E06`). The IDs group related problems. They are not an execution schedule.
+```text
+/coherent baseline
+```
 
-Three distinct concepts:
+After ordinary feature work, check only what changed:
 
-1. **Taxonomy** — stable names for problems
-2. **Default cleanup phases** — tie-breakers when dependencies are otherwise equal
-3. **Finding-specific cleanup DAG** — authoritative for actual work
+```text
+/coherent check --changed
+```
 
-The catalog lives in `src/catalog/rules.ts`. Skill references are generated from it.
+The CLI is also available through the project-local package:
 
-| Band | What it names |
-|---|---|
-| A | Leftover structure and representations |
-| B | Accidental architecture |
-| C | Domain and control-flow design |
-| D | Failure semantics, tests, and dependencies |
-| E | Performance |
+```bash
+pnpm coherent init
+pnpm coherent audit
+pnpm coherent check --changed
+```
 
-See `skills/coherent/reference/taxonomy.md` for the full list.
+## What Coherent looks for
 
-## Why the cleanup DAG beats a rigid list
+Coherent focuses on the kinds of entropy that accumulate when a codebase is changed repeatedly by people and agents:
 
-A rigid A01→E06 list would delay cheap surface reduction and would miss work that appears only after something else is deleted. Findings have prerequisites. Fixing one issue can resolve another indirectly or unlock a new cleanup. `coherent plan` builds that graph. Default phases only break ties.
+- dead code and stale compatibility paths
+- duplicate implementations and representations
+- terminology drift and implicit string protocols
+- unnecessary layers, wrappers, helpers, and abstractions
+- fragile state, error-handling, test, dependency, and performance patterns
 
-## Why dead code is early — and why it is re-scanned
-
-Dead-code reduction (A08) happens early so later analysis has less surface to misunderstand. It is re-run after stale-compatibility removal, after canonicalization, and after architecture collapse because those edits leave newly unused code, types, tests, helpers, configuration, and dependencies.
-
-Stale compatibility (A07) requires semantic verification before deletion. After it is removed, search again for newly dead paths.
-
-## Why semantic mapping can happen before physical edits
-
-A01, A02, and A03 often produce knowledge — intentional architecture, historical accidents, domain vocabulary, protocol and state vocabulary — before any rename or rewrite. Do not mass-rename solely because terminology drift was discovered. Rename when it supports an actual consolidation or clarification.
-
-Audit order may study these rules early even when A08 cleanup happens first physically.
-
-## Why tests have early safety work and later architecture cleanup
-
-Early: understand existing behavioral tests and add small characterization tests so cleanup cannot silently break behavior.
-
-Late: simplify implementation-coupled tests and mock pyramids (D04, D05). Do not rewrite hundreds of mocks around code that is likely to disappear.
-
-## Why performance is last
-
-E01–E06 only apply to architecture that survived. Optimizing a path that should be deleted is wasted work.
-
-## Baseline adoption for huge existing repositories
-
-Legacy adoption must work.
-
-- Existing debt: allowed initially
-- New debt: surfaced, and blocked when it is a new confirmed high/critical deterministic finding
-- Resolved debt: tracked positively
-
-`coherent baseline` snapshots current findings. `coherent check` compares a later audit to that snapshot. A repository with a thousand old findings must remain usable on day one.
+Some findings can be proven mechanically. Others require judgment about meaning, ownership, or intent. Coherent keeps that distinction visible: a valid result can be “these look similar, but they are intentionally different.”
 
 ## Commands
 
 | Command | What it does |
 |---|---|
-| `coherent init` | Inventory the repo and write `.coherent/ARCHITECTURE.md` |
-| `coherent audit` | Run implemented detectors, group findings, write metrics |
-| `coherent baseline` | Snapshot findings to `.coherent/baseline.json` |
-| `coherent plan` | Build the cleanup DAG from current findings |
-| `coherent fix next` | Select one unlocked cleanup node and print a work brief |
-| `coherent check` | Compare a fresh audit to the baseline; `--changed` scopes to the git diff |
-| `coherent install` | Copy the Cursor adapter, prevention rule, and `check --changed` hooks |
-| `coherent update` | Refresh those copied files without overwriting user edits |
+| `/coherent init` | Inventory the repository and create durable architecture context |
+| `/coherent refresh` | Refresh discovered facts without overwriting confirmed architecture notes |
+| `/coherent audit` | Run deterministic checks and guide semantic investigation |
+| `/coherent review` | Confirm, dismiss, or defer a finding |
+| `/coherent baseline` | Record existing debt so it does not block adoption |
+| `/coherent plan` | Build a dependency-aware cleanup plan |
+| `/coherent fix next` | Select one safe, unblocked cleanup |
+| `/coherent check --changed` | Report new and resolved debt in the current change |
+| `/coherent doctor` | Check the integrity of Coherent's project state |
 
-`backend` is an alias for the same CLI. In Cursor, the skill namespace is `/coherent` (`/backend` still works). The canonical skill is `skills/coherent/`. `.cursor/skills/coherent` is an adapter, not a second source of truth. `.cursor/skills/backend` is a skill alias.
+Type `/coherent` without a command to get the recommended next step.
 
-### Intended workflow
+## How cleanup is ordered
 
-1. `/coherent init` — inventory and durable architecture context. Complete semantic sections with facts, not guesses.
-2. `/coherent audit` — deterministic scan, then agent semantic investigation.
-3. `/coherent baseline` — snapshot current debt.
-4. `/coherent plan` — construct the DAG. Do not sort by rule ID.
-5. `/coherent fix next` — one bounded node. Re-audit, re-check, re-plan.
-6. `/coherent check` — after ordinary feature work, ask whether the change made the system conceptually harder to change.
+Coherent does not ask you to memorize a numbered cleanup checklist.
 
-Implemented detectors: A08, A07, A03, A06, B03, B04, C03, C04, D03, D01, E01, E05, E06. Other catalog rules need semantic analysis.
+Each finding has a readable name, such as **Dead code**, **Stale compatibility**, or **Duplicate representations**. The planner then orders actual findings by prerequisites, confidence, risk, and how much later work they unlock. Default cleanup stages are used only when those signals are otherwise equal.
 
-## Usage
+That is why dead code may be removed before an earlier catalog entry, and why it is scanned again after a consolidation. The dependency-aware plan is the work queue; the catalog is not.
 
-```bash
-pnpm install
-pnpm build
-coherent init
-coherent audit
-coherent baseline
-coherent plan
-coherent fix next
-coherent check
-```
+## Existing repositories
 
-Or from this checkout:
+Large repositories can adopt Coherent without fixing everything first:
 
-```bash
-pnpm exec tsx src/cli.ts init
-```
+- Existing debt is allowed after it is baselined.
+- New confirmed debt is surfaced separately.
+- Resolved debt is tracked positively.
+- Uncertain cleanup remains visible until someone confirms, dismisses, or defers it.
 
-`init` writes discovered facts and leaves semantic sections explicitly incomplete. It will not overwrite an existing `ARCHITECTURE.md` unless you pass `--force`.
+Coherent does not create caches or reports by default. Its durable project state is deliberately small:
 
-`.coherent/ARCHITECTURE.md` is durable project context and should be committed. `.coherent/baseline.json` should be committed. `.coherent/inventory.json`, `findings.json`, `plan.json`, and `next.json` are regenerable and gitignored. If a repository still has `.backend/`, `init` and `doctor` detect it and ask you to rename it to `.coherent/`.
+- Commit `.coherent/ARCHITECTURE.md` after `init` if shared architecture context is useful.
+- Commit `.coherent/baseline.json` only when the repository uses `check` for drift prevention.
+- Commit `.coherent/decisions.json` when reviews or semantic findings should survive across agents.
 
-## Metrics
+`audit`, `plan`, `check`, `doctor`, and `fix next` write no Coherent metadata. To retain machine-readable output explicitly, use `coherent audit --output <path>` or `coherent plan --output <path>`.
 
-Individual metrics, each tagged MEASURED or SEMANTICALLY INFERRED. There is no single opaque score. Examples: confirmed dead-code findings, stale compatibility paths, competing implementations, representations per concept, forwarding wrappers, dependency overlap, swallowed errors, N+1 candidates, complexity risks, confirmed vs candidate totals.
+Optional Cursor and Git integrations are also zero-install by default. Select only what you want, for example `coherent install --rule`, `--cursor-hook`, or `--git-hook`; use `--adapter` only when the coding tool needs a project-local adapter.
+
+## Technical details
+
+### Finding IDs are storage keys, not user vocabulary
+
+Coherent's JSON files and internal catalog retain stable identifiers such as `A08`. They keep baselines, reviews, detector output, and integrations compatible across releases. Users should not have to remember them, choose work by them, or interpret them as execution order. Human-facing guidance and output should lead with finding names.
+
+The source catalog is `src/catalog/rules.ts`; generated reference material lives under `skills/coherent/reference/`.
+
+### Deterministic, semantic, and hybrid findings
+
+- **Deterministic** findings conclude only from mechanical evidence.
+- **Semantic** findings require repository context and judgment.
+- **Hybrid** findings gather mechanical signals but still require review.
+
+Coherent stays conservative around dependency injection, decorators, reflection, dynamic imports, background jobs, framework registration, public APIs, and package exports. Static absence alone is not enough to delete uncertain code.
+
+### Current packaging
+
+The skill and CLI currently install separately. The unscoped `coherent` name on npm belongs to another project, so the CLI dependency intentionally uses this GitHub repository until Coherent has a dedicated published package name. A unified installer is the main remaining installation gap compared with [Impeccable](https://github.com/pbakaus/impeccable).
 
 ## Development
 
 ```bash
+pnpm install
+pnpm build
 pnpm test
 pnpm typecheck
 pnpm generate:skill-docs
 ```
-
-Requires Node.js 20+ and pnpm.
 
 ## License
 

@@ -3,9 +3,11 @@ import {
   createFinding,
   fingerprintFinding,
   parseFinding,
+  parseFindingInput,
   serializeFinding,
   type FindingInput,
 } from "../src/domain/finding.js";
+import { parseSemanticFindingsFile } from "../src/review/store.js";
 
 function sample(overrides: Partial<FindingInput> = {}): FindingInput {
   return {
@@ -106,5 +108,94 @@ describe("finding serialization", () => {
   it("rejects invalid JSON payloads", () => {
     expect(() => parseFinding("{}")).toThrow(/Invalid finding/);
     expect(() => parseFinding("null")).toThrow(/Invalid finding/);
+  });
+});
+
+describe("parseFindingInput", () => {
+  it("accepts a complete FindingInput and ignores fingerprint", () => {
+    const input = sample({
+      authoritativeConcept: "Helper",
+      testSafetyEvidence: "covered by unit tests",
+    });
+    expect(parseFindingInput({ ...input, fingerprint: "ignore-me" })).toEqual(input);
+  });
+
+  it("rejects missing planner fields", () => {
+    const required = [
+      "severity",
+      "confidence",
+      "detectionMode",
+      "status",
+      "evidence",
+      "cleanupBenefit",
+      "changeRisk",
+      "prerequisiteFindingIds",
+    ] as const;
+    for (const field of required) {
+      const { [field]: _omit, ...incomplete } = sample();
+      expect(() => parseFindingInput(incomplete)).toThrow(/Invalid finding/);
+    }
+  });
+
+  it("rejects enum and nested shape errors", () => {
+    expect(() => parseFindingInput(sample({ severity: "urgent" as never }))).toThrow(
+      /severity must be/,
+    );
+    expect(() => parseFindingInput(sample({ evidence: { summary: 1 } as never }))).toThrow(
+      /evidence/,
+    );
+    expect(() =>
+      parseFindingInput(sample({ locations: [{ line: 4 }] as never })),
+    ).toThrow(/locations\[0\] must include file/);
+    expect(() => parseFindingInput(sample({ prerequisiteFindingIds: [1] as never }))).toThrow(
+      /prerequisiteFindingIds must be an array of strings/,
+    );
+  });
+});
+
+describe("parseSemanticFindingsFile", () => {
+  it("accepts semantic and hybrid findings", () => {
+    const semantic = sample({ ruleId: "A01", identity: "fossil:OldLayer", detectionMode: "semantic" });
+    const hybrid = sample({ ruleId: "A04", identity: "dup-impl:auth", detectionMode: "hybrid" });
+    const file = parseSemanticFindingsFile({
+      schemaVersion: 1,
+      findings: [semantic, hybrid],
+    });
+    expect(file.findings).toHaveLength(2);
+    expect(file.findings[0]?.fingerprint).toBe(fingerprintFinding(semantic));
+    expect(file.findings[1]?.detectionMode).toBe("hybrid");
+  });
+
+  it("rejects a surface-complete finding that is missing planner fields", () => {
+    expect(() =>
+      parseSemanticFindingsFile({
+        schemaVersion: 1,
+        findings: [
+          {
+            ruleId: "A01",
+            identity: "foo",
+            title: "Foo",
+            explanation: "Foo",
+            locations: [],
+            affectedSymbols: [],
+          },
+        ],
+      }),
+    ).toThrow(/Invalid finding/);
+  });
+
+  it("rejects deterministic and arbitrary detection modes", () => {
+    expect(() =>
+      parseSemanticFindingsFile({
+        schemaVersion: 1,
+        findings: [sample({ detectionMode: "deterministic" })],
+      }),
+    ).toThrow(/semantic-only findings must use detectionMode semantic or hybrid/);
+    expect(() =>
+      parseSemanticFindingsFile({
+        schemaVersion: 1,
+        findings: [sample({ detectionMode: "manual" as never })],
+      }),
+    ).toThrow(/detectionMode must be/);
   });
 });

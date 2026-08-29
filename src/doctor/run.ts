@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { isAbsolute, join } from "node:path";
-import { readFindingsFile } from "../audit/store.js";
+import { runAudit } from "../audit/run.js";
 import { isBaselineStale, type BaselineFile } from "../baseline/run.js";
 import { ARCHITECTURE_FILE, BASELINE_FILE, loadConfig } from "../config.js";
 import { legacyStateDirWarning, resolveStateDir } from "../state-dir.js";
@@ -10,12 +10,8 @@ import {
   hasDiscoveredFences,
 } from "../init/refresh.js";
 import { collectInventory } from "../inventory.js";
-import { matchReview } from "../review/apply.js";
-import {
-  parseSemanticFindingsFile,
-  readReviews,
-  semanticFindingsPath,
-} from "../review/store.js";
+import { classifyReview } from "../review/apply.js";
+import { readDecisions } from "../review/store.js";
 import type { DoctorIssue, DoctorResult } from "./types.js";
 
 export async function runDoctor(root: string): Promise<DoctorResult> {
@@ -23,9 +19,7 @@ export async function runDoctor(root: string): Promise<DoctorResult> {
   checkLegacyStateDir(root, issues);
   await checkArchitecture(root, issues);
   await checkBaseline(root, issues);
-  await checkDuplicates(root, issues);
-  await checkReviews(root, issues);
-  await checkSemanticFindings(root, issues);
+  await checkDecisions(root, issues);
   return { issues, ok: issues.length === 0 };
 }
 
@@ -74,7 +68,7 @@ async function checkBaseline(root: string, issues: DoctorIssue[]): Promise<void>
   try {
     const raw = JSON.parse(await readFile(join(resolveStateDir(root).path, BASELINE_FILE), "utf8")) as BaselineFile;
     if (!raw || !Array.isArray(raw.findings)) {
-      issues.push({ code: "missing-baseline", message: "baseline.json is invalid. Re-run `coherent baseline`." });
+      issues.push({ code: "baseline-versions", message: "baseline.json is invalid. Re-run `coherent baseline`." });
       return;
     }
     if (isBaselineStale(raw) || raw.schemaVersion === undefined) {
@@ -92,65 +86,44 @@ async function checkBaseline(root: string, issues: DoctorIssue[]): Promise<void>
     const fingerprints = raw.findings.map((entry) => entry.fingerprint);
     reportDuplicates(fingerprints, "baseline.json", issues);
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
-      issues.push({ code: "missing-baseline", message: "No baseline.json. Run `coherent baseline`." });
-      return;
-    }
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return;
     throw error;
   }
 }
 
-async function checkDuplicates(root: string, issues: DoctorIssue[]): Promise<void> {
-  const file = await readFindingsFile(root);
-  if (!file) return;
-  reportDuplicates(
-    file.findings.map((finding) => finding.fingerprint),
-    "findings.json",
-    issues,
-  );
-}
-
-async function checkReviews(root: string, issues: DoctorIssue[]): Promise<void> {
+async function checkDecisions(root: string, issues: DoctorIssue[]): Promise<void> {
   try {
-    const reviews = await readReviews(root);
-    const mechanical = (await readFindingsFile(root))?.findings ?? [];
-    let semantic: ReturnType<typeof parseSemanticFindingsFile>["findings"] = [];
-    try {
-      semantic = parseSemanticFindingsFile(
-        JSON.parse(await readFile(semanticFindingsPath(root), "utf8")) as unknown,
-      ).findings;
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
-        /* invalid semantic file is reported separately */
-      }
-    }
-    const known = [...mechanical, ...semantic];
-    for (const review of reviews.reviews) {
-      const matched = known.some((finding) => matchReview(finding, [review]));
-      if (!matched) {
+    const decisions = await readDecisions(root);
+    reportDuplicates(
+      decisions.findings.map((finding) => finding.fingerprint),
+      "decisions.json findings",
+      issues,
+    );
+    if (decisions.reviews.length === 0) return;
+    const mechanical = (await runAudit(root)).findings;
+    const known = [...mechanical, ...decisions.findings];
+    for (const review of decisions.reviews) {
+      const match = classifyReview(review, known);
+      if (match === "orphan") {
         issues.push({
           code: "orphan-review",
           message: `Review ${review.decision} ${review.ruleId} ${review.identity} matches no current finding.`,
         });
+      } else if (match === "stale") {
+        const seen = review.detectorRevision;
+        issues.push({
+          code: "stale-review",
+          message:
+            seen === undefined
+              ? `Review ${review.decision} ${review.ruleId} ${review.identity} is stale (no detectorRevision). Re-review; identity fallback was not applied.`
+              : `Review ${review.decision} ${review.ruleId} ${review.identity} is stale (detectorRevision ${seen}). Re-review; identity fallback was not applied.`,
+        });
       }
     }
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") return;
     issues.push({
-      code: "invalid-reviews",
-      message: error instanceof Error ? error.message : "Invalid reviews.json",
-    });
-  }
-}
-
-async function checkSemanticFindings(root: string, issues: DoctorIssue[]): Promise<void> {
-  try {
-    parseSemanticFindingsFile(JSON.parse(await readFile(semanticFindingsPath(root), "utf8")) as unknown);
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") return;
-    issues.push({
-      code: "invalid-semantic-finding",
-      message: error instanceof Error ? error.message : "Invalid semantic-findings.json",
+      code: "invalid-decisions",
+      message: error instanceof Error ? error.message : "Invalid decisions.json",
     });
   }
 }

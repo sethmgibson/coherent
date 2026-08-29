@@ -1,7 +1,7 @@
 import { stat } from "node:fs/promises";
 import { join } from "node:path";
 import { createAnalysisContext } from "../analysis/context.js";
-import { ARCHITECTURE_FILE, FINDINGS_FILE, PORTABLE_ROOT, loadConfig } from "../config.js";
+import { ARCHITECTURE_FILE, PORTABLE_ROOT, loadConfig } from "../config.js";
 import { resolveStateDir } from "../state-dir.js";
 import { collectInventory, type Inventory } from "../inventory.js";
 import type { Finding } from "../domain/finding.js";
@@ -19,14 +19,26 @@ import { detectRedundantDbAccess } from "../detectors/redundant-db.js";
 import { detectSequentialIo } from "../detectors/sequential-io.js";
 import { detectAlgorithmicComplexity } from "../detectors/complexity.js";
 import { computeMetrics } from "./metrics.js";
+import type { Metric } from "./metrics.js";
 import { groupFindings } from "../plan/group.js";
+import type { FindingGroup } from "../plan/types.js";
 import { assertUniqueFingerprints, mergeFindingsByFingerprint } from "./dedupe.js";
-import { writeFindingsFile, type FindingsFile } from "./store.js";
+
+export interface FindingsFile {
+  generatedAt: string;
+  root: string;
+  durationMs: number;
+  architecturePath?: string;
+  findings: Finding[];
+  confirmed: Finding[];
+  candidates: Finding[];
+  groups: FindingGroup[];
+  metrics: Metric[];
+}
 
 export interface AuditResult {
   inventory: Inventory;
   findings: Finding[];
-  findingsPath: string;
   durationMs: number;
   file: FindingsFile;
 }
@@ -34,8 +46,6 @@ export interface AuditResult {
 export interface AuditOptions {
   /** Parse only these repo-relative paths. Full-repo ts-morph when omitted. */
   include?: string[];
-  /** Write `.coherent/findings.json`. Default true. Scoped checks skip persist. */
-  persist?: boolean;
 }
 
 export async function runAudit(
@@ -76,9 +86,7 @@ export async function runAudit(
     groups: groupFindings(findings),
     metrics: computeMetrics(findings),
   };
-  const path =
-    options.persist === false ? join(state.path, FINDINGS_FILE) : await writeFindingsFile(file, root);
-  return { inventory, findings, findingsPath: path, durationMs, file };
+  return { inventory, findings, durationMs, file };
 }
 
 async function fileExists(path: string): Promise<boolean> {

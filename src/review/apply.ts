@@ -1,5 +1,8 @@
+import { DETECTOR_REVISION } from "../config.js";
 import type { Finding } from "../domain/finding.js";
 import type { FindingReview, MergedFindings } from "./types.js";
+
+export type ReviewMatch = "applied" | "stale" | "orphan";
 
 export function applyReviews(
   mechanical: Finding[],
@@ -39,9 +42,31 @@ export function matchReview(
   return (
     reviews.find((review) => review.fingerprint === finding.fingerprint) ??
     reviews.find(
-      (review) => review.ruleId === finding.ruleId && review.identity === finding.identity,
+      (review) =>
+        sameIdentity(review, finding) && hasCurrentDetectorRevision(review),
     )
   );
+}
+
+/** Exact fingerprint still applies across detector bumps. Identity match does not. */
+export function hasCurrentDetectorRevision(review: FindingReview): boolean {
+  return review.detectorRevision === DETECTOR_REVISION;
+}
+
+export function classifyReview(review: FindingReview, findings: Finding[]): ReviewMatch {
+  let staleIdentity = false;
+  for (const finding of findings) {
+    if (review.fingerprint === finding.fingerprint) return "applied";
+    if (sameIdentity(review, finding)) {
+      if (hasCurrentDetectorRevision(review)) return "applied";
+      staleIdentity = true;
+    }
+  }
+  return staleIdentity ? "stale" : "orphan";
+}
+
+function sameIdentity(review: FindingReview, finding: Finding): boolean {
+  return review.ruleId === finding.ruleId && review.identity === finding.identity;
 }
 
 export function requiresAgentReview(finding: Finding): boolean {

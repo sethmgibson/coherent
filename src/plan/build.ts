@@ -98,7 +98,7 @@ function nodeState(
   prerequisiteCount: number,
   needsReview: ReadonlySet<string>,
 ): CleanupNode["state"] {
-  if (fingerprints.length > 0 && fingerprints.every((fingerprint) => needsReview.has(fingerprint))) {
+  if (fingerprints.some((fingerprint) => needsReview.has(fingerprint))) {
     return "needs_review";
   }
   return prerequisiteCount === 0 ? "ready" : "blocked";

@@ -7,13 +7,14 @@ Find maintainability issues. Do not fix them here.
 ```bash
 coherent audit
 coherent audit --json
+coherent audit --output path/to/audit.json
 ```
 
-The CLI inventories the target, reads architecture context if present, builds one TypeScript analysis context, runs the implemented detectors, merges duplicate fingerprints (union locations, occurrence evidence), groups findings, computes metrics, and writes `.coherent/findings.json` with confirmed and candidates separated. Fingerprints in that file are unique.
+The CLI inventories the target, reads architecture context if present, builds one TypeScript analysis context, runs the implemented detectors, merges duplicate fingerprints (union locations, occurrence evidence), groups findings, and computes metrics. It writes nothing by default. `--json` prints the full result; `--output` writes it to the explicit path. Fingerprints are unique.
 
-Implemented detectors: A08, A07, A03, A06, B03, B04, C03, C04, D03, D01, E01, E05, E06. Other catalog rules remain semantic.
+Implemented detectors cover dead code, stale compatibility, implicit string protocols, duplicate representations, premature abstraction, excessive indirection, boolean and context-object explosion, swallowed errors, dependency creep, redundant database access, unnecessary sequential I/O, and algorithmic complexity. Other catalog entries remain semantic.
 
-`findings.json` is mechanical evidence only. Record agent decisions with `coherent review`. Author semantic-only findings in `.coherent/semantic-findings.json`. `coherent plan` merges those files.
+Mechanical findings are regenerated on demand. Record agent decisions with `coherent review`. Author semantic-only findings in the `findings` array of `.coherent/decisions.json`. `coherent plan` merges current mechanical findings with those durable decisions.
 
 ## Agent step
 

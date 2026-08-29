@@ -11,10 +11,28 @@ import { runInstall, runUpdate } from "../src/install/run.js";
 const execFileAsync = promisify(execFile);
 
 describe("install and update", () => {
-  it("copies the Cursor adapter, prevention rule, and hooks", async () => {
-    const root = await mkdtemp(join(tmpdir(), "coherent-install-"));
+  it("writes nothing without explicit integration flags", async () => {
+    const root = await mkdtemp(join(tmpdir(), "coherent-install-empty-"));
     try {
       const result = await runInstall(root);
+      expect(result.actions).toEqual([]);
+      await expect(readFile(join(root, ".cursor", "hooks.json"), "utf8")).rejects.toMatchObject({
+        code: "ENOENT",
+      });
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it("copies only explicitly selected Cursor integrations", async () => {
+    const root = await mkdtemp(join(tmpdir(), "coherent-install-"));
+    try {
+      const result = await runInstall(root, {
+        adapter: true,
+        alias: true,
+        rule: true,
+        cursorHook: true,
+      });
       const paths = result.actions.map((action) => action.path);
 
       expect(paths).toContain(".cursor/skills/coherent/SKILL.md");
@@ -22,9 +40,7 @@ describe("install and update", () => {
       expect(paths).toContain(".cursor/rules/backend-prevention.mdc");
       expect(paths).toContain(".cursor/hooks/coherent-check.sh");
       expect(paths).toContain(".cursor/hooks.json");
-      expect(result.actions.find((action) => action.path === ".git/hooks/pre-commit")?.action).toBe(
-        "skipped",
-      );
+      expect(paths).not.toContain(".git/hooks/pre-commit");
 
       const adapter = await readFile(join(root, ".cursor", "skills", "coherent", "SKILL.md"), "utf8");
       expect(adapter).toContain("skills/coherent/SKILL.md");
@@ -47,6 +63,7 @@ describe("install and update", () => {
       const script = await readFile(join(root, ".cursor", "hooks", "coherent-check.sh"), "utf8");
       expect(script).toContain(HOOK_MARKER);
       expect(script).toContain("check --changed");
+      expect(script).toContain("baseline is not configured");
     } finally {
       await rm(root, { recursive: true, force: true });
     }
@@ -55,14 +72,14 @@ describe("install and update", () => {
   it("refreshes adapter stubs and fenced interiors without overwriting user edits", async () => {
     const root = await mkdtemp(join(tmpdir(), "coherent-update-"));
     try {
-      await runInstall(root, { hooks: false });
+      await runInstall(root, { adapter: true, rule: true });
 
       await writeFile(
         join(root, ".cursor", "rules", "backend-prevention.mdc"),
         "custom prevention. do not overwrite.\n",
         "utf8",
       );
-      const skipped = await runUpdate(root, { hooks: false });
+      const skipped = await runUpdate(root, { adapter: true, rule: true });
       expect(
         skipped.actions.find((action) => action.path === ".cursor/rules/backend-prevention.mdc"),
       ).toMatchObject({ action: "skipped", reason: "user edits" });
@@ -75,7 +92,7 @@ describe("install and update", () => {
         `---\ndescription: custom title\n---\n\nkeep this preface\n\n${PREVENTION_OPEN}\nold interior\n${PREVENTION_CLOSE}\n`,
         "utf8",
       );
-      await runUpdate(root, { hooks: false });
+      await runUpdate(root, { adapter: true, rule: true });
       const fenced = await readFile(join(root, ".cursor", "rules", "backend-prevention.mdc"), "utf8");
       expect(fenced).toContain("description: custom title");
       expect(fenced).toContain("keep this preface");
@@ -87,7 +104,7 @@ describe("install and update", () => {
         "---\nname: coherent\n---\n\nThis is a Cursor adapter. See skills/coherent/SKILL.md\n",
         "utf8",
       );
-      const stub = await runUpdate(root, { hooks: false, rule: false });
+      const stub = await runUpdate(root, { adapter: true });
       expect(
         stub.actions.find((action) => action.path === ".cursor/skills/coherent/SKILL.md")?.action,
       ).toBe("updated");
@@ -115,7 +132,7 @@ describe("install and update", () => {
       await mkdir(join(root, ".git", "hooks"), { recursive: true });
       await writeFile(join(root, ".git", "hooks", "pre-commit"), "#!/bin/sh\necho mine\n", "utf8");
 
-      const result = await runInstall(root, { rule: false });
+      const result = await runInstall(root, { cursorHook: true, gitHook: true });
       const hooks = JSON.parse(await readFile(join(root, ".cursor", "hooks.json"), "utf8")) as {
         hooks: { afterFileEdit: { command: string }[]; stop: { command: string }[] };
       };
@@ -130,7 +147,7 @@ describe("install and update", () => {
       );
 
       await execFileAsync("git", ["init", "-b", "main"], { cwd: clean });
-      await runInstall(clean, { rule: false });
+      await runInstall(clean, { gitHook: true });
       const gitHook = await readFile(join(clean, ".git", "hooks", "pre-commit"), "utf8");
       expect(gitHook).toContain(HOOK_MARKER);
       expect(gitHook).toContain("check --changed");

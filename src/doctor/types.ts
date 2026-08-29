@@ -7,9 +7,8 @@ export interface DoctorIssue {
     | "baseline-absolute-root"
     | "duplicate-fingerprint"
     | "orphan-review"
-    | "invalid-semantic-finding"
-    | "invalid-reviews"
-    | "missing-baseline"
+    | "stale-review"
+    | "invalid-decisions"
     | "legacy-state-dir";
   message: string;
 }

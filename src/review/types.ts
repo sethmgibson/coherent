@@ -11,6 +11,10 @@ export interface FindingReview {
   decision: ReviewDecision;
   reason: string;
   reviewedAt: string;
+  /** Hash algorithm that produced `fingerprint`. Informational; does not gate identity fallback. */
+  fingerprintVersion?: number;
+  /** Detector semantics this decision was made under. Required for identity fallback. */
+  detectorRevision?: number;
   semanticEquivalence?: string;
   authoritativeConcept?: string;
 }
@@ -22,6 +26,12 @@ export interface ReviewsFile {
 
 export interface SemanticFindingsFile {
   schemaVersion: 1;
+  findings: Finding[];
+}
+
+export interface DecisionsFile {
+  schemaVersion: 1;
+  reviews: FindingReview[];
   findings: Finding[];
 }
 

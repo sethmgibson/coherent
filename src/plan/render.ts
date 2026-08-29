@@ -54,8 +54,8 @@ function renderNode(node: CleanupNode): string[] {
   const phase = PHASES_BY_ID[node.defaultPhase];
   const files = node.likelyFiles.slice(0, 3).join(", ") || "(no files)";
   return [
-    `  [${node.state} score ${node.priorityScore}] ${node.ruleIds.join(",")} — ${node.title}`,
-    `    phase ${node.defaultPhase} ${phase.title}  ${node.status} ${node.confidence}`,
+    `  [${node.state} score ${node.priorityScore}] ${node.title}`,
+    `    stage: ${phase.title} (tie-break only)  ${node.status} ${node.confidence}`,
     `    files: ${files}`,
     `    ${node.reasonForOrdering}`,
     `    unlocks: ${node.unlocks}`,

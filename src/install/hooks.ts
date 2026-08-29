@@ -29,6 +29,10 @@ run_check
 
 const RUN_CHECK = `
 run_check() {
+  if [ ! -f "$root/.coherent/baseline.json" ] && [ ! -f "$root/.backend/baseline.json" ]; then
+    echo "coherent baseline is not configured; skipped check --changed" >&2
+    return 0
+  fi
   if [ -x "$root/node_modules/.bin/coherent" ]; then
     "$root/node_modules/.bin/coherent" check --changed
   elif command -v coherent >/dev/null 2>&1; then
@@ -39,11 +43,10 @@ run_check() {
 }
 `;
 
-export async function writePreventionHooks(root: string): Promise<CopyResult[]> {
+export async function writeCursorPreventionHook(root: string): Promise<CopyResult[]> {
   return [
     await writeScript(destHookScript(root), withRunner(CURSOR_HOOK_SCRIPT)),
     await mergeCursorHooksJson(root),
-    await writeGitHook(root),
   ];
 }
 
@@ -92,7 +95,7 @@ async function mergeCursorHooksJson(root: string): Promise<CopyResult> {
   return { path: dest, action: existing ? "updated" : "wrote" };
 }
 
-async function writeGitHook(root: string): Promise<CopyResult> {
+export async function writeGitPreventionHook(root: string): Promise<CopyResult> {
   const dest = destGitHook(root);
   try {
     const info = await stat(dirname(dirname(dest)));
@@ -134,4 +137,3 @@ function isHooksFile(value: unknown): value is HooksFile {
   const record = value as { version?: unknown; hooks?: unknown };
   return typeof record.version === "number" && record.hooks !== null && typeof record.hooks === "object";
 }
-

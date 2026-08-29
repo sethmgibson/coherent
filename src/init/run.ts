@@ -7,13 +7,11 @@ import { refreshArchitectureFile } from "./refresh.js";
 import { legacyStateDirWarning, resolveStateDir } from "../state-dir.js";
 
 export { ARCHITECTURE_FILE, BACKEND_DIR, COHERENT_DIR };
-export const INVENTORY_FILE = "inventory.json";
 
 export interface InitResult {
   root: string;
   inventory: Inventory;
   architecturePath: string;
-  inventoryPath: string;
   wroteArchitecture: boolean;
   stateDir: string;
   legacyWarning?: string;
@@ -23,7 +21,7 @@ export async function runInit(
   root: string,
   options: { force?: boolean } = {},
 ): Promise<InitResult> {
-  const { inventory, architecturePath, inventoryPath } = await writeInventory(root);
+  const { inventory, architecturePath } = await collectArchitectureInput(root);
   const exists = await fileExists(architecturePath);
   let wroteArchitecture = false;
   if (!exists) {
@@ -34,20 +32,19 @@ export async function runInit(
     wroteArchitecture = true;
   }
 
-  return finishInit(root, inventory, architecturePath, inventoryPath, wroteArchitecture);
+  return finishInit(root, inventory, architecturePath, wroteArchitecture);
 }
 
 export async function runRefresh(root: string): Promise<InitResult> {
-  const { inventory, architecturePath, inventoryPath } = await writeInventory(root);
+  const { inventory, architecturePath } = await collectArchitectureInput(root);
   await refreshArchitectureFile(architecturePath, inventory);
-  return finishInit(root, inventory, architecturePath, inventoryPath, true);
+  return finishInit(root, inventory, architecturePath, true);
 }
 
 function finishInit(
   root: string,
   inventory: Inventory,
   architecturePath: string,
-  inventoryPath: string,
   wroteArchitecture: boolean,
 ): InitResult {
   const warning = legacyStateDirWarning(root);
@@ -55,28 +52,23 @@ function finishInit(
     root,
     inventory,
     architecturePath,
-    inventoryPath,
     wroteArchitecture,
     stateDir: resolveStateDir(root).name,
     ...(warning ? { legacyWarning: warning } : {}),
   };
 }
 
-async function writeInventory(root: string): Promise<{
+async function collectArchitectureInput(root: string): Promise<{
   inventory: Inventory;
   architecturePath: string;
-  inventoryPath: string;
 }> {
   const config = await loadConfig(root);
   const inventory = await collectInventory(root, config);
   const state = resolveStateDir(root);
   await mkdir(state.path, { recursive: true });
-  const inventoryPath = join(state.path, INVENTORY_FILE);
-  await writeFile(inventoryPath, `${JSON.stringify(inventory, null, 2)}\n`, "utf8");
   return {
     inventory,
     architecturePath: join(state.path, ARCHITECTURE_FILE),
-    inventoryPath,
   };
 }
 

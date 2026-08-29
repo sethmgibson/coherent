@@ -30,13 +30,13 @@ export function renderAudit(result: AuditResult): string {
   for (const phase of PHASES) {
     const group = byPhase.get(phase.id);
     if (!group || group.length === 0) continue;
-    lines.push(`PHASE ${phase.id} — ${phase.title.toUpperCase()}`);
+    lines.push(phase.title.toUpperCase());
     const byRule = groupBy(group, (finding) => finding.ruleId);
     for (const [ruleId, ruleFindings] of byRule) {
       const rule = RULES_BY_ID[ruleId as keyof typeof RULES_BY_ID];
       const conf = ruleFindings.filter((finding) => finding.status === "confirmed").length;
       const cand = ruleFindings.filter((finding) => finding.status === "candidate").length;
-      lines.push(`  ${ruleId} ${rule.slug}: ${conf} confirmed, ${cand} candidates`);
+      lines.push(`  ${rule.title}: ${conf} confirmed, ${cand} candidates`);
       for (const finding of ruleFindings.slice(0, 12)) {
         const loc = finding.locations[0];
         const where = loc
@@ -45,6 +45,7 @@ export function renderAudit(result: AuditResult): string {
         lines.push(
           `    [${finding.status} ${finding.confidence} ${finding.detectionMode}] ${finding.title} — ${where}`,
         );
+        lines.push(`      Review id: ${finding.fingerprint.slice(0, 12)}`);
         lines.push(`      ${finding.evidence.summary}`);
       }
       if (ruleFindings.length > 12) {
@@ -58,7 +59,7 @@ export function renderAudit(result: AuditResult): string {
     lines.push("No findings from the implemented detectors.");
   } else {
     lines.push(
-      "Confirmed and candidates are listed separately. Taxonomy order is not cleanup order.",
+      "Confirmed and candidates are listed separately. The catalog is not a cleanup order.",
     );
     lines.push("A later `coherent plan` builds the DAG. Do not treat this dump as a work queue.");
     lines.push("");

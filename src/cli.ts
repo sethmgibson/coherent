@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-import { resolve } from "node:path";
+import { mkdir, writeFile } from "node:fs/promises";
+import { dirname, resolve } from "node:path";
 import { Command } from "commander";
 import { runInit, runRefresh } from "./init/run.js";
 import { runAudit } from "./audit/run.js";
@@ -7,6 +8,7 @@ import { renderAudit } from "./audit/render.js";
 import { runBaseline } from "./baseline/run.js";
 import { renderCheck, runCheck } from "./check/run.js";
 import { renderInstall, runInstall, runUpdate } from "./install/run.js";
+import type { InstallOptions } from "./install/run.js";
 import { runPlan } from "./plan/run.js";
 import { renderPlan } from "./plan/render.js";
 import { renderFixNext, runFixNext } from "./fix/run.js";
@@ -14,6 +16,7 @@ import { runDoctor } from "./doctor/run.js";
 import { renderDoctor } from "./doctor/render.js";
 import { runReview } from "./review/run.js";
 import type { ReviewDecision } from "./review/types.js";
+import { RULES_BY_ID } from "./catalog/rules.js";
 
 const program = new Command();
 
@@ -32,7 +35,6 @@ program
   .action(async (root: string, options: { force: boolean }) => {
     const resolved = resolve(root);
     const result = await runInit(resolved, { force: options.force });
-    console.log(`Wrote ${result.inventoryPath}`);
     if (result.wroteArchitecture) {
       console.log(`Wrote ${result.architecturePath}`);
     } else {
@@ -71,13 +73,19 @@ program
   .description("Scan a repository for maintainability findings")
   .argument("[root]", "repository root", ".")
   .option("--json", "print findings as JSON", false)
-  .action(async (root: string, options: { json: boolean }) => {
-    const result = await runAudit(resolve(root));
+  .option("--output <path>", "write JSON to an explicit path relative to the repository")
+  .action(async (root: string, options: { json: boolean; output?: string }) => {
+    const resolved = resolve(root);
+    const result = await runAudit(resolved);
     if (options.json) {
       console.log(JSON.stringify(result.file, null, 2));
     } else {
       process.stdout.write(renderAudit(result));
-      console.log(`Wrote ${result.findingsPath}`);
+    }
+    if (options.output) {
+      const path = resolve(resolved, options.output);
+      await writeJsonOutput(path, result.file);
+      console.log(`Wrote ${path}`);
     }
   });
 
@@ -131,22 +139,28 @@ program
 
 program
   .command("install")
-  .description("Copy the Cursor adapter, prevention rule, and check --changed hooks")
+  .description("Install only the explicitly selected optional integrations")
   .argument("[root]", "repository root", ".")
-  .option("--rule", "install the Cursor prevention rule", true)
-  .option("--hooks", "register Cursor and git prevention hooks", true)
-  .action(async (root: string, options: { rule: boolean; hooks: boolean }) => {
+  .option("--adapter", "copy the Cursor skill adapter", false)
+  .option("--alias", "copy the legacy /backend Cursor alias", false)
+  .option("--rule", "install the Cursor prevention rule", false)
+  .option("--cursor-hook", "register the Cursor check --changed hook", false)
+  .option("--git-hook", "register the Git pre-commit check --changed hook", false)
+  .action(async (root: string, options: InstallOptions) => {
     const result = await runInstall(resolve(root), options);
     process.stdout.write(renderInstall("Coherent install", result));
   });
 
 program
   .command("update")
-  .description("Refresh copied adapter files without overwriting user edits")
+  .description("Refresh only the explicitly selected optional integrations")
   .argument("[root]", "repository root", ".")
-  .option("--rule", "refresh the Cursor prevention rule", true)
-  .option("--hooks", "refresh Cursor and git prevention hooks", true)
-  .action(async (root: string, options: { rule: boolean; hooks: boolean }) => {
+  .option("--adapter", "refresh the Cursor skill adapter", false)
+  .option("--alias", "refresh the legacy /backend Cursor alias", false)
+  .option("--rule", "refresh the Cursor prevention rule", false)
+  .option("--cursor-hook", "refresh the Cursor check --changed hook", false)
+  .option("--git-hook", "refresh the Git pre-commit check --changed hook", false)
+  .action(async (root: string, options: InstallOptions) => {
     const result = await runUpdate(resolve(root), options);
     process.stdout.write(renderInstall("Coherent update", result));
   });
@@ -156,13 +170,19 @@ program
   .description("Build a cleanup DAG from current findings")
   .argument("[root]", "repository root", ".")
   .option("--json", "print the plan as JSON", false)
-  .action(async (root: string, options: { json: boolean }) => {
-    const result = await runPlan(resolve(root));
+  .option("--output <path>", "write JSON to an explicit path relative to the repository")
+  .action(async (root: string, options: { json: boolean; output?: string }) => {
+    const resolved = resolve(root);
+    const result = await runPlan(resolved);
     if (options.json) {
       console.log(JSON.stringify(result.plan, null, 2));
     } else {
       process.stdout.write(renderPlan(result.plan));
-      console.log(`Wrote ${result.planPath}`);
+    }
+    if (options.output) {
+      const path = resolve(resolved, options.output);
+      await writeJsonOutput(path, result.plan);
+      console.log(`Wrote ${path}`);
     }
   });
 
@@ -251,12 +271,17 @@ async function printReview(
   try {
     const result = await runReview(resolve(root), decision, fingerprint, reason);
     console.log(
-      `${decision} ${result.review.ruleId} ${result.review.identity}\nWrote ${result.reviewsPath}`,
+      `${decision} ${RULES_BY_ID[result.review.ruleId].title}: ${result.review.identity}\nWrote ${result.decisionsPath}`,
     );
   } catch (error) {
     console.error(error instanceof Error ? error.message : error);
     process.exitCode = 1;
   }
+}
+
+async function writeJsonOutput(path: string, value: unknown): Promise<void> {
+  await mkdir(dirname(path), { recursive: true });
+  await writeFile(path, `${JSON.stringify(value, null, 2)}\n`, "utf8");
 }
 
 await program.parseAsync(process.argv);

@@ -7,6 +7,7 @@ import {
   type BaselineFile,
   toBaselineEntry,
 } from "../baseline/run.js";
+import { RULES_BY_ID } from "../catalog/rules.js";
 import { loadConfig } from "../config.js";
 import type { Finding } from "../domain/finding.js";
 import { listChangedSourceFiles } from "./changed-files.js";
@@ -59,7 +60,7 @@ export async function runCheck(
   }
   const audit = await runAudit(
     root,
-    include ? { include, persist: false } : {},
+    include ? { include } : {},
   );
   const baseByFp = new Map(baseline.findings.map((entry) => [entry.fingerprint, entry]));
   const auditByFp = new Map(audit.findings.map((finding) => [finding.fingerprint, finding]));
@@ -162,7 +163,8 @@ export function renderCheck(result: CheckResult): string {
 
 function formatItem(item: DriftItem): string {
   const where = item.files[0] ?? item.identity;
-  return `  [${item.kind}] ${item.ruleId} ${item.title} (${item.status} ${item.severity} ${item.detectionMode}) — ${where}`;
+  const findingName = RULES_BY_ID[item.ruleId].title;
+  return `  [${item.kind}] ${findingName}: ${item.title} (${item.status} ${item.severity} ${item.detectionMode}) — ${where}`;
 }
 
 function itemFromFinding(finding: Finding, kind: DriftKind): DriftItem {

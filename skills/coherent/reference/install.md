@@ -1,24 +1,25 @@
 # `install` / `update`
 
-Copy the Cursor adapter into a repository. Provider generation beyond Cursor is out of scope.
+Install optional Cursor or Git integrations. Coherent itself works without this command. Provider generation beyond Cursor is out of scope.
 
 ```bash
 coherent install
-coherent install --no-rule
-coherent install --no-hooks
-coherent update
+coherent install --adapter
+coherent install --rule --cursor-hook
+coherent install --git-hook
+coherent update --rule
 ```
 
-`install` and `update` share the same copy rules. Missing files are written. Known adapter stubs and `<!-- coherent:adapter -->` / `<!-- coherent:prevention -->` interiors are refreshed. User edits outside those fences are left alone.
+With no flags, `install` and `update` write nothing. They share the same safe copy rules when an integration is explicitly selected: missing files are written, known adapter stubs and managed fence interiors are refreshed, and user edits outside those fences are left alone.
 
 ## What is written
 
-- `.cursor/skills/coherent/SKILL.md` — thin adapter that points at `skills/coherent/` in the package
-- `.cursor/skills/backend/SKILL.md` — `/backend` alias adapter
-- `.cursor/rules/backend-prevention.mdc` — unless `--no-rule`
-- `.cursor/hooks/coherent-check.sh` and a `stop` entry in `.cursor/hooks.json` — unless `--no-hooks`
-- `.git/hooks/pre-commit` — when `.git` is a directory and no foreign hook is present
+- `--adapter` → `.cursor/skills/coherent/SKILL.md`
+- `--alias` → `.cursor/skills/backend/SKILL.md`, the legacy `/backend` alias
+- `--rule` → `.cursor/rules/backend-prevention.mdc`
+- `--cursor-hook` → `.cursor/hooks/coherent-check.sh` and a `stop` entry in `.cursor/hooks.json`
+- `--git-hook` → `.git/hooks/pre-commit` when `.git` is a directory and no foreign hook is present
 
-The hook runs `coherent check --changed`. Full `audit` stays explicit.
+Hooks run `coherent check --changed` only after a baseline exists. Full `audit` stays explicit.
 
 The adapter is not a second methodology. Load `skills/coherent/SKILL.md` from the installed package.

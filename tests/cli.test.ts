@@ -1,5 +1,5 @@
 import { execFile } from "node:child_process";
-import { cp, mkdtemp, readFile, rm } from "node:fs/promises";
+import { cp, mkdtemp, readFile, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -55,14 +55,19 @@ describe("CLI", () => {
     }
   });
 
-  it("builds a cleanup plan for a fixture", async () => {
+  it("builds a cleanup plan without writing project state", async () => {
     const root = await mkdtemp(join(tmpdir(), "coherent-plan-"));
     await cp(expressFixture, root, { recursive: true });
     try {
       const result = await runCli(["plan", root]);
       expect(result.code).toBe(0);
       expect(result.stdout).toMatch(/Coherent cleanup plan|READY|No cleanup nodes/);
-      const plan = JSON.parse(await readFile(join(root, ".coherent", "plan.json"), "utf8"));
+      await expect(readdir(join(root, ".coherent"))).rejects.toMatchObject({ code: "ENOENT" });
+
+      const output = "artifacts/plan.json";
+      const saved = await runCli(["plan", root, "--output", output]);
+      expect(saved.code).toBe(0);
+      const plan = JSON.parse(await readFile(join(root, output), "utf8"));
       expect(Array.isArray(plan.nodes)).toBe(true);
     } finally {
       await rm(root, { recursive: true, force: true });
@@ -76,6 +81,7 @@ describe("CLI", () => {
       const result = await runCli(["fix", "next", root]);
       expect([0, 1]).toContain(result.code);
       expect(result.stdout).toMatch(/Coherent fix next|No unlocked cleanup node/);
+      await expect(readdir(join(root, ".coherent"))).rejects.toMatchObject({ code: "ENOENT" });
     } finally {
       await rm(root, { recursive: true, force: true });
     }
@@ -104,6 +110,11 @@ describe("CLI", () => {
       ]);
       expect(dismissed.code).toBe(0);
       expect(dismissed.stdout).toContain("dismissed");
+      const decisions = JSON.parse(
+        await readFile(join(root, ".coherent", "decisions.json"), "utf8"),
+      ) as { reviews: unknown[]; findings: unknown[] };
+      expect(decisions.reviews).toHaveLength(1);
+      expect(decisions.findings).toEqual([]);
       const refresh = await runCli(["refresh", root]);
       expect(refresh.code).toBe(0);
       expect(refresh.stdout).toMatch(/Updated discovered sections/);
@@ -126,15 +137,20 @@ describe("CLI", () => {
     expect(update.stdout).toMatch(/Refresh|adapter|edits/i);
   });
 
-  it("runs audit on a fixture and writes findings.json", async () => {
+  it("runs audit without writing project state and supports explicit output", async () => {
     const root = await mkdtemp(join(tmpdir(), "coherent-audit-"));
     await cp(expressFixture, root, { recursive: true });
     try {
       const result = await runCli(["audit", root]);
       expect(result.code).toBe(0);
       expect(result.stdout).toMatch(/Coherent audit|PHASE /);
+      await expect(readdir(join(root, ".coherent"))).rejects.toMatchObject({ code: "ENOENT" });
+
+      const output = "artifacts/findings.json";
+      const saved = await runCli(["audit", root, "--output", output]);
+      expect(saved.code).toBe(0);
       const findings = JSON.parse(
-        await readFile(join(root, ".coherent", "findings.json"), "utf8"),
+        await readFile(join(root, output), "utf8"),
       );
       expect(Array.isArray(findings.findings)).toBe(true);
     } finally {

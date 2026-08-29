@@ -4,6 +4,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { runDoctor } from "../src/doctor/run.js";
+import { createFinding } from "../src/domain/finding.js";
 import { runInit } from "../src/init/run.js";
 
 const expressFixture = join(
@@ -20,7 +21,18 @@ async function seededRoot(): Promise<string> {
 }
 
 describe("doctor", () => {
-  it("reports stale discovery, version gaps, duplicates, orphans, and invalid semantic findings", async () => {
+  it("treats the baseline as optional", async () => {
+    const root = await seededRoot();
+    try {
+      const result = await runDoctor(root);
+      expect(result.issues.some((issue) => issue.code.includes("baseline"))).toBe(false);
+      expect(result.ok).toBe(true);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it("reports stale discovery, version gaps, baseline duplicates, and orphan reviews", async () => {
     const root = await seededRoot();
     try {
       const backend = join(root, ".coherent");
@@ -46,20 +58,7 @@ describe("doctor", () => {
         "utf8",
       );
       await writeFile(
-        join(backend, "findings.json"),
-        `${JSON.stringify({
-          generatedAt: "2026-01-01T00:00:00.000Z",
-          root: ".",
-          durationMs: 1,
-          findings: [
-            { fingerprint: "bbb", ruleId: "A08", identity: "one" },
-            { fingerprint: "bbb", ruleId: "A08", identity: "two" },
-          ],
-        }, null, 2)}\n`,
-        "utf8",
-      );
-      await writeFile(
-        join(backend, "reviews.json"),
+        join(backend, "decisions.json"),
         `${JSON.stringify({
           schemaVersion: 1,
           reviews: [
@@ -72,12 +71,8 @@ describe("doctor", () => {
               reviewedAt: "2026-01-01T00:00:00.000Z",
             },
           ],
+          findings: [],
         }, null, 2)}\n`,
-        "utf8",
-      );
-      await writeFile(
-        join(backend, "semantic-findings.json"),
-        `${JSON.stringify({ schemaVersion: 1, findings: [{ title: "nope" }] }, null, 2)}\n`,
         "utf8",
       );
 
@@ -88,7 +83,85 @@ describe("doctor", () => {
       expect(codes).toContain("baseline-absolute-root");
       expect(codes).toContain("duplicate-fingerprint");
       expect(codes).toContain("orphan-review");
-      expect(codes).toContain("invalid-semantic-finding");
+      expect(result.ok).toBe(false);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it("reports a stale identity-only review when detectorRevision does not match", async () => {
+    const root = await seededRoot();
+    try {
+      const backend = join(root, ".coherent");
+      const target = createFinding({
+        ruleId: "A01",
+        identity: "fossil:OldLayer",
+        title: "Fossil layer",
+        severity: "medium",
+        confidence: "high",
+        detectionMode: "semantic",
+        status: "candidate",
+        explanation: "Test semantic finding.",
+        evidence: { summary: "Test evidence." },
+        locations: [{ file: "src/old.ts", symbol: "OldLayer" }],
+        affectedSymbols: ["OldLayer"],
+        cleanupBenefit: "Smaller architecture.",
+        changeRisk: "Review callers.",
+        prerequisiteFindingIds: [],
+      });
+      await writeFile(
+        join(backend, "decisions.json"),
+        `${JSON.stringify({
+          schemaVersion: 1,
+          reviews: [
+            {
+              fingerprint: "old-fp",
+              ruleId: target.ruleId,
+              identity: target.identity,
+              decision: "dismissed",
+              reason: "intentionally distinct",
+              reviewedAt: "2026-01-01T00:00:00.000Z",
+              detectorRevision: 99,
+            },
+          ],
+          findings: [target],
+        }, null, 2)}\n`,
+      );
+
+      const result = await runDoctor(root);
+      const stale = result.issues.filter((issue) => issue.code === "stale-review");
+      expect(stale).toHaveLength(1);
+      expect(stale[0]?.message).toMatch(/detectorRevision 99/);
+      expect(result.issues.some((issue) => issue.code === "orphan-review")).toBe(false);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it("rejects a decisions file with a semantic finding missing planner fields", async () => {
+    const root = await seededRoot();
+    try {
+      await writeFile(
+        join(root, ".coherent", "decisions.json"),
+        `${JSON.stringify({
+          schemaVersion: 1,
+          reviews: [],
+          findings: [
+            {
+              ruleId: "A01",
+              identity: "foo",
+              title: "Foo",
+              explanation: "Foo",
+              locations: [],
+              affectedSymbols: [],
+            },
+          ],
+        }, null, 2)}\n`,
+        "utf8",
+      );
+      const result = await runDoctor(root);
+      const issue = result.issues.find((item) => item.code === "invalid-decisions");
+      expect(issue?.message).toMatch(/Invalid finding/);
       expect(result.ok).toBe(false);
     } finally {
       await rm(root, { recursive: true, force: true });

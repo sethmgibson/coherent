@@ -55,6 +55,11 @@ function replaceFencedInteriors(existing: string, generated: string): string {
   });
 }
 
+/**
+ * One-release path for unfenced ARCHITECTURE.md (including leftover `.backend/`).
+ * Unknown human-authored `##` sections must survive verbatim. After fences
+ * exist, `replaceFencedInteriors` is the only refresh path.
+ */
 function migrateUnfenced(existing: string, generated: string): string {
   const existingSections = splitSections(existing);
   const generatedSections = splitSections(generated);
@@ -66,17 +71,29 @@ function migrateUnfenced(existing: string, generated: string): string {
   const intro = generatedSections.get("") ?? generated.split("\n## ")[0]?.split("\n").slice(1).join("\n");
   if (intro?.trim()) rebuilt.push("", intro.trim());
 
-  for (const [title, generatedBody] of generatedSections) {
+  const emitted = new Set<string>();
+  for (const [title, existingBody] of existingSections) {
     if (!title) continue;
-    const existingBody = existingSections.get(title);
-    rebuilt.push("", `## ${title}`, "", refreshSection(existingBody, generatedBody));
+    const generatedBody = generatedSections.get(title);
+    if (generatedBody !== undefined) {
+      rebuilt.push("", `## ${title}`, "", refreshSection(existingBody, generatedBody));
+    } else {
+      rebuilt.push("", verbatimSection(title, existingBody));
+    }
+    emitted.add(title);
   }
-  if (!generated.includes("<!-- coherent:architecture-schema 1 -->")) {
-    rebuilt.push("", "<!-- coherent:architecture-schema 1 -->");
-  } else if (!rebuilt.join("\n").includes("<!-- coherent:architecture-schema 1 -->")) {
+  for (const [title, generatedBody] of generatedSections) {
+    if (!title || emitted.has(title)) continue;
+    rebuilt.push("", `## ${title}`, "", refreshSection(undefined, generatedBody));
+  }
+  if (!rebuilt.join("\n").includes("<!-- coherent:architecture-schema 1 -->")) {
     rebuilt.push("", "<!-- coherent:architecture-schema 1 -->");
   }
   return `${rebuilt.join("\n").trimEnd()}\n`;
+}
+
+function verbatimSection(title: string, body: string): string {
+  return `## ${title}\n${body}`.replace(/\n+$/g, "");
 }
 
 function refreshSection(existingBody: string | undefined, generatedBody: string): string {

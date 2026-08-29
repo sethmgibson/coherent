@@ -18,5 +18,5 @@ export function rescanRulesFor(ruleIds: readonly RuleId[]): RuleId[] {
 export function rescanReason(ruleIds: readonly RuleId[]): string {
   const rules = rescanRulesFor(ruleIds);
   if (rules.length === 0) return "No automatic re-scan.";
-  return `After this cleanup, re-audit ${rules.join(", ")}.`;
+  return `After this cleanup, re-audit ${rules.map((id) => RULES_BY_ID[id].title).join(", ")}.`;
 }

@@ -18,16 +18,17 @@ async function copyFixture(): Promise<string> {
 }
 
 describe("init", () => {
-  it("writes inventory and an architecture file that separates discovery from TODOs", async () => {
+  it("keeps inventory in memory and writes only an architecture file", async () => {
     const root = await copyFixture();
     try {
       const result = await runInit(root);
       expect(result.wroteArchitecture).toBe(true);
 
       const architecture = await readFile(result.architecturePath, "utf8");
-      const inventory = JSON.parse(await readFile(result.inventoryPath, "utf8"));
-
-      expect(inventory.frameworks).toEqual(["Express"]);
+      expect(result.inventory.frameworks).toEqual(["Express"]);
+      await expect(readFile(join(root, ".coherent", "inventory.json"), "utf8")).rejects.toMatchObject({
+        code: "ENOENT",
+      });
       expect(architecture).toContain("# Architecture");
       expect(architecture).toContain("express-app");
       expect(architecture).toContain("Express");
@@ -95,6 +96,57 @@ describe("init", () => {
       expect(forced.wroteArchitecture).toBe(true);
       expect(afterForce).toContain("Still confirmed after force.");
       expect(afterForce).not.toContain("TODO: What this system is for");
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it("migrates an unfenced ARCHITECTURE.md without dropping unknown human sections", async () => {
+    const root = await copyFixture();
+    try {
+      const path = join(root, ".coherent", "ARCHITECTURE.md");
+      await mkdir(join(root, ".coherent"), { recursive: true });
+      await writeFile(
+        path,
+        `# Architecture
+
+This is an old unfenced file.
+
+## System purpose
+
+> Status: confirmed
+
+Keep this semantic purpose statement.
+
+## Deployment topology
+
+We run three services on Railway. This section is not in the template.
+
+## Domain concepts
+
+> Status: confirmed
+
+Payment and User stay distinct.
+`,
+        "utf8",
+      );
+
+      await runRefresh(root);
+      const migrated = await readFile(path, "utf8");
+      expect(migrated).toContain("Keep this semantic purpose statement.");
+      expect(migrated).toContain("## Deployment topology");
+      expect(migrated).toContain("We run three services on Railway. This section is not in the template.");
+      expect(migrated).toContain("Payment and User stay distinct.");
+      expect(migrated).toContain("<!-- coherent:discovered -->");
+      expect(migrated.indexOf("## Deployment topology")).toBeLessThan(
+        migrated.indexOf("## Domain concepts"),
+      );
+
+      const again = await runRefresh(root);
+      expect(again.wroteArchitecture).toBe(true);
+      const afterFence = await readFile(path, "utf8");
+      expect(afterFence).toContain("## Deployment topology");
+      expect(afterFence).toContain("We run three services on Railway. This section is not in the template.");
     } finally {
       await rm(root, { recursive: true, force: true });
     }
