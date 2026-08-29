@@ -10,16 +10,23 @@ import {
   hasDiscoveredFences,
 } from "../init/refresh.js";
 import { collectInventory } from "../inventory.js";
-import { classifyReview } from "../review/apply.js";
+import { classifyReview, hasCurrentDetectorRevision } from "../review/apply.js";
 import { readDecisions } from "../review/store.js";
 import type { DoctorIssue, DoctorResult } from "./types.js";
 
-export async function runDoctor(root: string): Promise<DoctorResult> {
+export interface DoctorOptions {
+  deep?: boolean;
+}
+
+export async function runDoctor(
+  root: string,
+  options: DoctorOptions = {},
+): Promise<DoctorResult> {
   const issues: DoctorIssue[] = [];
   checkLegacyStateDir(root, issues);
   await checkArchitecture(root, issues);
   await checkBaseline(root, issues);
-  await checkDecisions(root, issues);
+  await checkDecisions(root, issues, options.deep === true);
   return { issues, ok: issues.length === 0 };
 }
 
@@ -91,7 +98,11 @@ async function checkBaseline(root: string, issues: DoctorIssue[]): Promise<void>
   }
 }
 
-async function checkDecisions(root: string, issues: DoctorIssue[]): Promise<void> {
+async function checkDecisions(
+  root: string,
+  issues: DoctorIssue[],
+  deep: boolean,
+): Promise<void> {
   try {
     const decisions = await readDecisions(root);
     reportDuplicates(
@@ -99,7 +110,19 @@ async function checkDecisions(root: string, issues: DoctorIssue[]): Promise<void
       "decisions.json findings",
       issues,
     );
-    if (decisions.reviews.length === 0) return;
+    const stale = new Set<string>();
+    for (const review of decisions.reviews) {
+      const exactSemantic = decisions.findings.some(
+        (finding) =>
+          finding.detectionMode === "semantic" &&
+          finding.fingerprint === review.fingerprint,
+      );
+      if (!exactSemantic && !hasCurrentDetectorRevision(review)) {
+        stale.add(review.fingerprint);
+        reportStaleReview(review, issues);
+      }
+    }
+    if (!deep || decisions.reviews.length === 0) return;
     const mechanical = (await runAudit(root)).findings;
     const known = [...mechanical, ...decisions.findings];
     for (const review of decisions.reviews) {
@@ -109,15 +132,8 @@ async function checkDecisions(root: string, issues: DoctorIssue[]): Promise<void
           code: "orphan-review",
           message: `Review ${review.decision} ${review.ruleId} ${review.identity} matches no current finding.`,
         });
-      } else if (match === "stale") {
-        const seen = review.detectorRevision;
-        issues.push({
-          code: "stale-review",
-          message:
-            seen === undefined
-              ? `Review ${review.decision} ${review.ruleId} ${review.identity} is stale (no detectorRevision). Re-review; identity fallback was not applied.`
-              : `Review ${review.decision} ${review.ruleId} ${review.identity} is stale (detectorRevision ${seen}). Re-review; identity fallback was not applied.`,
-        });
+      } else if (match === "stale" && !stale.has(review.fingerprint)) {
+        reportStaleReview(review, issues);
       }
     }
   } catch (error) {
@@ -126,6 +142,20 @@ async function checkDecisions(root: string, issues: DoctorIssue[]): Promise<void
       message: error instanceof Error ? error.message : "Invalid decisions.json",
     });
   }
+}
+
+function reportStaleReview(
+  review: Awaited<ReturnType<typeof readDecisions>>["reviews"][number],
+  issues: DoctorIssue[],
+): void {
+  const seen = review.detectorRevision;
+  issues.push({
+    code: "stale-review",
+    message:
+      seen === undefined
+        ? `Review ${review.decision} ${review.ruleId} ${review.identity} is stale (no detectorRevision). Re-review before applying it.`
+        : `Review ${review.decision} ${review.ruleId} ${review.identity} is stale (detectorRevision ${seen}). Re-review before applying it.`,
+  });
 }
 
 function reportDuplicates(fingerprints: string[], source: string, issues: DoctorIssue[]): void {

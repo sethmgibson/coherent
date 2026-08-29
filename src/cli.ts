@@ -14,7 +14,7 @@ import { renderPlan } from "./plan/render.js";
 import { renderFixNext, runFixNext } from "./fix/run.js";
 import { runDoctor } from "./doctor/run.js";
 import { renderDoctor } from "./doctor/render.js";
-import { runReview } from "./review/run.js";
+import { parseReviewRequests, runReview, runReviewBatch } from "./review/run.js";
 import type { ReviewDecision } from "./review/types.js";
 import { RULES_BY_ID } from "./catalog/rules.js";
 
@@ -208,9 +208,10 @@ program
   .description("Check reviews, findings, baseline versions, and discovered architecture")
   .argument("[root]", "repository root", ".")
   .option("--json", "print the doctor report as JSON", false)
-  .action(async (root: string, options: { json: boolean }) => {
+  .option("--deep", "run a full audit to verify orphan and stale reviews", false)
+  .action(async (root: string, options: { json: boolean; deep: boolean }) => {
     try {
-      const result = await runDoctor(resolve(root));
+      const result = await runDoctor(resolve(root), { deep: options.deep });
       if (options.json) {
         console.log(JSON.stringify(result, null, 2));
       } else {
@@ -226,6 +227,25 @@ program
 const review = program
   .command("review")
   .description("Record a durable confirmed, dismissed, or deferred decision");
+
+review
+  .command("apply")
+  .description("Atomically apply a JSON array of review decisions from stdin")
+  .argument("[root]", "repository root", ".")
+  .action(async (root: string) => {
+    try {
+      if (process.stdin.isTTY) {
+        throw new Error("Review batch JSON is required on stdin.");
+      }
+      const raw = await readStdin();
+      const requests = parseReviewRequests(JSON.parse(raw) as unknown);
+      const result = await runReviewBatch(resolve(root), requests);
+      console.log(`Applied ${result.reviews.length} review decision(s).\nWrote ${result.decisionsPath}`);
+    } catch (error) {
+      console.error(error instanceof Error ? error.message : error);
+      process.exitCode = 1;
+    }
+  });
 
 review
   .command("dismiss")
@@ -282,6 +302,14 @@ async function printReview(
 async function writeJsonOutput(path: string, value: unknown): Promise<void> {
   await mkdir(dirname(path), { recursive: true });
   await writeFile(path, `${JSON.stringify(value, null, 2)}\n`, "utf8");
+}
+
+async function readStdin(): Promise<string> {
+  const chunks: Buffer[] = [];
+  for await (const chunk of process.stdin) {
+    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(String(chunk)));
+  }
+  return Buffer.concat(chunks).toString("utf8");
 }
 
 await program.parseAsync(process.argv);

@@ -1,4 +1,4 @@
-import { execFile } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
 import { cp, mkdtemp, readFile, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -33,6 +33,26 @@ async function runCli(
       code: failure.code ?? 1,
     };
   }
+}
+
+async function runCliWithInput(
+  args: string[],
+  input: string,
+): Promise<{ stdout: string; stderr: string; code: number }> {
+  return new Promise((resolveResult, reject) => {
+    const child = spawn(process.execPath, [tsx, cli, ...args], { cwd: repoRoot });
+    let stdout = "";
+    let stderr = "";
+    child.stdout.setEncoding("utf8").on("data", (chunk: string) => {
+      stdout += chunk;
+    });
+    child.stderr.setEncoding("utf8").on("data", (chunk: string) => {
+      stderr += chunk;
+    });
+    child.on("error", reject);
+    child.on("close", (code) => resolveResult({ stdout, stderr, code: code ?? 1 }));
+    child.stdin.end(input);
+  });
 }
 
 describe("CLI", () => {
@@ -98,28 +118,32 @@ describe("CLI", () => {
       const file = JSON.parse(audit.stdout) as {
         findings: { fingerprint: string; ruleId: string }[];
       };
-      const target = file.findings[0];
-      expect(target?.fingerprint).toBeTruthy();
-      const dismissed = await runCli([
-        "review",
-        "dismiss",
-        target!.fingerprint,
-        root,
-        "--reason",
-        "cli test dismissal",
-      ]);
-      expect(dismissed.code).toBe(0);
-      expect(dismissed.stdout).toContain("dismissed");
+      const targets = file.findings.slice(0, 2);
+      expect(targets).toHaveLength(2);
+      const applied = await runCliWithInput(
+        ["review", "apply", root],
+        JSON.stringify(
+          targets.map((target, index) => ({
+            fingerprint: target.fingerprint,
+            decision: index === 0 ? "dismissed" : "deferred",
+            reason: `cli batch decision ${index + 1}`,
+          })),
+        ),
+      );
+      expect(applied.code).toBe(0);
+      expect(applied.stdout).toContain("Applied 2 review decision(s)");
       const decisions = JSON.parse(
         await readFile(join(root, ".coherent", "decisions.json"), "utf8"),
       ) as { reviews: unknown[]; findings: unknown[] };
-      expect(decisions.reviews).toHaveLength(1);
+      expect(decisions.reviews).toHaveLength(2);
       expect(decisions.findings).toEqual([]);
       const refresh = await runCli(["refresh", root]);
       expect(refresh.code).toBe(0);
       expect(refresh.stdout).toMatch(/Updated discovered sections/);
       const doctor = await runCli(["doctor", root]);
       expect(doctor.stdout).toMatch(/Coherent doctor/);
+      const doctorHelp = await runCli(["doctor", "--help"]);
+      expect(doctorHelp.stdout).toContain("--deep");
     } finally {
       await rm(root, { recursive: true, force: true });
     }

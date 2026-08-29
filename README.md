@@ -70,12 +70,12 @@ Some findings can be proven mechanically. Others require judgment about meaning,
 | `/coherent init` | Inventory the repository and create durable architecture context |
 | `/coherent refresh` | Refresh discovered facts without overwriting confirmed architecture notes |
 | `/coherent audit` | Run deterministic checks and guide semantic investigation |
-| `/coherent review` | Confirm, dismiss, or defer a finding |
+| `/coherent review` | Confirm, dismiss, or defer findings; batch many decisions with `review apply` |
 | `/coherent baseline` | Record existing debt so it does not block adoption |
 | `/coherent plan` | Build a dependency-aware cleanup plan |
 | `/coherent fix next` | Select one safe, unblocked cleanup |
 | `/coherent check --changed` | Report new and resolved debt in the current change |
-| `/coherent doctor` | Check the integrity of Coherent's project state |
+| `/coherent doctor` | Check project-state integrity quickly; add `--deep` to verify reviews against a fresh audit |
 
 Type `/coherent` without a command to get the recommended next step.
 
@@ -103,6 +103,10 @@ Coherent does not create caches or reports by default. Its durable project state
 - Commit `.coherent/decisions.json` when reviews or semantic findings should survive across agents.
 
 `audit`, `plan`, `check`, `doctor`, and `fix next` write no Coherent metadata. To retain machine-readable output explicitly, use `coherent audit --output <path>` or `coherent plan --output <path>`.
+
+When reviewing several findings, send a JSON array to `coherent review apply`. Coherent resolves the whole batch with one audit and writes `decisions.json` only after every item validates. Individual `confirm`, `dismiss`, and `defer` commands remain convenient for one decision.
+
+TypeScript analysis reads repository tsconfigs, including inherited compiler options, path aliases, and the owning child config in project-reference workspaces. Resolution stays in memory; Coherent does not generate a synthetic tsconfig or cache.
 
 Optional Cursor and Git integrations are also zero-install by default. Select only what you want, for example `coherent install --rule`, `--cursor-hook`, or `--git-hook`; use `--adapter` only when the coding tool needs a project-local adapter.
 

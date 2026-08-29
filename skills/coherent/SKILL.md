@@ -60,14 +60,14 @@ A successful audit result may be: "Superficially similar but intentionally diffe
 | `init` | Inventory the repo and write durable `.coherent/ARCHITECTURE.md` | [reference/init.md](reference/init.md), [reference/architecture-analysis.md](reference/architecture-analysis.md) |
 | `refresh` | Update fenced discovered architecture facts only | [reference/init.md](reference/init.md) |
 | `audit` | Read-only deterministic scan plus agent semantic investigation | [reference/audit.md](reference/audit.md), [reference/semantic-audits.md](reference/semantic-audits.md) |
-| `review` | Persist confirm / dismiss / defer for a finding fingerprint | [reference/semantic-audits.md](reference/semantic-audits.md), [reference/plan.md](reference/plan.md) |
+| `review` | Persist one decision, or atomically apply many decisions from stdin with one audit | [reference/semantic-audits.md](reference/semantic-audits.md), [reference/plan.md](reference/plan.md) |
 | `baseline` | Snapshot current findings to `.coherent/baseline.json` | [reference/baseline.md](reference/baseline.md) |
 | `plan` | Build the cleanup DAG in memory from findings and decisions | [reference/cleanup-planning.md](reference/cleanup-planning.md), [reference/plan.md](reference/plan.md) |
 | `fix next` | Select and perform one unlocked cleanup node | [reference/fix-safety.md](reference/fix-safety.md), [reference/fix.md](reference/fix.md) |
 | `check` | Compare a fresh audit to the baseline; `--changed` scopes to the git diff | [reference/check.md](reference/check.md), [reference/prevention.md](reference/prevention.md) |
 | `install` | Install only explicitly selected Cursor or Git integrations | [reference/install.md](reference/install.md) |
 | `update` | Refresh those copied files without overwriting user edits | [reference/install.md](reference/install.md) |
-| `doctor` | Read-only integrity check for reviews, uniqueness, and discovered facts | [reference/semantic-audits.md](reference/semantic-audits.md) |
+| `doctor` | Read-only state check; use `--deep` when current-finding review validation is needed | [reference/semantic-audits.md](reference/semantic-audits.md) |
 
 Rule playbooks, when present: [reference/rules/](reference/rules/).
 

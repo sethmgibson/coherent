@@ -1,5 +1,12 @@
-import { join, relative } from "node:path";
-import { Project, ScriptTarget, ModuleKind, ModuleResolutionKind } from "ts-morph";
+import { basename, dirname, join, relative, resolve, sep } from "node:path";
+import {
+  Project,
+  ScriptTarget,
+  ModuleKind,
+  ModuleResolutionKind,
+  ts,
+  type ResolutionHostFactory,
+} from "ts-morph";
 import type { SourceFile } from "ts-morph";
 import type { CoherentConfig } from "../config.js";
 import { SOURCE_EXTENSIONS, extensionOf } from "../inventory-scan.js";
@@ -30,8 +37,10 @@ export async function createAnalysisContext(
   config: CoherentConfig = {},
   scope: AnalysisScope = {},
 ): Promise<AnalysisContext> {
-  const project = new Project({
-    compilerOptions: {
+  const tsConfigs = loadTsConfigs(root, inventory);
+  const compilerOptions =
+    tsConfigs.find((config) => config.path === join(root, "tsconfig.json"))?.options ??
+    tsConfigs[0]?.options ?? {
       target: ScriptTarget.ES2022,
       module: ModuleKind.Node16,
       moduleResolution: ModuleResolutionKind.Node16,
@@ -40,9 +49,12 @@ export async function createAnalysisContext(
       allowJs: false,
       experimentalDecorators: true,
       noEmit: true,
-    },
+    };
+  const project = new Project({
+    compilerOptions,
+    resolutionHost: createResolutionHost(tsConfigs),
     skipAddingFilesFromTsConfig: true,
-    skipFileDependencyResolution: true,
+    skipFileDependencyResolution: false,
   });
 
   const include = scope.include
@@ -85,6 +97,70 @@ export async function createAnalysisContext(
       return publicModules.has(relativePath);
     },
   };
+}
+
+interface LoadedTsConfig {
+  path: string;
+  directory: string;
+  options: ts.CompilerOptions;
+  files: Set<string>;
+}
+
+function loadTsConfigs(root: string, inventory: Inventory): LoadedTsConfig[] {
+  const configs: LoadedTsConfig[] = [];
+  for (const relativePath of inventory.tsconfigFiles) {
+    const path = join(root, relativePath);
+    const read = ts.readConfigFile(path, ts.sys.readFile);
+    if (read.error) continue;
+    const parsed = ts.parseJsonConfigFileContent(
+      read.config,
+      ts.sys,
+      dirname(path),
+      undefined,
+      path,
+    );
+    configs.push({
+      path,
+      directory: dirname(path),
+      options: parsed.options,
+      files: new Set(parsed.fileNames.map((file) => resolve(file))),
+    });
+  }
+  return configs.sort(compareTsConfigs);
+}
+
+function compareTsConfigs(left: LoadedTsConfig, right: LoadedTsConfig): number {
+  const directoryDepth = right.directory.length - left.directory.length;
+  if (directoryDepth !== 0) return directoryDepth;
+  const leftPrimary = basename(left.path) === "tsconfig.json" ? 0 : 1;
+  const rightPrimary = basename(right.path) === "tsconfig.json" ? 0 : 1;
+  if (leftPrimary !== rightPrimary) return leftPrimary - rightPrimary;
+  return left.path.localeCompare(right.path);
+}
+
+function createResolutionHost(configs: LoadedTsConfig[]): ResolutionHostFactory {
+  return (host, getCompilerOptions) => ({
+    resolveModuleNames(moduleNames, containingFile) {
+      const options = optionsForFile(containingFile, configs) ?? getCompilerOptions();
+      return moduleNames.map(
+        (moduleName) =>
+          ts.resolveModuleName(moduleName, containingFile, options, host).resolvedModule,
+      );
+    },
+  });
+}
+
+function optionsForFile(
+  containingFile: string,
+  configs: LoadedTsConfig[],
+): ts.CompilerOptions | undefined {
+  const absolute = resolve(containingFile);
+  const direct = configs.find((config) => config.files.has(absolute));
+  if (direct) return direct.options;
+  return configs.find(
+    (config) =>
+      absolute === config.directory || absolute.startsWith(`${config.directory}${sep}`),
+  )?.options;
 }
 
 function includePaths(root: string, include: Set<string>): WalkedFile[] {

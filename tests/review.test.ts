@@ -7,6 +7,7 @@ import { createFinding, type FindingInput } from "../src/domain/finding.js";
 import { applyReviews, classifyReview } from "../src/review/apply.js";
 import type { FindingReview } from "../src/review/types.js";
 import { readDecisions, upsertReview } from "../src/review/store.js";
+import { parseReviewRequests, runReviewBatch } from "../src/review/run.js";
 import { buildPlan } from "../src/plan/build.js";
 import { selectNextNode } from "../src/fix/select.js";
 
@@ -184,7 +185,7 @@ describe("review merge into plan", () => {
     expect(classifyReview(skewedRevision, [current])).toBe("stale");
   });
 
-  it("still applies an exact fingerprint match after a detector revision bump", () => {
+  it("invalidates an exact mechanical fingerprint after a detector revision bump", () => {
     const current = finding({
       ruleId: "A06",
       identity: "duplicate-rep:Foo+Bar",
@@ -200,7 +201,21 @@ describe("review merge into plan", () => {
       fingerprintVersion: FINGERPRINT_VERSION,
       detectorRevision: DETECTOR_REVISION - 1,
     };
-    expect(applyReviews([current], [oldRevision], []).findings).toEqual([]);
+    expect(applyReviews([current], [oldRevision], []).findings).toEqual([current]);
+    expect(classifyReview(oldRevision, [current])).toBe("stale");
+  });
+
+  it("keeps exact semantic reviews independent of detector revisions", () => {
+    const current = finding({
+      ruleId: "A01",
+      identity: "fossil:OldLayer",
+      detectionMode: "semantic",
+    });
+    const oldRevision: FindingReview = {
+      ...review(current, "dismissed"),
+      detectorRevision: DETECTOR_REVISION - 1,
+    };
+    expect(applyReviews([], [oldRevision], [current]).findings).toEqual([]);
     expect(classifyReview(oldRevision, [current])).toBe("applied");
   });
 
@@ -258,5 +273,68 @@ describe("review merge into plan", () => {
     } finally {
       await rm(root, { recursive: true, force: true });
     }
+  });
+
+  it("applies a batch atomically with one decisions write", async () => {
+    const root = await mkdtemp(join(tmpdir(), "coherent-review-batch-"));
+    try {
+      const state = join(root, ".coherent");
+      await mkdir(state, { recursive: true });
+      const first = finding({
+        ruleId: "A01",
+        identity: "fossil:One",
+        detectionMode: "semantic",
+      });
+      const second = finding({
+        ruleId: "A02",
+        identity: "term:Two",
+        detectionMode: "semantic",
+      });
+      await writeFile(
+        join(state, "decisions.json"),
+        `${JSON.stringify({ schemaVersion: 1, reviews: [], findings: [first, second] }, null, 2)}\n`,
+      );
+
+      const requests = parseReviewRequests([
+        {
+          fingerprint: first.fingerprint.slice(0, 12),
+          decision: "confirmed",
+          reason: "Confirmed together.",
+        },
+        {
+          fingerprint: second.fingerprint.slice(0, 12),
+          decision: "deferred",
+          reason: "Needs owner input.",
+        },
+      ]);
+      const applied = await runReviewBatch(root, requests);
+      expect(applied.reviews.map((item) => item.decision)).toEqual(["confirmed", "deferred"]);
+      const beforeFailure = await readFile(join(state, "decisions.json"), "utf8");
+
+      await expect(
+        runReviewBatch(root, [
+          {
+            fingerprint: first.fingerprint,
+            decision: "dismissed",
+            reason: "Would be valid alone.",
+          },
+          {
+            fingerprint: "missing-fingerprint",
+            decision: "dismissed",
+            reason: "Invalid target.",
+          },
+        ]),
+      ).rejects.toThrow(/No finding/);
+      expect(await readFile(join(state, "decisions.json"), "utf8")).toBe(beforeFailure);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it("validates batch review input before scanning", () => {
+    expect(() => parseReviewRequests({})).toThrow(/JSON array/);
+    expect(() =>
+      parseReviewRequests([{ fingerprint: "abc", decision: "dismissed", reason: "" }]),
+    ).toThrow(/missing reason/);
   });
 });

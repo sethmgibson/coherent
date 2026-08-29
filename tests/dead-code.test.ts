@@ -1,3 +1,6 @@
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { auditFixture, byRule, findingFor } from "./helpers/audit-fixture.js";
 
@@ -55,4 +58,95 @@ describe("A08 dead-code", () => {
     expect(findingFor(dead, "Pool")).toBeUndefined();
     expect(findingFor(dead, "Client")).toBeUndefined();
   });
+
+  it("resolves imports through tsconfig path aliases", async () => {
+    const root = await mkdtemp(join(tmpdir(), "coherent-paths-"));
+    try {
+      await mkdir(join(root, "src"), { recursive: true });
+      await writeJson(join(root, "package.json"), { type: "module" });
+      await writeJson(join(root, "tsconfig.json"), {
+        compilerOptions: {
+          module: "NodeNext",
+          moduleResolution: "NodeNext",
+          baseUrl: ".",
+          paths: { "@app/*": ["src/*"] },
+        },
+        include: ["src/**/*.ts"],
+      });
+      await writeFile(
+        join(root, "src", "library.ts"),
+        "export function usedThroughAlias(): number { return 1; }\n" +
+          "export function unusedAlongsideAlias(): number { return 2; }\n",
+        "utf8",
+      );
+      await writeFile(
+        join(root, "src", "index.ts"),
+        'import { usedThroughAlias } from "@app/library";\nusedThroughAlias();\n',
+        "utf8",
+      );
+
+      const { findings } = await auditFixture(root);
+      const dead = byRule(findings, "A08");
+      expect(findingFor(dead, "usedThroughAlias")).toBeUndefined();
+      expect(findingFor(dead, "unusedAlongsideAlias")).toBeDefined();
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it("uses the owning child config in a project-reference workspace", async () => {
+    const root = await mkdtemp(join(tmpdir(), "coherent-references-"));
+    try {
+      await mkdir(join(root, "packages", "core", "src"), { recursive: true });
+      await mkdir(join(root, "packages", "app", "src"), { recursive: true });
+      await writeJson(join(root, "package.json"), {
+        private: true,
+        workspaces: ["packages/*"],
+      });
+      await writeJson(join(root, "tsconfig.json"), {
+        files: [],
+        references: [
+          { path: "./packages/core" },
+          { path: "./packages/app" },
+        ],
+      });
+      await writeJson(join(root, "packages", "core", "tsconfig.json"), {
+        compilerOptions: { composite: true, module: "ESNext", moduleResolution: "Bundler" },
+        include: ["src/**/*.ts"],
+      });
+      await writeJson(join(root, "packages", "app", "tsconfig.json"), {
+        compilerOptions: {
+          composite: true,
+          module: "ESNext",
+          moduleResolution: "Bundler",
+          baseUrl: ".",
+          paths: { "@workspace/core/*": ["../core/src/*"] },
+        },
+        references: [{ path: "../core" }],
+        include: ["src/**/*.ts"],
+      });
+      await writeFile(
+        join(root, "packages", "core", "src", "service.ts"),
+        "export function usedAcrossProjectReference(): number { return 1; }\n",
+        "utf8",
+      );
+      await writeFile(
+        join(root, "packages", "app", "src", "index.ts"),
+        'import { usedAcrossProjectReference } from "@workspace/core/service";\n' +
+          "usedAcrossProjectReference();\n",
+        "utf8",
+      );
+
+      const { findings } = await auditFixture(root);
+      expect(
+        findingFor(byRule(findings, "A08"), "usedAcrossProjectReference"),
+      ).toBeUndefined();
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
 });
+
+async function writeJson(path: string, value: unknown): Promise<void> {
+  await writeFile(path, `${JSON.stringify(value, null, 2)}\n`, "utf8");
+}

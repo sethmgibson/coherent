@@ -10,7 +10,7 @@ coherent audit --json
 coherent audit --output path/to/audit.json
 ```
 
-The CLI inventories the target, reads architecture context if present, builds one TypeScript analysis context, runs the implemented detectors, merges duplicate fingerprints (union locations, occurrence evidence), groups findings, and computes metrics. It writes nothing by default. `--json` prints the full result; `--output` writes it to the explicit path. Fingerprints are unique.
+The CLI inventories the target, reads architecture context if present, builds one TypeScript analysis context, and resolves modules with the owning repository tsconfig (including inherited options, path aliases, and child configs in project-reference workspaces). It runs the implemented detectors, merges duplicate fingerprints (union locations, occurrence evidence), groups findings, and computes metrics. It writes nothing by default and generates no tsconfig or cache. `--json` prints the full result; `--output` writes it to the explicit path. Fingerprints are unique.
 
 Implemented detectors cover dead code, stale compatibility, implicit string protocols, duplicate representations, premature abstraction, excessive indirection, boolean and context-object explosion, swallowed errors, dependency creep, redundant database access, unnecessary sequential I/O, and algorithmic complexity. Other catalog entries remain semantic.
 

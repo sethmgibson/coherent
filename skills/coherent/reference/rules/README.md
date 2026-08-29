@@ -18,11 +18,12 @@ persistent findings file for normal operation.
 
 ### Hybrid and deterministic findings → `decisions.json`
 
-Adjudicate an existing finding. Match `fingerprint`. Else match `ruleId` +
-`identity` only when `detectorRevision` equals the current detector
-revision. Identity fallback is for fingerprint churn, not detector-meaning
-changes. `doctor` reports a stale review when identity would match but the
-revision does not; the review is kept and not applied.
+Adjudicate an existing finding. Mechanical and hybrid reviews require the
+current `detectorRevision`, whether matching the exact `fingerprint` or the
+`ruleId` + `identity` fallback. Pure-semantic exact reviews may survive a
+detector bump. Identity fallback is for fingerprint churn, not
+detector-meaning changes. `doctor` reports a stale review when the revision
+does not match; the review is kept and not applied.
 
 ```json
 {
@@ -51,8 +52,10 @@ revision does not; the review is kept and not applied.
 - `dismissed` — not an issue, or intentionally different; dropped from the DAG
 - `deferred` — keep visible; not ready
 
-Prefer `coherent review confirm|dismiss|defer <fingerprint>` when that command
-exists. Do not invent a parallel review schema.
+Prefer `coherent review confirm|dismiss|defer <fingerprint>` for one decision.
+For several decisions, send a JSON array of `{ "fingerprint", "decision",
+"reason" }` objects to `coherent review apply`; the batch is validated before
+one decisions write. Do not invent a parallel review schema.
 
 ### Semantic-only findings → `decisions.json`
 

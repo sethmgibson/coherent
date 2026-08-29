@@ -2,8 +2,8 @@
   "schemaVersion": 1,
   "coherentVersion": "0.1.0",
   "fingerprintVersion": 2,
-  "detectorRevision": 2,
-  "createdAt": "2026-08-28T23:35:58.432Z",
+  "detectorRevision": 3,
+  "createdAt": "2026-08-29T07:05:38.039Z",
   "findings": [
     {
       "fingerprint": "20ff585611cc01ae46baddc5585ed07a0543d116aa738d659793b21d1b90acea",
@@ -126,6 +126,36 @@
       ]
     },
     {
+      "fingerprint": "91d8afda88fbdbbd6f6078d6b3c2e37df03cc9076cb513d303ba68a85cccba9f",
+      "ruleId": "A07",
+      "identity": "compat:name:src/review/store.ts:legacyReviewsPath",
+      "title": "Likely compatibility path",
+      "detectionMode": "hybrid",
+      "status": "candidate",
+      "severity": "medium",
+      "files": [
+        "src/review/store.ts"
+      ],
+      "symbols": [
+        "legacyReviewsPath"
+      ]
+    },
+    {
+      "fingerprint": "41c16a568710d8be67fa67dec5d84a2303fb5c8fd6259f4c04f774548554595f",
+      "ruleId": "A07",
+      "identity": "compat:name:src/review/store.ts:legacySemanticFindingsPath",
+      "title": "Likely compatibility path",
+      "detectionMode": "hybrid",
+      "status": "candidate",
+      "severity": "medium",
+      "files": [
+        "src/review/store.ts"
+      ],
+      "symbols": [
+        "legacySemanticFindingsPath"
+      ]
+    },
+    {
       "fingerprint": "de4373bcece329e7bbf0759102f08dc4dec14ee6c3f8beffe1a1bdb13f58cf06",
       "ruleId": "A06",
       "identity": "duplicate-rep:CleanupPhase+RuleCategory",
@@ -142,15 +172,15 @@
       ]
     },
     {
-      "fingerprint": "f444b2fea32fb93a6c77f0d9a2c4f69397012c0cb8ae56d9ffc537ea3b88cc39",
+      "fingerprint": "a6868fbc9e838e1fca03a56d5d570f6955eee21b1cee07c1197d0c9e0ec39d79",
       "ruleId": "B04",
-      "identity": "forwarding:src/review/store.ts:isRuleId",
+      "identity": "forwarding:src/domain/finding.ts:isRuleId",
       "title": "Forwarding wrapper",
       "detectionMode": "hybrid",
       "status": "confirmed",
       "severity": "medium",
       "files": [
-        "src/review/store.ts"
+        "src/domain/finding.ts"
       ],
       "symbols": [
         "(RULE_IDS as readonly string[]).includes",
@@ -158,19 +188,18 @@
       ]
     },
     {
-      "fingerprint": "a3f9c283b2a1412fa4e0102800f2127ee015b7e83082cb55598bda3e9dc084be",
-      "ruleId": "B04",
-      "identity": "forwarding:src/review/store.ts:isDecision",
-      "title": "Forwarding wrapper",
+      "fingerprint": "f782c03d9b33a0fefa58439ee12cfbc324726ee48a1d19aaa318cde176237354",
+      "ruleId": "E05",
+      "identity": "seq-await:src/cli.ts:writeJsonOutput",
+      "title": "Sequential awaits",
       "detectionMode": "hybrid",
-      "status": "confirmed",
+      "status": "candidate",
       "severity": "medium",
       "files": [
-        "src/review/store.ts"
+        "src/cli.ts"
       ],
       "symbols": [
-        "(REVIEW_DECISIONS as readonly string[]).includes",
-        "isDecision"
+        "writeJsonOutput"
       ]
     },
     {
@@ -234,24 +263,9 @@
       ]
     },
     {
-      "fingerprint": "a8d554490c3a0e1f0addcf60ce4c4dd53afe838bdb581c009128a7393e9d426c",
+      "fingerprint": "0f16cf969c44dabafd7ba873a84400e5bc0a62f3a1402a9152ac8ae268c0c13b",
       "ruleId": "E05",
-      "identity": "seq-await:src/review/run.ts:lookupFinding",
-      "title": "Sequential awaits",
-      "detectionMode": "hybrid",
-      "status": "candidate",
-      "severity": "medium",
-      "files": [
-        "src/review/run.ts"
-      ],
-      "symbols": [
-        "lookupFinding"
-      ]
-    },
-    {
-      "fingerprint": "f0065e7c5ecb40591923d20ec49c47f9bf53640379200a773b5e84d43e9b5f07",
-      "ruleId": "E05",
-      "identity": "seq-await:src/review/store.ts:writeReviews",
+      "identity": "seq-await:src/review/store.ts:readDecisions",
       "title": "Sequential awaits",
       "detectionMode": "hybrid",
       "status": "candidate",
@@ -260,7 +274,22 @@
         "src/review/store.ts"
       ],
       "symbols": [
-        "writeReviews"
+        "readDecisions"
+      ]
+    },
+    {
+      "fingerprint": "b719addca1b24de1dcf0ad9015bd2b837b84c46f9307571b42046ba575d791d2",
+      "ruleId": "E05",
+      "identity": "seq-await:src/review/store.ts:writeDecisions",
+      "title": "Sequential awaits",
+      "detectionMode": "hybrid",
+      "status": "candidate",
+      "severity": "medium",
+      "files": [
+        "src/review/store.ts"
+      ],
+      "symbols": [
+        "writeDecisions"
       ]
     },
     {
@@ -276,21 +305,6 @@
       ],
       "symbols": [
         "runPlan"
-      ]
-    },
-    {
-      "fingerprint": "a04bed37b0314a030df796baad1357afe3ee57e7ed9f1c7be04f2fe19f5a1909",
-      "ruleId": "E05",
-      "identity": "seq-await:src/plan/store.ts:writePlanFile",
-      "title": "Sequential awaits",
-      "detectionMode": "hybrid",
-      "status": "candidate",
-      "severity": "medium",
-      "files": [
-        "src/plan/store.ts"
-      ],
-      "symbols": [
-        "writePlanFile"
       ]
     },
     {
@@ -381,21 +395,6 @@
       ],
       "symbols": [
         "runInstall"
-      ]
-    },
-    {
-      "fingerprint": "225fb38141e56d984d133bc38f889876bef0a3272d7ecd14d79a32cabf419945",
-      "ruleId": "E05",
-      "identity": "seq-await:src/fix/run.ts:runFixNext",
-      "title": "Sequential awaits",
-      "detectionMode": "hybrid",
-      "status": "candidate",
-      "severity": "medium",
-      "files": [
-        "src/fix/run.ts"
-      ],
-      "symbols": [
-        "runFixNext"
       ]
     },
     {
@@ -504,21 +503,6 @@
       ]
     },
     {
-      "fingerprint": "de344cd63613c38fe1454a98ddebcd0a8e20533b80612e18e95c02f6fd237b5d",
-      "ruleId": "E05",
-      "identity": "seq-await:src/audit/store.ts:writeFindingsFile",
-      "title": "Sequential awaits",
-      "detectionMode": "hybrid",
-      "status": "candidate",
-      "severity": "medium",
-      "files": [
-        "src/audit/store.ts"
-      ],
-      "symbols": [
-        "writeFindingsFile"
-      ]
-    },
-    {
       "fingerprint": "7f519bbe16a3d20fcb6eac8f0535f7dbd36b583166dcfd422f507984322b9c23",
       "ruleId": "E06",
       "identity": "loop-find:src/plan/build.ts:buildPlan",
@@ -612,9 +596,9 @@
       ]
     },
     {
-      "fingerprint": "fdea0ba9bc3e85e01f3841af7030543d69a50c1c01ee1b1558176aa974e30e0c",
+      "fingerprint": "e75bbe2f24a8ebbac0bd4521b3131d8f8ed063bb1bd06aa051dc7ecbfce4ca68",
       "ruleId": "E06",
-      "identity": "loop-some:src/doctor/run.ts:checkReviews",
+      "identity": "loop-some:src/doctor/run.ts:checkDecisions",
       "title": "Collection .some() inside a loop",
       "detectionMode": "hybrid",
       "status": "candidate",
@@ -623,7 +607,7 @@
         "src/doctor/run.ts"
       ],
       "symbols": [
-        "checkReviews",
+        "checkDecisions",
         "some"
       ]
     },

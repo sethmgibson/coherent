@@ -76,7 +76,7 @@ describe("doctor", () => {
         "utf8",
       );
 
-      const result = await runDoctor(root);
+      const result = await runDoctor(root, { deep: true });
       const codes = result.issues.map((issue) => issue.code);
       expect(codes).toContain("stale-discovery");
       expect(codes).toContain("baseline-versions");
@@ -94,17 +94,17 @@ describe("doctor", () => {
     try {
       const backend = join(root, ".coherent");
       const target = createFinding({
-        ruleId: "A01",
-        identity: "fossil:OldLayer",
-        title: "Fossil layer",
+        ruleId: "A06",
+        identity: "duplicate-rep:Foo+Bar",
+        title: "Duplicate representations",
         severity: "medium",
         confidence: "high",
-        detectionMode: "semantic",
+        detectionMode: "hybrid",
         status: "candidate",
         explanation: "Test semantic finding.",
         evidence: { summary: "Test evidence." },
-        locations: [{ file: "src/old.ts", symbol: "OldLayer" }],
-        affectedSymbols: ["OldLayer"],
+        locations: [{ file: "src/old.ts", symbol: "Foo" }],
+        affectedSymbols: ["Foo", "Bar"],
         cleanupBenefit: "Smaller architecture.",
         changeRisk: "Review callers.",
         prerequisiteFindingIds: [],

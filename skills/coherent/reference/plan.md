@@ -12,7 +12,7 @@ The CLI runs a fresh audit, applies reviews and semantic findings from `.coheren
 
 Merge rules:
 
-- Dismissed findings are absent from the DAG. A dismissal whose fingerprint no longer matches applies only if `ruleId` + `identity` still match and `detectorRevision` is current.
+- Dismissed findings are absent from the DAG. Mechanical and hybrid dismissals require the current `detectorRevision`, including exact fingerprint matches. Pure-semantic exact reviews may survive detector bumps. Identity fallback requires `ruleId` + `identity` and the current revision.
 - Deferred findings stay visible as `needs_review` and are not `fix next` targets.
 - Hybrid and semantic findings without a `confirmed` review are `needs_review`.
 - Deterministic candidates (A08 unused-export) stay selectable, as before.

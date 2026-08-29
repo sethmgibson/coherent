@@ -39,16 +39,17 @@ export function matchReview(
   finding: Finding,
   reviews: FindingReview[],
 ): FindingReview | undefined {
-  return (
-    reviews.find((review) => review.fingerprint === finding.fingerprint) ??
-    reviews.find(
-      (review) =>
-        sameIdentity(review, finding) && hasCurrentDetectorRevision(review),
-    )
+  const exact = reviews.find((review) => review.fingerprint === finding.fingerprint);
+  if (exact) {
+    return finding.detectionMode === "semantic" || hasCurrentDetectorRevision(exact)
+      ? exact
+      : undefined;
+  }
+  return reviews.find(
+    (review) => sameIdentity(review, finding) && hasCurrentDetectorRevision(review),
   );
 }
 
-/** Exact fingerprint still applies across detector bumps. Identity match does not. */
 export function hasCurrentDetectorRevision(review: FindingReview): boolean {
   return review.detectorRevision === DETECTOR_REVISION;
 }
@@ -56,7 +57,11 @@ export function hasCurrentDetectorRevision(review: FindingReview): boolean {
 export function classifyReview(review: FindingReview, findings: Finding[]): ReviewMatch {
   let staleIdentity = false;
   for (const finding of findings) {
-    if (review.fingerprint === finding.fingerprint) return "applied";
+    if (review.fingerprint === finding.fingerprint) {
+      return finding.detectionMode === "semantic" || hasCurrentDetectorRevision(review)
+        ? "applied"
+        : "stale";
+    }
     if (sameIdentity(review, finding)) {
       if (hasCurrentDetectorRevision(review)) return "applied";
       staleIdentity = true;
