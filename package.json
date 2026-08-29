@@ -28,7 +28,10 @@
     "build": "tsc",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "generate:skill-docs": "tsx scripts/generate-skill-docs.ts"
+    "generate:skill-docs": "tsx scripts/generate-skill-docs.ts",
+    "check:skill-docs": "pnpm generate:skill-docs && git diff --exit-code -- skills/coherent/reference/taxonomy.md skills/coherent/reference/cleanup-phases.md",
+    "check:unique-fingerprints": "tsx scripts/check-unique-fingerprints.ts",
+    "prepack": "pnpm build"
   },
   "keywords": [
     "maintainability",

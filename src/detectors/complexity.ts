@@ -36,6 +36,7 @@ function collectLoopMethods(
   fn: Node,
   body: Node,
 ): void {
+  const sites = new Map<string, { method: string; calls: Node[] }>();
   for (const call of body.getDescendantsOfKind(SyntaxKind.CallExpression)) {
     const expr = call.getExpression();
     if (!Node.isPropertyAccessExpression(expr)) continue;
@@ -44,21 +45,32 @@ function collectLoopMethods(
     if (!insideLoop(call) && !insideForEach(call)) continue;
     if (isAstCollection(expr.getExpression())) continue;
     if (method === "includes" && isStringIncludes(call)) continue;
+    const identity = `loop-${method}:${relative}:${name}`;
+    const group = sites.get(identity) ?? { method, calls: [] };
+    group.calls.push(call);
+    sites.set(identity, group);
+  }
+  for (const [identity, group] of sites) {
+    const snippets = group.calls.map((call) => call.getText().replace(/\s+/g, " ").slice(0, 120));
     findings.push(
       makeFinding({
         ruleId: "E06",
-        identity: `loop-${method}:${relative}:${name}`,
-        title: `Collection .${method}() inside a loop`,
+        identity,
+        title: `Collection .${group.method}() inside a loop`,
         severity: "medium",
         confidence: "high",
         status: "candidate",
-        explanation: `'${name}' calls .${method}() inside a loop. Probable complexity is O(n·m). This does not claim operational severity without input scale.`,
+        explanation: `'${name}' calls .${group.method}() inside a loop. Probable complexity is O(n·m). This does not claim operational severity without input scale.`,
         evidence: {
-          summary: `.${method}() nested under iteration.`,
-          details: [call.getText().replace(/\s+/g, " ").slice(0, 120), "Probable complexity: O(n·m)."],
+          summary: `.${group.method}() nested under iteration (${group.calls.length} site(s)).`,
+          details: [
+            ...snippets,
+            "Probable complexity: O(n·m).",
+            ...(group.calls.length > 1 ? [`occurrences: ${group.calls.length}`] : []),
+          ],
         },
-        locations: [locationOf(ctx, call, name)],
-        affectedSymbols: [name, method],
+        locations: group.calls.map((call) => locationOf(ctx, call, name)),
+        affectedSymbols: [name, group.method],
       }),
     );
   }

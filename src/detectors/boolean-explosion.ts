@@ -113,10 +113,60 @@ function booleanBranches(fn: FunctionDeclaration | MethodDeclaration): string[] 
   return [...names];
 }
 
+const NOT_A_FLAG = new Set([
+  "undefined",
+  "null",
+  "NaN",
+  "true",
+  "false",
+  "typeof",
+  "instanceof",
+  "length",
+  "size",
+  "count",
+  "amount",
+  "value",
+  "name",
+  "type",
+  "id",
+  "index",
+  "key",
+  "error",
+  "message",
+  "status",
+  "code",
+  "result",
+  "data",
+]);
+
+const FLAG_NAME =
+  /^(is|has|can|should|need|allow|enable|disable|show|hide|skip|force|include|exclude|use|with|require)[A-Z0-9_]|Flag$|Enabled$|Disabled$|Visible$|Hidden$|Active$|Required$|Optional$|^(ok|debug|verbose|silent|dryRun|enabled|disabled|visible|hidden|active|inactive|notify|rush)$/i;
+
 function collectBooleanIdents(node: Node, names: Set<string>): void {
-  if (Node.isIdentifier(node)) names.add(node.getText());
-  if (Node.isPrefixUnaryExpression(node) || Node.isBinaryExpression(node)) {
-    for (const child of node.getChildren()) collectBooleanIdents(child, names);
+  if (Node.isParenthesizedExpression(node)) {
+    collectBooleanIdents(node.getExpression(), names);
+    return;
   }
-  if (Node.isPropertyAccessExpression(node)) names.add(node.getName());
+  if (Node.isPrefixUnaryExpression(node)) {
+    collectBooleanIdents(node.getOperand(), names);
+    return;
+  }
+  if (Node.isBinaryExpression(node)) {
+    collectBooleanIdents(node.getLeft(), names);
+    collectBooleanIdents(node.getRight(), names);
+    return;
+  }
+  const name = flagName(node);
+  if (name) names.add(name);
+}
+
+function flagName(node: Node): string | undefined {
+  const name = Node.isIdentifier(node)
+    ? node.getText()
+    : Node.isPropertyAccessExpression(node)
+      ? node.getName()
+      : undefined;
+  if (!name || NOT_A_FLAG.has(name)) return undefined;
+  if (node.getType().getText() === "boolean") return name;
+  return FLAG_NAME.test(name) ? name : undefined;
 }

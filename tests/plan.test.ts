@@ -107,8 +107,8 @@ describe("cleanup DAG", () => {
     const compat = plan.nodes.find((node) => node.ruleIds.includes("A07"));
     expect(compat?.rescanAfter).toContain("A08");
     expect(compat?.mayResolveIndirectly.length).toBeGreaterThan(0);
-    const next = selectNextNode(plan);
-    expect(next?.ruleIds).toContain("A07");
+    expect(compat?.state).toBe("needs_review");
+    expect(selectNextNode(plan)).toBeUndefined();
   });
 
   it("groups same-file A08 findings into one node", () => {
@@ -147,8 +147,8 @@ describe("cleanup DAG", () => {
       const next = selectNextNode(result.plan);
       expect(next).toBeDefined();
       expect(next?.state).toBe("ready");
-      const firstRules = result.plan.nodes[0]?.ruleIds ?? [];
-      expect(firstRules.some((id) => ["A08", "A07", "B04", "D03", "D01"].includes(id))).toBe(true);
+      expect(next?.ruleIds).toContain("A08");
+      expect(result.plan.needsReviewNodeIds.length).toBeGreaterThan(0);
     } finally {
       await rm(root, { recursive: true, force: true });
     }

@@ -14,3 +14,17 @@ export function toggleFeature(enabled: boolean, verbose: boolean): string {
   if (enabled) return verbose ? "on-loud" : "on";
   return "off";
 }
+
+export function pricedByLength(items: { length: number }, amount: number): number {
+  if (items.length) return 1;
+  if (amount) return 2;
+  if (undefined) return 3;
+  return 0;
+}
+
+export function sizedByLength(items: { length: number }, amount: number): number {
+  if (items.length) return 1;
+  if (amount) return 2;
+  if (undefined) return 3;
+  return 0;
+}

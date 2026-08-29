@@ -1,26 +1,18 @@
 import {
   Node,
   SyntaxKind,
+  type BindingElement,
   type ClassDeclaration,
   type FunctionDeclaration,
   type MethodDeclaration,
-  type Statement,
   type VariableDeclaration,
 } from "ts-morph";
 import type { AnalysisContext } from "../analysis/context.js";
-import {
-  dynamicallyImportedFiles,
-  hasFrameworkDecorator,
-  isCliSurface,
-  isJobSurface,
-  locationOf,
-  looksLikeFrameworkName,
-  statementTerminates,
-  isFalseLiteral,
-} from "../analysis/inspect.js";
+import { dynamicallyImportedFiles, hasFrameworkDecorator } from "../analysis/inspect.js";
 import { externalReferences } from "../analysis/references.js";
-import { makeFinding } from "../audit/finding-factory.js";
 import type { Finding } from "../domain/finding.js";
+import { classifyUnused, unusedFinding } from "./dead-code-unused.js";
+import { collectUnreachable } from "./dead-code-unreachable.js";
 
 export function detectDeadCode(ctx: AnalysisContext): Finding[] {
   const findings: Finding[] = [];
@@ -28,17 +20,19 @@ export function detectDeadCode(ctx: AnalysisContext): Finding[] {
 
   for (const file of ctx.sourceFiles) {
     const relative = ctx.relativePath(file);
-    for (const fn of file.getFunctions()) {
-      considerDeclaration(ctx, findings, fn, relative, dynamicFiles, "function");
-    }
-    for (const cls of file.getClasses()) {
-      considerDeclaration(ctx, findings, cls, relative, dynamicFiles, "class");
-      for (const method of cls.getMethods()) {
-        considerMethod(ctx, findings, cls, method, relative, dynamicFiles);
+    if (!ctx.isTestFile(relative)) {
+      for (const fn of file.getFunctions()) {
+        considerDeclaration(ctx, findings, fn, relative, dynamicFiles, "function");
       }
-    }
-    for (const variable of file.getVariableDeclarations()) {
-      considerVariable(ctx, findings, variable, relative, dynamicFiles);
+      for (const cls of file.getClasses()) {
+        considerDeclaration(ctx, findings, cls, relative, dynamicFiles, "class");
+        for (const method of cls.getMethods()) {
+          considerMethod(ctx, findings, cls, method, relative, dynamicFiles);
+        }
+      }
+      for (const variable of file.getVariableDeclarations()) {
+        considerVariable(ctx, findings, variable, relative, dynamicFiles);
+      }
     }
     collectUnreachable(ctx, findings, file.getStatements());
     for (const fn of file.getDescendantsOfKind(SyntaxKind.FunctionDeclaration)) {
@@ -77,16 +71,41 @@ function considerVariable(
   relative: string,
   dynamicFiles: Set<string>,
 ): void {
+  const nameNode = node.getNameNode();
+  if (Node.isObjectBindingPattern(nameNode) || Node.isArrayBindingPattern(nameNode)) {
+    if (isRequireInitializer(node)) return;
+    for (const element of nameNode.getElements()) {
+      if (Node.isBindingElement(element)) {
+        considerBinding(ctx, findings, element, relative, dynamicFiles);
+      }
+    }
+    return;
+  }
   const name = node.getName();
-  if (!name || name.startsWith("_")) return;
+  if (!name || name.startsWith("_") || name.includes("{") || name.includes("[")) return;
   if (node.getFirstAncestorByKind(SyntaxKind.ImportDeclaration)) return;
   const refs = externalReferences(node);
   if (refs.length > 0) return;
-  const exported =
-    node.getVariableStatement()?.isExported() === true ||
-    node.getFirstAncestorByKind(SyntaxKind.ExportDeclaration) !== undefined;
   findings.push(
-    classifyUnused(ctx, node, name, relative, dynamicFiles, "constant", exported),
+    classifyUnused(ctx, node, name, relative, dynamicFiles, "constant", isExportedVariable(node)),
+  );
+}
+
+function considerBinding(
+  ctx: AnalysisContext,
+  findings: Finding[],
+  element: BindingElement,
+  relative: string,
+  dynamicFiles: Set<string>,
+): void {
+  const name = element.getName();
+  if (!name || name.startsWith("_") || name.includes("{") || name.includes("[")) return;
+  const refs = externalReferences(element);
+  if (refs.length > 0) return;
+  const variable = element.getFirstAncestorByKind(SyntaxKind.VariableDeclaration);
+  const exported = variable ? isExportedVariable(variable) : false;
+  findings.push(
+    classifyUnused(ctx, element, name, relative, dynamicFiles, "constant", exported),
   );
 }
 
@@ -130,87 +149,6 @@ function considerMethod(
   );
 }
 
-function classifyUnused(
-  ctx: AnalysisContext,
-  node: Node,
-  name: string,
-  relative: string,
-  dynamicFiles: Set<string>,
-  kind: string,
-  exported: boolean,
-  decorated = hasFrameworkDecorator(node),
-): Finding {
-  const reasons: string[] = [`No static references to ${kind} '${name}' were found.`];
-  const indirect = indirectReachability(name, relative, exported, decorated, dynamicFiles, ctx);
-  if (indirect.length > 0) {
-    reasons.push(...indirect);
-    return unusedFinding(ctx, node, name, relative, "candidate", "medium", reasons, kind);
-  }
-  reasons.push("Not exported, decorated, or registered as a framework/CLI/public surface.");
-  return unusedFinding(ctx, node, name, relative, "confirmed", "high", reasons, kind);
-}
-
-function indirectReachability(
-  name: string,
-  relative: string,
-  exported: boolean,
-  decorated: boolean,
-  dynamicFiles: Set<string>,
-  ctx: AnalysisContext,
-): string[] {
-  const reasons: string[] = [];
-  if (decorated) reasons.push("Has a framework decorator; may be constructed by DI or reflection.");
-  if (looksLikeFrameworkName(name)) {
-    reasons.push("Name matches a framework role (service, controller, handler, job, ...).");
-  }
-  if (exported && ctx.isPublicModule(relative)) {
-    reasons.push("Exported from a package entrypoint, bin, or public export.");
-  } else if (exported) {
-    reasons.push("Exported; no internal callers. May still be a public or future API.");
-  }
-  if (exported && isCliSurface(relative)) {
-    reasons.push("Exported from a CLI command surface.");
-  }
-  if (exported && isJobSurface(relative)) {
-    reasons.push("Exported from a job/worker/queue surface.");
-  }
-  if (dynamicFiles.has(relative) && exported) {
-    reasons.push("Module is loaded via dynamic import(); exports are not treated as dead.");
-  }
-  return reasons;
-}
-
-function unusedFinding(
-  ctx: AnalysisContext,
-  node: Node,
-  name: string,
-  relative: string,
-  status: "confirmed" | "candidate",
-  confidence: "high" | "medium",
-  details: string[],
-  kind = "declaration",
-): Finding {
-  return makeFinding({
-    ruleId: "A08",
-    identity: `${status === "confirmed" ? "unused" : "unused-candidate"}:${relative}:${name}`,
-    title: status === "confirmed" ? "Unused internal declaration" : "Possibly unused export or registration",
-    severity: status === "confirmed" ? "high" : "medium",
-    confidence,
-    status,
-    explanation:
-      status === "confirmed"
-        ? `${kind} '${name}' has no reachable static use.`
-        : `${kind} '${name}' has no internal callers, but may be reachable indirectly.`,
-    evidence: { summary: details[0] ?? "No static references.", details },
-    locations: [locationOf(ctx, node, name)],
-    affectedSymbols: [name],
-    changeRisk:
-      status === "confirmed"
-        ? "Low if no reflection or generated callers exist."
-        : "Do not delete without confirming public, DI, CLI, or dynamic reachability.",
-  });
-}
-
 function isInterfaceOrOverride(cls: ClassDeclaration, method: MethodDeclaration): boolean {
   if (method.hasModifier(SyntaxKind.OverrideKeyword)) return true;
   for (const impl of cls.getImplements()) {
@@ -224,76 +162,20 @@ function isInterfaceOrOverride(cls: ClassDeclaration, method: MethodDeclaration)
   );
 }
 
-function collectUnreachable(
-  ctx: AnalysisContext,
-  findings: Finding[],
-  statements: Statement[],
-): void {
-  let unreachable = false;
-  for (const statement of statements) {
-    if (unreachable) {
-      const file = ctx.relativePath(statement.getSourceFile());
-      findings.push(
-        makeFinding({
-          ruleId: "A08",
-          identity: `unreachable:${file}:${stableText(statement)}`,
-          title: "Unreachable statement",
-          severity: "medium",
-          confidence: "high",
-          status: "confirmed",
-          explanation: "A statement appears after a return, throw, break, or continue in the same block.",
-          evidence: {
-            summary: "Control flow cannot reach this statement.",
-            details: [statement.getText().slice(0, 120)],
-          },
-          locations: [locationOf(ctx, statement)],
-          affectedSymbols: [],
-        }),
-      );
-      continue;
-    }
-    if (Node.isIfStatement(statement)) {
-      const then = statement.getThenStatement();
-      if (isFalseLiteral(statement.getExpression())) {
-        markUnreachableBranch(ctx, findings, then);
-      } else if (Node.isBlock(then)) {
-        collectUnreachable(ctx, findings, then.getStatements());
-      }
-      const otherwise = statement.getElseStatement();
-      if (otherwise && Node.isBlock(otherwise)) {
-        collectUnreachable(ctx, findings, otherwise.getStatements());
-      } else if (otherwise && Node.isIfStatement(otherwise)) {
-        collectUnreachable(ctx, findings, [otherwise]);
-      }
-    }
-    if (statementTerminates(statement)) unreachable = true;
-  }
+function isExportedVariable(node: VariableDeclaration): boolean {
+  return (
+    node.getVariableStatement()?.isExported() === true ||
+    node.getFirstAncestorByKind(SyntaxKind.ExportDeclaration) !== undefined
+  );
 }
 
-function markUnreachableBranch(
-  ctx: AnalysisContext,
-  findings: Finding[],
-  then: Statement,
-): void {
-  const targets = Node.isBlock(then) ? then.getStatements() : [then];
-  for (const target of targets) {
-    findings.push(
-      makeFinding({
-        ruleId: "A08",
-        identity: `unreachable-false:${ctx.relativePath(target.getSourceFile())}:${stableText(target)}`,
-        title: "Unreachable branch",
-        severity: "medium",
-        confidence: "high",
-        status: "confirmed",
-        explanation: "The then-branch of `if (false)` is unreachable.",
-        evidence: { summary: "Condition is the literal false." },
-        locations: [locationOf(ctx, target)],
-        affectedSymbols: [],
-      }),
-    );
+function isRequireInitializer(node: VariableDeclaration): boolean {
+  const init = node.getInitializer();
+  if (!init) return false;
+  if (Node.isCallExpression(init) && init.getExpression().getText() === "require") return true;
+  if (Node.isPropertyAccessExpression(init)) {
+    const expr = init.getExpression();
+    if (Node.isCallExpression(expr) && expr.getExpression().getText() === "require") return true;
   }
-}
-
-function stableText(node: Node): string {
-  return node.getText().replace(/\s+/g, " ").trim().slice(0, 80);
+  return /\brequire\s*\(/.test(init.getText());
 }

@@ -48,7 +48,7 @@ The catalog lives in `src/catalog/rules.ts`. Skill references are generated from
 | D | Failure semantics, tests, and dependencies |
 | E | Performance |
 
-See `skills/backend-maintainability/reference/taxonomy.md` for the full list.
+See `skills/coherent/reference/taxonomy.md` for the full list.
 
 ## Why the cleanup DAG beats a rigid list
 
@@ -90,23 +90,25 @@ Legacy adoption must work.
 
 | Command | What it does |
 |---|---|
-| `coherent init` | Inventory the repo and write `.backend/ARCHITECTURE.md` |
+| `coherent init` | Inventory the repo and write `.coherent/ARCHITECTURE.md` |
 | `coherent audit` | Run implemented detectors, group findings, write metrics |
-| `coherent baseline` | Snapshot findings to `.backend/baseline.json` |
+| `coherent baseline` | Snapshot findings to `.coherent/baseline.json` |
 | `coherent plan` | Build the cleanup DAG from current findings |
 | `coherent fix next` | Select one unlocked cleanup node and print a work brief |
-| `coherent check` | Compare a fresh audit to the baseline; inspect new debt |
+| `coherent check` | Compare a fresh audit to the baseline; `--changed` scopes to the git diff |
+| `coherent install` | Copy the Cursor adapter, prevention rule, and `check --changed` hooks |
+| `coherent update` | Refresh those copied files without overwriting user edits |
 
-`backend` is an alias for the same CLI. In Cursor, the skill namespace is `/backend`. The canonical skill is `skills/backend-maintainability/`. `.cursor/skills/backend` is an adapter, not a second source of truth.
+`backend` is an alias for the same CLI. In Cursor, the skill namespace is `/coherent` (`/backend` still works). The canonical skill is `skills/coherent/`. `.cursor/skills/coherent` is an adapter, not a second source of truth. `.cursor/skills/backend` is a skill alias.
 
 ### Intended workflow
 
-1. `/backend init` — inventory and durable architecture context. Complete semantic sections with facts, not guesses.
-2. `/backend audit` — deterministic scan, then agent semantic investigation.
-3. `/backend baseline` — snapshot current debt.
-4. `/backend plan` — construct the DAG. Do not sort by rule ID.
-5. `/backend fix next` — one bounded node. Re-audit, re-check, re-plan.
-6. `/backend check` — after ordinary feature work, ask whether the change made the system conceptually harder to change.
+1. `/coherent init` — inventory and durable architecture context. Complete semantic sections with facts, not guesses.
+2. `/coherent audit` — deterministic scan, then agent semantic investigation.
+3. `/coherent baseline` — snapshot current debt.
+4. `/coherent plan` — construct the DAG. Do not sort by rule ID.
+5. `/coherent fix next` — one bounded node. Re-audit, re-check, re-plan.
+6. `/coherent check` — after ordinary feature work, ask whether the change made the system conceptually harder to change.
 
 Implemented detectors: A08, A07, A03, A06, B03, B04, C03, C04, D03, D01, E01, E05, E06. Other catalog rules need semantic analysis.
 
@@ -131,7 +133,7 @@ pnpm exec tsx src/cli.ts init
 
 `init` writes discovered facts and leaves semantic sections explicitly incomplete. It will not overwrite an existing `ARCHITECTURE.md` unless you pass `--force`.
 
-`.backend/ARCHITECTURE.md` is durable project context and should be committed. `.backend/baseline.json` should be committed. `.backend/inventory.json`, `findings.json`, `plan.json`, and `next.json` are regenerable and gitignored.
+`.coherent/ARCHITECTURE.md` is durable project context and should be committed. `.coherent/baseline.json` should be committed. `.coherent/inventory.json`, `findings.json`, `plan.json`, and `next.json` are regenerable and gitignored. If a repository still has `.backend/`, `init` and `doctor` detect it and ask you to rename it to `.coherent/`.
 
 ## Metrics
 

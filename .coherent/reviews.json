@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "reviews": [
+    {
+      "fingerprint": "de4373bcece329e7bbf0759102f08dc4dec14ee6c3f8beffe1a1bdb13f58cf06",
+      "ruleId": "A06",
+      "identity": "duplicate-rep:CleanupPhase+RuleCategory",
+      "decision": "dismissed",
+      "reason": "RuleCategory and CleanupPhase share id/title/summary by coincidence. They are intentionally different catalog concepts; do not merge.",
+      "reviewedAt": "2026-08-28T23:13:14.604Z"
+    }
+  ]
+}

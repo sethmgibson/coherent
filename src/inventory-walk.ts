@@ -2,6 +2,7 @@ import { readdir } from "node:fs/promises";
 import { join, relative, sep } from "node:path";
 
 const SKIP_DIR_NAMES = new Set([
+  ".coherent",
   ".backend",
   ".git",
   ".hg",

@@ -34,6 +34,14 @@ describe("hybrid detectors on scanner-app", () => {
     expect(pair?.explanation).toMatch(/not a claim of semantic equivalence/i);
     expect(pair?.evidence.summary).toMatch(/%/);
     expect(findingFor(dups, "UnrelatedConfig")).toBeUndefined();
+
+    const widgets = dups.filter((finding) =>
+      ["WidgetView", "WidgetRow", "WidgetCopy"].every((name) => finding.affectedSymbols.includes(name)),
+    );
+    expect(widgets).toHaveLength(1);
+    expect(
+      dups.filter((finding) => finding.affectedSymbols.includes("WidgetView")),
+    ).toHaveLength(1);
   });
 
   it("B03 labels single implementations as hybrid candidates", async () => {
@@ -59,6 +67,10 @@ describe("hybrid detectors on scanner-app", () => {
     const flags = byRule(findings, "C03");
     expect(findingFor(flags, "createOrder")).toBeDefined();
     expect(findingFor(flags, "toggleFeature")).toBeUndefined();
+    expect(findingFor(flags, "pricedByLength")).toBeUndefined();
+    expect(findingFor(flags, "sizedByLength")).toBeUndefined();
+    expect(flags.some((finding) => finding.affectedSymbols.includes("length"))).toBe(false);
+    expect(flags.some((finding) => finding.identity.includes("length"))).toBe(false);
   });
 
   it("C04 reports large context objects and tiny-subset consumers", async () => {

@@ -4,12 +4,14 @@ import type { CleanupNode, CleanupPlan } from "./types.js";
 export function renderPlan(plan: CleanupPlan): string {
   const ready = plan.nodes.filter((node) => node.state === "ready");
   const blocked = plan.nodes.filter((node) => node.state === "blocked");
+  const needsReview = plan.nodes.filter((node) => node.state === "needs_review");
   const lines = [
     "Coherent cleanup plan",
     `Root: ${plan.root}`,
-    `Nodes: ${plan.nodes.length}  Ready: ${ready.length}  Blocked: ${blocked.length}`,
+    `Nodes: ${plan.nodes.length}  Ready: ${ready.length}  Needs review: ${needsReview.length}  Blocked: ${blocked.length}`,
     "",
     "The DAG is authoritative. Default phases break ties when dependencies are equal.",
+    "Hybrid and semantic findings stay in needs_review until `coherent review confirm`.",
     "",
   ];
 
@@ -19,6 +21,15 @@ export function renderPlan(plan: CleanupPlan): string {
       lines.push(...renderNode(node));
     }
     if (ready.length > 8) lines.push(`  … ${ready.length - 8} more ready nodes`);
+    lines.push("");
+  }
+
+  if (needsReview.length > 0) {
+    lines.push("NEEDS REVIEW (not selected by fix next)");
+    for (const node of needsReview.slice(0, 8)) {
+      lines.push(...renderNode(node));
+    }
+    if (needsReview.length > 8) lines.push(`  … ${needsReview.length - 8} more nodes awaiting review`);
     lines.push("");
   }
 

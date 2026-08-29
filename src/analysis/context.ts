@@ -1,9 +1,9 @@
-import { relative } from "node:path";
+import { join, relative } from "node:path";
 import { Project, ScriptTarget, ModuleKind, ModuleResolutionKind } from "ts-morph";
 import type { SourceFile } from "ts-morph";
 import type { CoherentConfig } from "../config.js";
 import { SOURCE_EXTENSIONS, extensionOf } from "../inventory-scan.js";
-import { walkFiles, toPosix } from "../inventory-walk.js";
+import { walkFiles, toPosix, type WalkedFile } from "../inventory-walk.js";
 import type { Inventory } from "../inventory.js";
 
 const TS_LIKE = new Set([".ts", ".tsx", ".mts", ".cts"]);
@@ -19,10 +19,16 @@ export interface AnalysisContext {
   isPublicModule(relativePath: string): boolean;
 }
 
+export interface AnalysisScope {
+  /** Parse only these repo-relative paths. Full-repo walk when omitted. */
+  include?: string[];
+}
+
 export async function createAnalysisContext(
   root: string,
   inventory: Inventory,
   config: CoherentConfig = {},
+  scope: AnalysisScope = {},
 ): Promise<AnalysisContext> {
   const project = new Project({
     compilerOptions: {
@@ -39,13 +45,22 @@ export async function createAnalysisContext(
     skipFileDependencyResolution: true,
   });
 
-  const walked = await walkFiles(root, new Set(config.ignore ?? []));
+  const include = scope.include
+    ? new Set(scope.include.map((path) => toPosix(path)))
+    : undefined;
+  const walked = include
+    ? includePaths(root, include)
+    : await walkFiles(root, new Set(config.ignore ?? []));
   const sourceFiles: SourceFile[] = [];
   for (const file of walked) {
     const ext = extensionOf(file.name);
     if (!TS_LIKE.has(ext) || file.name.endsWith(".d.ts")) continue;
     if (!SOURCE_EXTENSIONS.has(ext)) continue;
-    sourceFiles.push(project.addSourceFileAtPath(file.absolutePath));
+    try {
+      sourceFiles.push(project.addSourceFileAtPath(file.absolutePath));
+    } catch {
+      continue;
+    }
   }
 
   const publicModules = discoverPublicModules(inventory, sourceFiles, root);
@@ -61,12 +76,28 @@ export async function createAnalysisContext(
       return toPosix(relative(root, abs));
     },
     isTestFile(relativePath) {
-      return /(^|\/)(tests?|__tests__|spec|e2e)(\/|$)/.test(relativePath);
+      return (
+        /(^|\/)(tests?|__tests__|spec|e2e)(\/|$)/.test(relativePath) ||
+        /\.(spec|test)\.[cm]?[jt]sx?$/.test(relativePath)
+      );
     },
     isPublicModule(relativePath) {
       return publicModules.has(relativePath);
     },
   };
+}
+
+function includePaths(root: string, include: Set<string>): WalkedFile[] {
+  const files: WalkedFile[] = [];
+  for (const relativePath of include) {
+    const posix = toPosix(relativePath);
+    files.push({
+      relativePath: posix,
+      absolutePath: join(root, posix),
+      name: posix.slice(posix.lastIndexOf("/") + 1) || posix,
+    });
+  }
+  return files;
 }
 
 function discoverPublicModules(

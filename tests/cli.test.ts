@@ -11,6 +11,7 @@ const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 const cli = join(repoRoot, "src", "cli.ts");
 const tsx = join(repoRoot, "node_modules", "tsx", "dist", "cli.mjs");
 const expressFixture = join(repoRoot, "tests", "fixtures", "express-app");
+const scannerFixture = join(repoRoot, "tests", "fixtures", "scanner-app");
 
 async function runCli(
   args: string[],
@@ -45,7 +46,7 @@ describe("CLI", () => {
       expect(result.stdout).toContain("Express");
 
       const architecture = await readFile(
-        join(root, ".backend", "ARCHITECTURE.md"),
+        join(root, ".coherent", "ARCHITECTURE.md"),
         "utf8",
       );
       expect(architecture).toContain("express-app");
@@ -61,7 +62,7 @@ describe("CLI", () => {
       const result = await runCli(["plan", root]);
       expect(result.code).toBe(0);
       expect(result.stdout).toMatch(/Coherent cleanup plan|READY|No cleanup nodes/);
-      const plan = JSON.parse(await readFile(join(root, ".backend", "plan.json"), "utf8"));
+      const plan = JSON.parse(await readFile(join(root, ".coherent", "plan.json"), "utf8"));
       expect(Array.isArray(plan.nodes)).toBe(true);
     } finally {
       await rm(root, { recursive: true, force: true });
@@ -80,6 +81,51 @@ describe("CLI", () => {
     }
   });
 
+  it("reviews, refreshes, and doctors a fixture", async () => {
+    const root = await mkdtemp(join(tmpdir(), "coherent-review-cli-"));
+    await cp(scannerFixture, root, { recursive: true });
+    try {
+      const init = await runCli(["init", root]);
+      expect(init.code).toBe(0);
+      const audit = await runCli(["audit", root, "--json"]);
+      expect(audit.code).toBe(0);
+      const file = JSON.parse(audit.stdout) as {
+        findings: { fingerprint: string; ruleId: string }[];
+      };
+      const target = file.findings[0];
+      expect(target?.fingerprint).toBeTruthy();
+      const dismissed = await runCli([
+        "review",
+        "dismiss",
+        target!.fingerprint,
+        root,
+        "--reason",
+        "cli test dismissal",
+      ]);
+      expect(dismissed.code).toBe(0);
+      expect(dismissed.stdout).toContain("dismissed");
+      const refresh = await runCli(["refresh", root]);
+      expect(refresh.code).toBe(0);
+      expect(refresh.stdout).toMatch(/Updated discovered sections/);
+      const doctor = await runCli(["doctor", root]);
+      expect(doctor.stdout).toMatch(/Coherent doctor/);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it("exposes install, update, and check --changed", async () => {
+    const check = await runCli(["check", "--help"]);
+    expect(check.code).toBe(0);
+    expect(check.stdout).toContain("--changed");
+    const install = await runCli(["install", "--help"]);
+    expect(install.code).toBe(0);
+    expect(install.stdout).toMatch(/prevention|adapter|hooks/i);
+    const update = await runCli(["update", "--help"]);
+    expect(update.code).toBe(0);
+    expect(update.stdout).toMatch(/Refresh|adapter|edits/i);
+  });
+
   it("runs audit on a fixture and writes findings.json", async () => {
     const root = await mkdtemp(join(tmpdir(), "coherent-audit-"));
     await cp(expressFixture, root, { recursive: true });
@@ -88,7 +134,7 @@ describe("CLI", () => {
       expect(result.code).toBe(0);
       expect(result.stdout).toMatch(/Coherent audit|PHASE /);
       const findings = JSON.parse(
-        await readFile(join(root, ".backend", "findings.json"), "utf8"),
+        await readFile(join(root, ".coherent", "findings.json"), "utf8"),
       );
       expect(Array.isArray(findings.findings)).toBe(true);
     } finally {

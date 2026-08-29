@@ -1,9 +1,9 @@
-import { mkdtemp, readFile, rm, writeFile, cp } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile, cp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { runInit } from "../src/init/run.js";
+import { runInit, runRefresh } from "../src/init/run.js";
 
 const expressFixture = join(
   dirname(fileURLToPath(import.meta.url)),
@@ -37,6 +37,7 @@ describe("init", () => {
       expect(architecture).toContain("TODO: What this system is for");
       expect(architecture).not.toMatch(/hexagonal|microservice|event-driven/i);
       expect(architecture).toContain("coherent:architecture-schema 1");
+      expect(architecture).toContain("<!-- coherent:discovered -->");
     } finally {
       await rm(root, { recursive: true, force: true });
     }
@@ -46,18 +47,83 @@ describe("init", () => {
     const root = await copyFixture();
     try {
       await runInit(root);
-      const path = join(root, ".backend", "ARCHITECTURE.md");
+      const path = join(root, ".coherent", "ARCHITECTURE.md");
       await writeFile(path, "# kept\n", "utf8");
 
       const skipped = await runInit(root);
       expect(skipped.wroteArchitecture).toBe(false);
       expect(await readFile(path, "utf8")).toBe("# kept\n");
-
-      const forced = await runInit(root, { force: true });
-      expect(forced.wroteArchitecture).toBe(true);
-      expect(await readFile(path, "utf8")).toContain("# Architecture");
     } finally {
       await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it("refresh and init --force preserve confirmed prose and update discovered lists", async () => {
+    const root = await copyFixture();
+    try {
+      await runInit(root);
+      const path = join(root, ".coherent", "ARCHITECTURE.md");
+      const original = await readFile(path, "utf8");
+      const confirmed = original.replace(
+        "## System purpose\n\n> Status: requires human or agent completion\n\nTODO: What this system is for, who it serves, and what success means.",
+        "## System purpose\n\n> Status: confirmed\n\nKeep this semantic purpose statement.",
+      );
+      await writeFile(path, confirmed, "utf8");
+
+      const pkgPath = join(root, "package.json");
+      const pkg = JSON.parse(await readFile(pkgPath, "utf8")) as {
+        dependencies?: Record<string, string>;
+      };
+      pkg.dependencies = { ...(pkg.dependencies ?? {}), "left-pad": "1.3.0" };
+      await writeFile(pkgPath, `${JSON.stringify(pkg, null, 2)}\n`, "utf8");
+
+      const refreshed = await runRefresh(root);
+      const afterRefresh = await readFile(path, "utf8");
+      expect(refreshed.wroteArchitecture).toBe(true);
+      expect(afterRefresh).toContain("Keep this semantic purpose statement.");
+      expect(afterRefresh).toContain("Status: confirmed");
+      expect(afterRefresh).toMatch(/Dependencies: 2 runtime/);
+      expect(afterRefresh).toContain("<!-- coherent:discovered -->");
+
+      await writeFile(
+        path,
+        afterRefresh.replace("Keep this semantic purpose statement.", "Still confirmed after force."),
+        "utf8",
+      );
+      const forced = await runInit(root, { force: true });
+      const afterForce = await readFile(path, "utf8");
+      expect(forced.wroteArchitecture).toBe(true);
+      expect(afterForce).toContain("Still confirmed after force.");
+      expect(afterForce).not.toContain("TODO: What this system is for");
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it("writes .coherent/ for a new repo and uses leftover .backend/ with a rename warning", async () => {
+    const fresh = await copyFixture();
+    try {
+      const created = await runInit(fresh);
+      expect(created.stateDir).toBe(".coherent");
+      expect(created.legacyWarning).toBeUndefined();
+      expect(created.architecturePath).toContain(".coherent");
+    } finally {
+      await rm(fresh, { recursive: true, force: true });
+    }
+
+    const leftover = await copyFixture();
+    try {
+      const legacyDir = join(leftover, ".backend");
+      await mkdir(legacyDir, { recursive: true });
+      await writeFile(join(legacyDir, "ARCHITECTURE.md"), "# kept leftover\n", "utf8");
+      const used = await runInit(leftover);
+      expect(used.stateDir).toBe(".backend");
+      expect(used.architecturePath).toContain(".backend");
+      expect(used.wroteArchitecture).toBe(false);
+      expect(used.legacyWarning).toMatch(/Rename it to \.coherent\//);
+      expect(await readFile(join(legacyDir, "ARCHITECTURE.md"), "utf8")).toBe("# kept leftover\n");
+    } finally {
+      await rm(leftover, { recursive: true, force: true });
     }
   });
 });

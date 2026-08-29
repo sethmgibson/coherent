@@ -1,7 +1,8 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { runAudit, type AuditResult } from "../audit/run.js";
-import { BACKEND_DIR, BASELINE_FILE } from "../config.js";
+import { artifactVersions, BASELINE_FILE } from "../config.js";
+import { resolveStateDir } from "../state-dir.js";
 import type { DetectionMode, RuleId } from "../catalog/types.js";
 import type { Finding, FindingStatus, Severity } from "../domain/finding.js";
 
@@ -18,13 +19,17 @@ export interface BaselineEntry {
 }
 
 export interface BaselineFile {
+  schemaVersion: number;
+  coherentVersion: string;
+  fingerprintVersion: number;
+  detectorRevision: number;
   createdAt: string;
-  root: string;
   findings: BaselineEntry[];
+  root?: string;
 }
 
 export function baselinePath(root: string): string {
-  return join(root, BACKEND_DIR, BASELINE_FILE);
+  return join(resolveStateDir(root).path, BASELINE_FILE);
 }
 
 export function toBaselineEntry(finding: Finding): BaselineEntry {
@@ -41,6 +46,15 @@ export function toBaselineEntry(finding: Finding): BaselineEntry {
   };
 }
 
+export function isBaselineStale(baseline: BaselineFile): boolean {
+  const expected = artifactVersions();
+  return (
+    baseline.schemaVersion !== expected.schemaVersion ||
+    baseline.fingerprintVersion !== expected.fingerprintVersion ||
+    baseline.detectorRevision !== expected.detectorRevision
+  );
+}
+
 export async function runBaseline(root: string): Promise<{
   audit: AuditResult;
   baselinePath: string;
@@ -48,12 +62,12 @@ export async function runBaseline(root: string): Promise<{
 }> {
   const audit = await runAudit(root);
   const baseline: BaselineFile = {
+    ...artifactVersions(),
     createdAt: new Date().toISOString(),
-    root,
     findings: audit.findings.map(toBaselineEntry),
   };
   const path = baselinePath(root);
-  await mkdir(join(root, BACKEND_DIR), { recursive: true });
+  await mkdir(resolveStateDir(root).path, { recursive: true });
   await writeFile(path, `${JSON.stringify(baseline, null, 2)}\n`, "utf8");
   return { audit, baselinePath: path, baseline };
 }

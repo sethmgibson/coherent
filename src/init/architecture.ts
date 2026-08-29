@@ -1,6 +1,12 @@
 import type { Inventory } from "../inventory.js";
 
 const NEEDS_COMPLETION = "requires human or agent completion";
+export const DISCOVERED_OPEN = "<!-- coherent:discovered -->";
+export const DISCOVERED_CLOSE = "<!-- /coherent:discovered -->";
+
+export function wrapDiscovered(body: string): string {
+  return `${DISCOVERED_OPEN}\n${body.trim()}\n${DISCOVERED_CLOSE}`;
+}
 
 export function generateArchitectureMarkdown(inventory: Inventory): string {
   const packages = inventory.packages
@@ -37,7 +43,7 @@ TODO: What this system is for, who it serves, and what success means.
 
 > Status: automatically discovered (packages and frameworks)
 
-Package manager: \`${inventory.packageManager}\`
+${wrapDiscovered(`Package manager: \`${inventory.packageManager}\`
 
 Packages:
 
@@ -51,7 +57,7 @@ Languages: ${inventory.languages.length > 0 ? inventory.languages.join(", ") : "
 
 Approximate size: ${inventory.fileCount} files, ${inventory.lineCount} source lines.
 
-Dependencies: ${depCount} runtime, ${devDepCount} development.
+Dependencies: ${depCount} runtime, ${devDepCount} development.`)}
 
 > Additional service boundaries ${NEEDS_COMPLETION}.
 
@@ -59,13 +65,13 @@ Dependencies: ${depCount} runtime, ${devDepCount} development.
 
 > Status: ${NEEDS_COMPLETION}
 
-Observed source directories (not inferred layers):
+${wrapDiscovered(`Observed source directories (not inferred layers):
 
 ${sourceDirs}
 
 Observed top-level modules:
 
-${modules}
+${modules}`)}
 
 TODO: Name the real layers and what each may depend on.
 
@@ -109,9 +115,9 @@ TODO: External systems this repository talks to, and the module that owns each c
 
 > Status: partially discovered
 
-Observed persistence libraries:
+${wrapDiscovered(`Observed persistence libraries:
 
-${persistence}
+${persistence}`)}
 
 TODO: Which stores are authoritative, and which modules may query them.
 
@@ -119,13 +125,13 @@ TODO: Which stores are authoritative, and which modules may query them.
 
 > Status: automatically discovered (package entrypoints and exports)
 
-Declared entrypoints and exports:
+${wrapDiscovered(`Declared entrypoints and exports:
 
 ${publicApis}
 
 Probable entrypoint files:
 
-${entrypoints}
+${entrypoints}`)}
 
 > HTTP, RPC, and CLI contracts beyond package.json ${NEEDS_COMPLETION}.
 
@@ -157,9 +163,9 @@ TODO: Edges that must not exist (for example domain must not import HTTP adapter
 
 > Status: partially discovered
 
-Observed test directories:
+${wrapDiscovered(`Observed test directories:
 
-${testDirs}
+${testDirs}`)}
 
 TODO: What a good test asserts here, what must not be mocked, and where characterization tests live.
 

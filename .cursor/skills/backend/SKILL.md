@@ -1,15 +1,15 @@
 ---
 name: backend
-description: "Use when the user wants Impeccable-style maintainability work on a backend or large AI-built codebase: initialize durable architecture context, audit architectural entropy, plan cleanup, fix the next DAG node, check drift, or record a baseline. Not for frontend visual design."
-argument-hint: "[init|audit|baseline|check|plan|fix] [target]"
+description: "Alias for /coherent. Use when the user wants Impeccable-style maintainability work on a backend or large AI-built codebase. Prefer /coherent. Not for frontend visual design."
+argument-hint: "[init|refresh|audit|review|baseline|check|plan|fix|doctor|install|update] [target]"
 ---
 
-This is a Cursor adapter. The canonical, provider-neutral skill is:
+<!-- coherent:adapter -->
+This is a CLI and skill alias for Coherent. Prefer `/coherent`.
 
-`skills/backend-maintainability/SKILL.md`
+Load the canonical skill at `skills/coherent/SKILL.md` and the playbook it names. Do not invent a second methodology here.
 
-Load that file and the playbook it names. Do not invent a second methodology here.
-
-In chat: `/backend init`, `/backend audit`, `/backend baseline`, `/backend plan`, `/backend fix next`, `/backend check`.
+In chat, `/backend init` (and the other `/backend` commands) map to the same playbooks as `/coherent`.
 
 CLI: `coherent` (alias `backend`).
+<!-- /coherent:adapter -->

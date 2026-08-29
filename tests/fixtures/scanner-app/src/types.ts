@@ -20,3 +20,24 @@ export interface UnrelatedConfig {
   port: number;
   tls: boolean;
 }
+
+export interface WidgetView {
+  widgetId: string;
+  label: string;
+  color: string;
+  weight: number;
+}
+
+export interface WidgetRow {
+  widgetId: string;
+  label: string;
+  color: string;
+  weight: number;
+}
+
+export interface WidgetCopy {
+  widgetId: string;
+  label: string;
+  color: string;
+  weight: number;
+}

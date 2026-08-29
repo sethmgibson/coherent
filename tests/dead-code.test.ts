@@ -40,4 +40,19 @@ describe("A08 dead-code", () => {
     const cliExport = findingFor(dead, "unusedCliExport");
     expect(cliExport?.status).not.toBe("confirmed");
   });
+
+  it("does not confirm spec mocks or CJS destructured bindings", async () => {
+    const { findings } = await auditFixture();
+    const dead = byRule(findings, "A08");
+
+    expect(findingFor(dead, "connect")).toBeUndefined();
+    expect(findingFor(dead, "from")).toBeUndefined();
+    expect(findingFor(dead, "where")).toBeUndefined();
+    expect(findingFor(dead, "jobNames")).toBeUndefined();
+    expect(findingFor(dead, "LedgerMock")).toBeUndefined();
+
+    expect(dead.some((finding) => finding.affectedSymbols.includes("{ Pool }"))).toBe(false);
+    expect(findingFor(dead, "Pool")).toBeUndefined();
+    expect(findingFor(dead, "Client")).toBeUndefined();
+  });
 });

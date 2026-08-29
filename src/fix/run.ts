@@ -1,6 +1,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { BACKEND_DIR, NEXT_FILE } from "../config.js";
+import { NEXT_FILE } from "../config.js";
+import { resolveStateDir } from "../state-dir.js";
 import { runPlan } from "../plan/run.js";
 import type { CleanupNode, CleanupPlan } from "../plan/types.js";
 import { selectNextNode } from "./select.js";
@@ -15,8 +16,8 @@ export async function runFixNext(root: string): Promise<FixNextResult> {
   const { plan } = await runPlan(root);
   const node = selectNextNode(plan);
   const brief = node ? workBrief(node) : noWork();
-  const nextPath = join(root, BACKEND_DIR, NEXT_FILE);
-  await mkdir(join(root, BACKEND_DIR), { recursive: true });
+  const nextPath = join(resolveStateDir(root).path, NEXT_FILE);
+  await mkdir(resolveStateDir(root).path, { recursive: true });
   await writeFile(
     nextPath,
     `${JSON.stringify({ selectedAt: new Date().toISOString(), node: node ?? null, brief }, null, 2)}\n`,
@@ -27,7 +28,7 @@ export async function runFixNext(root: string): Promise<FixNextResult> {
 
 export function renderFixNext(result: FixNextResult): string {
   if (!result.node) {
-    return "Coherent fix next\n\nNo unlocked cleanup node. The plan is empty or everything is blocked.\n";
+    return "Coherent fix next\n\nNo unlocked cleanup node. Remaining nodes need review or are blocked.\n";
   }
   return `${workBrief(result.node)}\nWrote ${result.nextPath}\n`;
 }

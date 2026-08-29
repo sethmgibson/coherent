@@ -1,12 +1,25 @@
 import { readFile } from "node:fs/promises";
 import { runAudit, type AuditResult } from "../audit/run.js";
-import { baselinePath, type BaselineEntry, type BaselineFile, toBaselineEntry } from "../baseline/run.js";
+import {
+  baselinePath,
+  isBaselineStale,
+  type BaselineEntry,
+  type BaselineFile,
+  toBaselineEntry,
+} from "../baseline/run.js";
+import { loadConfig } from "../config.js";
 import type { Finding } from "../domain/finding.js";
+import { listChangedSourceFiles } from "./changed-files.js";
+import { expandWithImporters } from "./importers.js";
 import { classifyNewDebt, conceptualHardness, type NewDebt } from "./prevention.js";
 
 export type DriftKind = "NEW" | "EXISTING" | "RESOLVED";
 
 export type DriftItem = BaselineEntry & { kind: DriftKind };
+
+export interface CheckOptions {
+  changed?: boolean;
+}
 
 export interface CheckResult {
   audit: AuditResult;
@@ -18,16 +31,36 @@ export interface CheckResult {
   newDebt: NewDebt<DriftItem>[];
   conceptualHardness: string;
   exitCode: number;
+  scopedFiles?: string[];
 }
 
-export async function runCheck(root: string): Promise<CheckResult> {
+export async function runCheck(
+  root: string,
+  options: CheckOptions = {},
+): Promise<CheckResult> {
   const baseline = await readBaseline(root);
   if (!baseline) {
     throw new Error(
       `No baseline at ${baselinePath(root)}. Run \`coherent baseline\` first.`,
     );
   }
-  const audit = await runAudit(root);
+  if (isBaselineStale(baseline)) {
+    throw new Error(
+      `Baseline is stale (schema, fingerprint, or detector version mismatch). Re-run \`coherent baseline\`.`,
+    );
+  }
+  let include: string[] | undefined;
+  let scope: Set<string> | undefined;
+  if (options.changed) {
+    const listed = await listChangedSourceFiles(root);
+    const config = await loadConfig(root);
+    include = await expandWithImporters(root, listed.existing, config);
+    scope = new Set([...include, ...listed.deleted]);
+  }
+  const audit = await runAudit(
+    root,
+    include ? { include, persist: false } : {},
+  );
   const baseByFp = new Map(baseline.findings.map((entry) => [entry.fingerprint, entry]));
   const auditByFp = new Map(audit.findings.map((finding) => [finding.fingerprint, finding]));
 
@@ -36,11 +69,14 @@ export async function runCheck(root: string): Promise<CheckResult> {
   const resolvedFindings: DriftItem[] = [];
 
   for (const finding of audit.findings) {
+    const files = finding.locations.map((location) => location.file);
+    if (!inScope(files, scope)) continue;
     const item = itemFromFinding(finding, baseByFp.has(finding.fingerprint) ? "EXISTING" : "NEW");
     if (item.kind === "NEW") newFindings.push(item);
     else existingFindings.push(item);
   }
   for (const entry of baseline.findings) {
+    if (!inScope(entry.files, scope)) continue;
     if (!auditByFp.has(entry.fingerprint)) {
       resolvedFindings.push({
         kind: "RESOLVED",
@@ -75,12 +111,16 @@ export async function runCheck(root: string): Promise<CheckResult> {
     newDebt,
     conceptualHardness: conceptualHardness(newFindings, newDebt),
     exitCode: failing.length > 0 ? 1 : 0,
+    ...(scope ? { scopedFiles: [...scope].sort() } : {}),
   };
 }
 
 export function renderCheck(result: CheckResult): string {
   const lines = [
     "Coherent check",
+    ...(result.scopedFiles
+      ? [`scope: changed (${result.scopedFiles.length} file(s))`]
+      : []),
     `NEW ${result.newFindings.length}  EXISTING ${result.existingFindings.length}  RESOLVED ${result.resolvedFindings.length}`,
     "",
   ];
@@ -128,6 +168,11 @@ function formatItem(item: DriftItem): string {
 function itemFromFinding(finding: Finding, kind: DriftKind): DriftItem {
   const entry = toBaselineEntry(finding);
   return { kind, ...entry };
+}
+
+function inScope(files: string[], scope?: Set<string>): boolean {
+  if (!scope) return true;
+  return files.some((file) => scope.has(file));
 }
 
 async function readBaseline(root: string): Promise<BaselineFile | undefined> {

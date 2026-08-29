@@ -6,9 +6,20 @@ import { groupFindings } from "./group.js";
 import { scoreNode } from "./score.js";
 import type { CleanupNode, CleanupPlan, FindingGroup, PlanEdge } from "./types.js";
 
-export function buildPlan(root: string, findings: Finding[]): CleanupPlan {
+export function buildPlan(
+  root: string,
+  findings: Finding[],
+  reviewState?: { needsReview?: ReadonlySet<string> },
+): CleanupPlan {
   const groups = groupFindings(findings);
   const byFingerprint = new Map(findings.map((finding) => [finding.fingerprint, finding]));
+  const needsReview =
+    reviewState?.needsReview ??
+    new Set(
+      findings
+        .filter((finding) => finding.detectionMode !== "deterministic")
+        .map((finding) => finding.fingerprint),
+    );
   const prereq = prerequisiteMap(groups, byFingerprint);
   const dependents = invert(prereq);
   const indirect = indirectMap(groups, byFingerprint);
@@ -43,7 +54,7 @@ export function buildPlan(root: string, findings: Finding[]): CleanupPlan {
       rescanAfter,
       mayResolveIndirectly: indirect.get(group.id) ?? [],
       priorityScore: 0,
-      state: prerequisiteNodeIds.length === 0 ? "ready" : "blocked",
+      state: nodeState(group.fingerprints, prerequisiteNodeIds.length, needsReview),
     };
   });
 
@@ -78,7 +89,19 @@ export function buildPlan(root: string, findings: Finding[]): CleanupPlan {
     edges,
     readyNodeIds: nodes.filter((node) => node.state === "ready").map((node) => node.id),
     blockedNodeIds: nodes.filter((node) => node.state === "blocked").map((node) => node.id),
+    needsReviewNodeIds: nodes.filter((node) => node.state === "needs_review").map((node) => node.id),
   };
+}
+
+function nodeState(
+  fingerprints: string[],
+  prerequisiteCount: number,
+  needsReview: ReadonlySet<string>,
+): CleanupNode["state"] {
+  if (fingerprints.length > 0 && fingerprints.every((fingerprint) => needsReview.has(fingerprint))) {
+    return "needs_review";
+  }
+  return prerequisiteCount === 0 ? "ready" : "blocked";
 }
 
 function prerequisiteMap(

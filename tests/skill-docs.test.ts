@@ -12,7 +12,7 @@ const reference = join(
   dirname(fileURLToPath(import.meta.url)),
   "..",
   "skills",
-  "backend-maintainability",
+  "coherent",
   "reference",
 );
 
@@ -42,6 +42,7 @@ describe("generated skill docs", () => {
       "prevention.md",
       "plan.md",
       "fix.md",
+      "install.md",
     ];
     for (const file of files) {
       const text = await readFile(join(reference, file), "utf8");
