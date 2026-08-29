@@ -4,7 +4,8 @@ Maintainability guidance and tooling for backend and large AI-built codebases.
 
 Coherent helps a coding agent understand the architecture that is actually in use, find code and concepts that have drifted, choose a safe cleanup order, and keep new work from adding more debt.
 
-> Quick start: install the skill and CLI from your project root, then run `/coherent init` in your coding tool.
+> Quick start: install the skill and CLI from your project root, then invoke
+> `$coherent init` in Codex or `/coherent init` in Cursor.
 
 ## Install
 
@@ -15,16 +16,22 @@ npx skills add sethmgibson/coherent
 pnpm add --save-dev github:sethmgibson/coherent
 ```
 
-Restart your coding tool so it discovers the skill. The core skill is provider-neutral; Coherent's optional hook and project-rule installer currently targets Cursor.
+Restart your coding tool so it discovers the skill. The core skill follows the
+open agent skills format and works with Codex and Cursor. This repository also
+checks in discovery adapters for both tools: `.agents/skills/coherent` for Codex
+and `.cursor/skills/coherent` for Cursor. Coherent's optional hook and
+project-rule installer currently targets Cursor; the Git hook is
+provider-independent.
 
 ## Use it
 
-Start with three commands:
+Start with three skill requests. Codex uses `$coherent`; Cursor uses
+`/coherent`:
 
 ```text
-/coherent init
-/coherent audit
-/coherent fix next
+$coherent init
+$coherent audit
+$coherent fix next
 ```
 
 - `init` records the repository's living architecture so later work has context.
@@ -34,13 +41,13 @@ Start with three commands:
 For an existing codebase, record today's debt once so future changes can be judged separately:
 
 ```text
-/coherent baseline
+$coherent baseline
 ```
 
 After ordinary feature work, check only what changed:
 
 ```text
-/coherent check --changed
+$coherent check --changed
 ```
 
 The CLI is also available through the project-local package:
@@ -67,17 +74,18 @@ Some findings can be proven mechanically. Others require judgment about meaning,
 
 | Command | What it does |
 |---|---|
-| `/coherent init` | Inventory the repository and create durable architecture context |
-| `/coherent refresh` | Refresh discovered facts without overwriting confirmed architecture notes |
-| `/coherent audit` | Run deterministic checks and guide semantic investigation |
-| `/coherent review` | Confirm, dismiss, or defer findings; batch many decisions with `review apply` |
-| `/coherent baseline` | Record existing debt so it does not block adoption |
-| `/coherent plan` | Build a dependency-aware cleanup plan |
-| `/coherent fix next` | Select one safe, unblocked cleanup |
-| `/coherent check --changed` | Report new and resolved debt in the current change |
-| `/coherent doctor` | Check project-state integrity quickly; add `--deep` to verify reviews against a fresh audit |
+| `$coherent init` | Inventory the repository and create durable architecture context |
+| `$coherent refresh` | Refresh discovered facts without overwriting confirmed architecture notes |
+| `$coherent audit` | Run deterministic checks and guide semantic investigation |
+| `$coherent review` | Confirm, dismiss, or defer findings; batch many decisions with `review apply` |
+| `$coherent baseline` | Record existing debt so it does not block adoption |
+| `$coherent plan` | Build a dependency-aware cleanup plan |
+| `$coherent fix next` | Select one safe, unblocked cleanup |
+| `$coherent check --changed` | Report new and resolved debt in the current change |
+| `$coherent doctor` | Check project-state integrity quickly; add `--deep` to verify reviews against a fresh audit |
 
-Type `/coherent` without a command to get the recommended next step.
+In Codex, mention `$coherent` without a command to get the recommended next
+step. In Cursor, use `/coherent` for the same requests.
 
 ## How cleanup is ordered
 
@@ -108,7 +116,7 @@ When reviewing several findings, send a JSON array to `coherent review apply`. C
 
 TypeScript analysis reads repository tsconfigs, including inherited compiler options, path aliases, and the owning child config in project-reference workspaces. Resolution stays in memory; Coherent does not generate a synthetic tsconfig or cache.
 
-Optional Cursor and Git integrations are also zero-install by default. Select only what you want, for example `coherent install --rule`, `--cursor-hook`, or `--git-hook`; use `--adapter` only when the coding tool needs a project-local adapter.
+Optional Cursor and Git integrations are also zero-install by default. Select only what you want, for example `coherent install --rule`, `--cursor-hook`, or `--git-hook`; use `--adapter` only when Cursor needs a project-local adapter. Codex discovers repo-scoped skills from `.agents/skills`, so it does not require the Cursor adapter command.
 
 ## Technical details
 

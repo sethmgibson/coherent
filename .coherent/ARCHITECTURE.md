@@ -36,7 +36,7 @@ Detected frameworks:
 
 Languages: TypeScript
 
-Approximate size: 140 files, 9790 source lines.
+Approximate size: 142 files, 9810 source lines.
 
 Dependencies: 2 runtime, 4 development.
 <!-- /coherent:discovered -->
@@ -71,6 +71,7 @@ generic tiers:
 - `src/config.ts` — optional `coherent.json` and `.coherent` filenames (`BACKEND_DIR` is a deprecated alias for `COHERENT_DIR`)
 - `src/state-dir.ts` — resolves `.coherent/` vs leftover `.backend/` during one release
 - `skills/coherent/` — provider-neutral skill; taxonomy and phase markdown are generated from the catalog
+- `.agents/skills/coherent` — Codex discovery adapter; not a second methodology
 - `.cursor/skills/coherent` — Cursor adapter only; not a second methodology. `.cursor/skills/backend` is a skill alias.
 
 <!-- coherent:discovered -->
@@ -114,7 +115,8 @@ Observed top-level modules:
 > Status: confirmed
 
 - Use **Coherent** for the project and `coherent` for the CLI binary.
-- Use **coherent** for the skill namespace (`/coherent init`). `backend` remains a CLI and Cursor skill alias.
+- Use **coherent** for the skill namespace (`$coherent init` in Codex,
+  `/coherent init` in Cursor). `backend` remains a CLI and Cursor skill alias.
 - Use **rule** and **rule ID**, not "antipattern" or "lint".
 - Use **finding**, not "violation" or "diagnostic".
 - Use **detection mode** (`deterministic` | `semantic` | `hybrid`).
@@ -164,9 +166,11 @@ Observed top-level modules:
 > Status: confirmed
 
 No remote services. The canonical agent integration is the provider-neutral
-skill in `skills/coherent/`. `.cursor/skills/coherent` is a
-thin Cursor adapter. `.cursor/skills/backend` is an alias. `coherent
-install` is Cursor-first. There is no multi-provider install pipeline.
+skill in `skills/coherent/`. `.agents/skills/coherent` and
+`.cursor/skills/coherent` are thin Codex and Cursor discovery adapters.
+`.cursor/skills/backend` is an alias. `coherent install` remains Cursor-first
+because Codex uses standard `.agents/skills` discovery. There is no
+multi-provider install pipeline.
 
 ## Persistence boundaries
 

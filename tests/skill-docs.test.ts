@@ -15,6 +15,7 @@ const reference = join(
   "coherent",
   "reference",
 );
+const repoRoot = join(reference, "..", "..", "..");
 
 describe("generated skill docs", () => {
   it("keeps taxonomy.md in sync with the catalog", async () => {
@@ -48,5 +49,24 @@ describe("generated skill docs", () => {
       const text = await readFile(join(reference, file), "utf8");
       expect(text.length).toBeGreaterThan(40);
     }
+  });
+
+  it("keeps Codex and Cursor adapters pointed at the canonical skill", async () => {
+    const canonical = await readFile(join(repoRoot, "skills", "coherent", "SKILL.md"), "utf8");
+    expect(canonical).toMatch(/^---\nname: coherent\n/);
+
+    const codex = await readFile(
+      join(repoRoot, ".agents", "skills", "coherent", "SKILL.md"),
+      "utf8",
+    );
+    expect(codex).toMatch(/^---\nname: coherent\n/);
+    expect(codex).toContain("../../../skills/coherent/SKILL.md");
+
+    const cursor = await readFile(
+      join(repoRoot, ".cursor", "skills", "coherent", "SKILL.md"),
+      "utf8",
+    );
+    expect(cursor).toMatch(/^---\nname: coherent\n/);
+    expect(cursor).toContain("skills/coherent/SKILL.md");
   });
 });

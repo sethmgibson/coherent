@@ -1,6 +1,10 @@
 # `install` / `update`
 
-Install optional Cursor or Git integrations. Coherent itself works without this command. Provider generation beyond Cursor is out of scope.
+Install optional Cursor or Git integrations. Coherent itself works without this
+command. Codex loads the provider-neutral skill through the standard skill
+installer or a repo-scoped `.agents/skills/coherent` adapter, so it does not
+need a generated editor integration here. Provider-specific generation beyond
+Cursor is out of scope.
 
 ```bash
 coherent install
@@ -22,4 +26,6 @@ With no flags, `install` and `update` write nothing. They share the same safe co
 
 Hooks run `coherent check --changed` only after a baseline exists. Full `audit` stays explicit.
 
-The adapter is not a second methodology. Load `skills/coherent/SKILL.md` from the installed package.
+The Cursor adapter is not a second methodology. Load
+`skills/coherent/SKILL.md` from the installed package. The checked-in Codex
+adapter at `.agents/skills/coherent/SKILL.md` follows the same rule.

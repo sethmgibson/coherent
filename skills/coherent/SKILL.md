@@ -7,6 +7,8 @@ Coherent is maintainability tooling for backend and large AI-built codebases. Ar
 
 This skill is provider-neutral. The coding agent does semantic reasoning from repository context, deterministic findings, these instructions, and targeted inspection. There is no hosted LLM service.
 
+In Codex, explicit invocation is `$coherent`. In Cursor, it is `/coherent`.
+
 Work through one skill. Do not invent extra skills or a parallel methodology.
 
 ## Artifact policy
@@ -65,7 +67,7 @@ A successful audit result may be: "Superficially similar but intentionally diffe
 | `plan` | Build the cleanup DAG in memory from findings and decisions | [reference/cleanup-planning.md](reference/cleanup-planning.md), [reference/plan.md](reference/plan.md) |
 | `fix next` | Select and perform one unlocked cleanup node | [reference/fix-safety.md](reference/fix-safety.md), [reference/fix.md](reference/fix.md) |
 | `check` | Compare a fresh audit to the baseline; `--changed` scopes to the git diff | [reference/check.md](reference/check.md), [reference/prevention.md](reference/prevention.md) |
-| `install` | Install only explicitly selected Cursor or Git integrations | [reference/install.md](reference/install.md) |
+| `install` | Install only explicitly selected Cursor or Git integrations; Codex skill discovery is handled by the standard skill installer or `.agents/skills` | [reference/install.md](reference/install.md) |
 | `update` | Refresh those copied files without overwriting user edits | [reference/install.md](reference/install.md) |
 | `doctor` | Read-only state check; use `--deep` when current-finding review validation is needed | [reference/semantic-audits.md](reference/semantic-audits.md) |
 

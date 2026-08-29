@@ -22,4 +22,4 @@ It fills only what inventory can know: packages, frameworks, source and test dir
 
 ## Semantic step
 
-Follow [architecture-analysis.md](architecture-analysis.md). Write confirmed facts. Label inferences. Recommend `/coherent audit` next, then `baseline` before destructive cleanup.
+Follow [architecture-analysis.md](architecture-analysis.md). Write confirmed facts. Label inferences. Recommend `audit` next, then `baseline` before destructive cleanup.
