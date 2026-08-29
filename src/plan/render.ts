@@ -9,6 +9,7 @@ export function renderPlan(plan: CleanupPlan): string {
     "Coherent cleanup plan",
     `Root: ${plan.root}`,
     `Nodes: ${plan.nodes.length}  Ready: ${ready.length}  Needs review: ${needsReview.length}  Blocked: ${blocked.length}`,
+    ...(plan.reviewSummary ? [renderReviewSummary(plan.reviewSummary)] : []),
     "",
     "The DAG is authoritative. Default phases break ties when dependencies are equal.",
     "Hybrid and semantic findings stay in needs_review until `coherent review confirm`.",
@@ -43,11 +44,15 @@ export function renderPlan(plan: CleanupPlan): string {
   }
 
   if (plan.nodes.length === 0) {
-    lines.push("No cleanup nodes. Run `coherent audit` first, or the repository is clean.");
+    lines.push("No cleanup nodes. The reviewed plan is clean even if raw audit signals remain.");
   } else {
     lines.push("Next step: `coherent fix next` selects one unlocked node. Do not rewrite the tree wholesale.");
   }
   return `${lines.join("\n")}\n`;
+}
+
+function renderReviewSummary(summary: NonNullable<CleanupPlan["reviewSummary"]>): string {
+  return `Signals: ${summary.detected}  Dismissed: ${summary.dismissed}  Confirmed: ${summary.confirmed}  Deferred: ${summary.deferred}  Awaiting review: ${summary.awaitingReview}`;
 }
 
 function renderNode(node: CleanupNode): string[] {

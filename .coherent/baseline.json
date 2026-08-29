@@ -2,8 +2,8 @@
   "schemaVersion": 1,
   "coherentVersion": "0.1.0",
   "fingerprintVersion": 2,
-  "detectorRevision": 3,
-  "createdAt": "2026-08-29T07:05:38.039Z",
+  "detectorRevision": 4,
+  "createdAt": "2026-08-29T07:46:48.922Z",
   "findings": [
     {
       "fingerprint": "20ff585611cc01ae46baddc5585ed07a0543d116aa738d659793b21d1b90acea",
@@ -172,37 +172,6 @@
       ]
     },
     {
-      "fingerprint": "a6868fbc9e838e1fca03a56d5d570f6955eee21b1cee07c1197d0c9e0ec39d79",
-      "ruleId": "B04",
-      "identity": "forwarding:src/domain/finding.ts:isRuleId",
-      "title": "Forwarding wrapper",
-      "detectionMode": "hybrid",
-      "status": "confirmed",
-      "severity": "medium",
-      "files": [
-        "src/domain/finding.ts"
-      ],
-      "symbols": [
-        "(RULE_IDS as readonly string[]).includes",
-        "isRuleId"
-      ]
-    },
-    {
-      "fingerprint": "f782c03d9b33a0fefa58439ee12cfbc324726ee48a1d19aaa318cde176237354",
-      "ruleId": "E05",
-      "identity": "seq-await:src/cli.ts:writeJsonOutput",
-      "title": "Sequential awaits",
-      "detectionMode": "hybrid",
-      "status": "candidate",
-      "severity": "medium",
-      "files": [
-        "src/cli.ts"
-      ],
-      "symbols": [
-        "writeJsonOutput"
-      ]
-    },
-    {
       "fingerprint": "4cbd3cafffc89e74b67ae36787e3ff6751c9f0acd4706b5c54d022169f56ca64",
       "ruleId": "E05",
       "identity": "await-in-loop:src/inventory-scan.ts:readPackages",
@@ -248,36 +217,6 @@
       ]
     },
     {
-      "fingerprint": "45b929d4099f656cf6dbcd8b47efc9244c776a055df873c4fbf67478ddd30ec4",
-      "ruleId": "E05",
-      "identity": "seq-await:src/inventory.ts:collectInventory",
-      "title": "Sequential awaits",
-      "detectionMode": "hybrid",
-      "status": "candidate",
-      "severity": "medium",
-      "files": [
-        "src/inventory.ts"
-      ],
-      "symbols": [
-        "collectInventory"
-      ]
-    },
-    {
-      "fingerprint": "0f16cf969c44dabafd7ba873a84400e5bc0a62f3a1402a9152ac8ae268c0c13b",
-      "ruleId": "E05",
-      "identity": "seq-await:src/review/store.ts:readDecisions",
-      "title": "Sequential awaits",
-      "detectionMode": "hybrid",
-      "status": "candidate",
-      "severity": "medium",
-      "files": [
-        "src/review/store.ts"
-      ],
-      "symbols": [
-        "readDecisions"
-      ]
-    },
-    {
       "fingerprint": "b719addca1b24de1dcf0ad9015bd2b837b84c46f9307571b42046ba575d791d2",
       "ruleId": "E05",
       "identity": "seq-await:src/review/store.ts:writeDecisions",
@@ -293,100 +232,10 @@
       ]
     },
     {
-      "fingerprint": "00745336b6769ee5aa25c84bf57096b8590a64249a750e39e4495456b96e57c6",
-      "ruleId": "E05",
-      "identity": "seq-await:src/plan/run.ts:runPlan",
-      "title": "Sequential awaits",
-      "detectionMode": "hybrid",
-      "status": "candidate",
-      "severity": "medium",
-      "files": [
-        "src/plan/run.ts"
-      ],
-      "symbols": [
-        "runPlan"
-      ]
-    },
-    {
-      "fingerprint": "b4efe76fe049e7300e4055a497438a1a880daeaa4a2b6e650c2e049446939790",
-      "ruleId": "E05",
-      "identity": "seq-await:src/install/copy.ts:writeManagedFile",
-      "title": "Sequential awaits",
-      "detectionMode": "hybrid",
-      "status": "candidate",
-      "severity": "medium",
-      "files": [
-        "src/install/copy.ts"
-      ],
-      "symbols": [
-        "writeManagedFile"
-      ]
-    },
-    {
-      "fingerprint": "b34023f82008092ce0e6048ed196d1c1690883b81fed90748205d4aa8290edeb",
-      "ruleId": "E05",
-      "identity": "seq-await:src/install/copy.ts:writeText",
-      "title": "Sequential awaits",
-      "detectionMode": "hybrid",
-      "status": "candidate",
-      "severity": "medium",
-      "files": [
-        "src/install/copy.ts"
-      ],
-      "symbols": [
-        "writeText"
-      ]
-    },
-    {
-      "fingerprint": "c0acc4e2cc0088c473e01769328b80414c5865c740d11cf719af8c726a02d1c6",
-      "ruleId": "E05",
-      "identity": "seq-await:src/install/hooks.ts:writeScript",
-      "title": "Sequential awaits",
-      "detectionMode": "hybrid",
-      "status": "candidate",
-      "severity": "medium",
-      "files": [
-        "src/install/hooks.ts"
-      ],
-      "symbols": [
-        "writeScript"
-      ]
-    },
-    {
-      "fingerprint": "9f511d14641258259733bd4c4371001d959f8260cec35ef16c34809bd288b833",
-      "ruleId": "E05",
-      "identity": "seq-await:src/install/hooks.ts:mergeCursorHooksJson",
-      "title": "Sequential awaits",
-      "detectionMode": "hybrid",
-      "status": "candidate",
-      "severity": "medium",
-      "files": [
-        "src/install/hooks.ts"
-      ],
-      "symbols": [
-        "mergeCursorHooksJson"
-      ]
-    },
-    {
       "fingerprint": "9faab7f82c2571955710975fb9acd7006db30a505e4565dd212b27550635c244",
       "ruleId": "E05",
       "identity": "await-in-loop:src/install/run.ts:runInstall",
       "title": "Await inside a loop",
-      "detectionMode": "hybrid",
-      "status": "candidate",
-      "severity": "medium",
-      "files": [
-        "src/install/run.ts"
-      ],
-      "symbols": [
-        "runInstall"
-      ]
-    },
-    {
-      "fingerprint": "6a4d1cb3a1e813c3aa21555fa1529f0681e1a48394947645304c8c6e68be94ba",
-      "ruleId": "E05",
-      "identity": "seq-await:src/install/run.ts:runInstall",
-      "title": "Sequential awaits",
       "detectionMode": "hybrid",
       "status": "candidate",
       "severity": "medium",
@@ -443,21 +292,6 @@
       ]
     },
     {
-      "fingerprint": "746177e20e5e414040e3af2fae415c6457aa6d95ad5d5fa9555746a59545778d",
-      "ruleId": "E05",
-      "identity": "seq-await:src/check/changed-files.ts:listChangedNames",
-      "title": "Sequential awaits",
-      "detectionMode": "hybrid",
-      "status": "candidate",
-      "severity": "medium",
-      "files": [
-        "src/check/changed-files.ts"
-      ],
-      "symbols": [
-        "listChangedNames"
-      ]
-    },
-    {
       "fingerprint": "3bad6c90fbb69f05e3e27cba3dee5aad9374a8bd3d43672d245629d7fdbe25c4",
       "ruleId": "E05",
       "identity": "await-in-loop:src/check/importers.ts:expandWithImporters",
@@ -473,21 +307,6 @@
       ]
     },
     {
-      "fingerprint": "e0503b2cfb922febc10a5e2176abdd4893d47de15724390528f261b709ad0435",
-      "ruleId": "E05",
-      "identity": "seq-await:src/check/run.ts:runCheck",
-      "title": "Sequential awaits",
-      "detectionMode": "hybrid",
-      "status": "candidate",
-      "severity": "medium",
-      "files": [
-        "src/check/run.ts"
-      ],
-      "symbols": [
-        "runCheck"
-      ]
-    },
-    {
       "fingerprint": "2ae8fce8d55a51a764c8cd34d3eeae649cc8746acd814e6802ef3954cf18a0e1",
       "ruleId": "E05",
       "identity": "seq-await:src/baseline/run.ts:runBaseline",
@@ -500,22 +319,6 @@
       ],
       "symbols": [
         "runBaseline"
-      ]
-    },
-    {
-      "fingerprint": "7f519bbe16a3d20fcb6eac8f0535f7dbd36b583166dcfd422f507984322b9c23",
-      "ruleId": "E06",
-      "identity": "loop-find:src/plan/build.ts:buildPlan",
-      "title": "Collection .find() inside a loop",
-      "detectionMode": "hybrid",
-      "status": "candidate",
-      "severity": "medium",
-      "files": [
-        "src/plan/build.ts"
-      ],
-      "symbols": [
-        "buildPlan",
-        "find"
       ]
     },
     {
@@ -577,37 +380,6 @@
       ],
       "symbols": [
         "indirectMap",
-        "some"
-      ]
-    },
-    {
-      "fingerprint": "acc6adaeb8bc02defb8cb9872313bd2e01a06e26d2d78ba719cc5ee5f9c17aaf",
-      "ruleId": "E06",
-      "identity": "nested-loop:src/plan/build.ts:invert",
-      "title": "Nested collection iteration",
-      "detectionMode": "hybrid",
-      "status": "candidate",
-      "severity": "medium",
-      "files": [
-        "src/plan/build.ts"
-      ],
-      "symbols": [
-        "invert"
-      ]
-    },
-    {
-      "fingerprint": "e75bbe2f24a8ebbac0bd4521b3131d8f8ed063bb1bd06aa051dc7ecbfce4ca68",
-      "ruleId": "E06",
-      "identity": "loop-some:src/doctor/run.ts:checkDecisions",
-      "title": "Collection .some() inside a loop",
-      "detectionMode": "hybrid",
-      "status": "candidate",
-      "severity": "medium",
-      "files": [
-        "src/doctor/run.ts"
-      ],
-      "symbols": [
-        "checkDecisions",
         "some"
       ]
     },
@@ -894,21 +666,6 @@
       "symbols": [
         "competingConcepts",
         "sort"
-      ]
-    },
-    {
-      "fingerprint": "641e4f0f9c92bf72eb9386a4a17c6d77a1895d56d5aa89e7335b39aabb74633e",
-      "ruleId": "E06",
-      "identity": "nested-loop:src/audit/render.ts:renderAudit",
-      "title": "Nested collection iteration",
-      "detectionMode": "hybrid",
-      "status": "candidate",
-      "severity": "medium",
-      "files": [
-        "src/audit/render.ts"
-      ],
-      "symbols": [
-        "renderAudit"
       ]
     },
     {

@@ -1,7 +1,10 @@
+import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { runAudit } from "../audit/run.js";
+import { baselinePath, isBaselineStale, type BaselineFile } from "../baseline/run.js";
 import { DETECTOR_REVISION, FINGERPRINT_VERSION } from "../config.js";
 import type { Finding } from "../domain/finding.js";
+import { classifyReview } from "./apply.js";
 import { decisionsPath, readDecisions, writeDecisions } from "./store.js";
 import {
   REVIEW_DECISIONS,
@@ -23,6 +26,13 @@ export interface ReviewResult {
 export interface ReviewBatchResult {
   reviews: FindingReview[];
   decisionsPath: string;
+}
+
+export interface ReviewPruneResult {
+  removable: FindingReview[];
+  retained: FindingReview[];
+  decisionsPath: string;
+  wrote: boolean;
 }
 
 export async function runReview(
@@ -79,16 +89,44 @@ export async function runReviewBatch(
   return { reviews, decisionsPath: decisionsPath(resolved) };
 }
 
+export async function runReviewPrune(
+  root: string,
+  write = false,
+): Promise<ReviewPruneResult> {
+  const resolved = resolve(root);
+  const [audit, decisions, baselineFingerprints] = await Promise.all([
+    runAudit(resolved),
+    readDecisions(resolved),
+    currentBaselineFingerprints(resolved),
+  ]);
+  const known = [...audit.findings, ...decisions.findings];
+  const removable: FindingReview[] = [];
+  const retained: FindingReview[] = [];
+  for (const review of decisions.reviews) {
+    const match = classifyReview(review, known);
+    const resolvedHistory = match === "orphan" && baselineFingerprints.has(review.fingerprint);
+    if (match === "applied" || resolvedHistory) retained.push(review);
+    else removable.push(review);
+  }
+  if (write && removable.length > 0) {
+    await writeDecisions(resolved, { ...decisions, reviews: retained });
+  }
+  return {
+    removable,
+    retained,
+    decisionsPath: decisionsPath(resolved),
+    wrote: write && removable.length > 0,
+  };
+}
+
 export function parseReviewRequests(raw: unknown): ReviewRequest[] {
   if (!Array.isArray(raw)) throw new Error("Review batch input must be a JSON array.");
-  return raw.map((item, index) => {
+  return raw.flatMap((item, index) => {
     if (!item || typeof item !== "object" || Array.isArray(item)) {
       throw new Error(`Review batch item ${index + 1} must be an object.`);
     }
     const record = item as Record<string, unknown>;
-    if (typeof record.fingerprint !== "string" || !record.fingerprint.trim()) {
-      throw new Error(`Review batch item ${index + 1} is missing fingerprint.`);
-    }
+    const fingerprints = reviewFingerprints(record, index);
     if (
       typeof record.decision !== "string" ||
       !(REVIEW_DECISIONS as readonly string[]).includes(record.decision)
@@ -100,12 +138,30 @@ export function parseReviewRequests(raw: unknown): ReviewRequest[] {
     if (typeof record.reason !== "string" || !record.reason.trim()) {
       throw new Error(`Review batch item ${index + 1} is missing reason.`);
     }
-    return {
-      fingerprint: record.fingerprint.trim(),
+    const reason = record.reason.trim();
+    return fingerprints.map((fingerprint) => ({
+      fingerprint,
       decision: record.decision as ReviewDecision,
-      reason: record.reason.trim(),
-    };
+      reason,
+    }));
   });
+}
+
+function reviewFingerprints(record: Record<string, unknown>, index: number): string[] {
+  const single = typeof record.fingerprint === "string" && record.fingerprint.trim()
+    ? [record.fingerprint.trim()]
+    : [];
+  const grouped = Array.isArray(record.fingerprints)
+    ? record.fingerprints.map((value) => typeof value === "string" ? value.trim() : "")
+    : [];
+  if (single.length > 0 && grouped.length > 0) {
+    throw new Error(`Review batch item ${index + 1} must use fingerprint or fingerprints, not both.`);
+  }
+  const fingerprints = single.length > 0 ? single : grouped;
+  if (fingerprints.length === 0 || fingerprints.some((value) => !value)) {
+    throw new Error(`Review batch item ${index + 1} is missing fingerprint or fingerprints.`);
+  }
+  return fingerprints;
 }
 
 function resolveFinding(findings: Finding[], fingerprint: string): Finding | undefined {
@@ -136,4 +192,17 @@ function toReview(finding: Finding, request: ReviewRequest): FindingReview {
       ? { authoritativeConcept: finding.authoritativeConcept }
       : {}),
   };
+}
+
+async function currentBaselineFingerprints(root: string): Promise<Set<string>> {
+  try {
+    const baseline = JSON.parse(await readFile(baselinePath(root), "utf8")) as BaselineFile;
+    if (!baseline || !Array.isArray(baseline.findings) || isBaselineStale(baseline)) {
+      return new Set();
+    }
+    return new Set(baseline.findings.map((finding) => finding.fingerprint));
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return new Set();
+    throw error;
+  }
 }

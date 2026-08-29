@@ -58,10 +58,11 @@ export function buildPlan(
     };
   });
 
-  for (const node of nodes) {
+  for (const [index, node] of nodes.entries()) {
+    const group = groups[index]!;
     node.priorityScore = scoreNode({
-      group: groups.find((group) => group.id === node.id) ?? groups[0]!,
-      findings: fingerprintsOf(groups.find((group) => group.id === node.id) ?? groups[0]!, byFingerprint),
+      group,
+      findings: fingerprintsOf(group, byFingerprint),
       prerequisiteCount: node.prerequisiteNodeIds.length,
       dependentCount: dependents.get(node.id)?.size ?? 0,
       rescanCount: node.rescanAfter.length,

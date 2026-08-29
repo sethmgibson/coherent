@@ -1,4 +1,4 @@
-import { cp, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -78,6 +78,36 @@ describe("fingerprints, baseline, and check", () => {
       baseline.detectorRevision = 99;
       await writeFile(path, `${JSON.stringify(baseline, null, 2)}\n`, "utf8");
       await expect(runCheck(root)).rejects.toThrow(/Re-run `coherent baseline`/);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it("leaves an equivalent baseline byte-for-byte unchanged", async () => {
+    const root = await mkdtemp(join(tmpdir(), "coherent-baseline-idempotent-"));
+    await cp(scannerFixture, root, { recursive: true });
+    try {
+      const first = await runBaseline(root);
+      const before = await readFile(first.baselinePath, "utf8");
+      const second = await runBaseline(root);
+      expect(first.wroteBaseline).toBe(true);
+      expect(second.wroteBaseline).toBe(false);
+      expect(second.baseline.createdAt).toBe(first.baseline.createdAt);
+      expect(await readFile(second.baselinePath, "utf8")).toBe(before);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it("does not overwrite a malformed baseline as if it were absent", async () => {
+    const root = await mkdtemp(join(tmpdir(), "coherent-baseline-invalid-"));
+    await cp(scannerFixture, root, { recursive: true });
+    try {
+      const state = join(root, ".coherent");
+      await mkdir(state, { recursive: true });
+      await writeFile(join(state, "baseline.json"), "{not json}\n", "utf8");
+      await expect(runBaseline(root)).rejects.toThrow();
+      expect(await readFile(join(state, "baseline.json"), "utf8")).toBe("{not json}\n");
     } finally {
       await rm(root, { recursive: true, force: true });
     }

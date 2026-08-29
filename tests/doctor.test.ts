@@ -4,6 +4,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { runDoctor } from "../src/doctor/run.js";
+import { artifactVersions, DETECTOR_REVISION, FINGERPRINT_VERSION } from "../src/config.js";
 import { createFinding } from "../src/domain/finding.js";
 import { runInit } from "../src/init/run.js";
 
@@ -133,6 +134,47 @@ describe("doctor", () => {
       expect(stale).toHaveLength(1);
       expect(stale[0]?.message).toMatch(/detectorRevision 99/);
       expect(result.issues.some((issue) => issue.code === "orphan-review")).toBe(false);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it("retains baseline-backed reviews after their finding is resolved", async () => {
+    const root = await seededRoot();
+    try {
+      const state = join(root, ".coherent");
+      const fingerprint = "resolved-fingerprint";
+      await writeFile(
+        join(state, "baseline.json"),
+        `${JSON.stringify({
+          ...artifactVersions(),
+          createdAt: "2026-01-01T00:00:00.000Z",
+          findings: [{ fingerprint }],
+        }, null, 2)}\n`,
+        "utf8",
+      );
+      await writeFile(
+        join(state, "decisions.json"),
+        `${JSON.stringify({
+          schemaVersion: 1,
+          reviews: [{
+            fingerprint,
+            ruleId: "E06",
+            identity: "loop-find:src/old.ts:resolvedWork",
+            decision: "confirmed",
+            reason: "Fixed after review.",
+            reviewedAt: "2026-01-01T00:00:00.000Z",
+            fingerprintVersion: FINGERPRINT_VERSION,
+            detectorRevision: DETECTOR_REVISION,
+          }],
+          findings: [],
+        }, null, 2)}\n`,
+        "utf8",
+      );
+
+      const result = await runDoctor(root, { deep: true });
+      expect(result.issues.some((issue) => issue.code === "orphan-review")).toBe(false);
+      expect(result.ok).toBe(true);
     } finally {
       await rm(root, { recursive: true, force: true });
     }

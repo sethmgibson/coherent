@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { readFile, readdir } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
@@ -44,6 +44,7 @@ describe("generated skill docs", () => {
       "plan.md",
       "fix.md",
       "install.md",
+      "full-cleanup.md",
     ];
     for (const file of files) {
       const text = await readFile(join(reference, file), "utf8");
@@ -69,4 +70,29 @@ describe("generated skill docs", () => {
     expect(cursor).toMatch(/^---\nname: coherent\n/);
     expect(cursor).toContain("skills/coherent/SKILL.md");
   });
+
+  it("does not package nested discoverable skills", async () => {
+    const skillRoot = join(repoRoot, "skills", "coherent");
+    const nested = await nestedSkillFiles(skillRoot);
+    expect(nested).toEqual([]);
+    const template = await readFile(
+      join(skillRoot, "adapters", "cursor", "skill-template.md"),
+      "utf8",
+    );
+    expect(template).toMatch(/^---\nname: coherent\n/);
+  });
 });
+
+async function nestedSkillFiles(root: string): Promise<string[]> {
+  const found: string[] = [];
+  const stack = [root];
+  while (stack.length > 0) {
+    const current = stack.pop()!;
+    for (const entry of await readdir(current, { withFileTypes: true })) {
+      const path = join(current, entry.name);
+      if (entry.isDirectory()) stack.push(path);
+      else if (entry.name === "SKILL.md" && current !== root) found.push(path);
+    }
+  }
+  return found.sort();
+}

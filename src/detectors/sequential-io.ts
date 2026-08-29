@@ -4,6 +4,14 @@ import { locationOf } from "../analysis/inspect.js";
 import { makeFinding } from "../audit/finding-factory.js";
 import type { Finding } from "../domain/finding.js";
 
+interface AwaitDescription {
+  names: string[];
+  text: string;
+  uses: Set<string>;
+  callee?: string;
+  resource?: string;
+}
+
 export function detectSequentialIo(ctx: AnalysisContext): Finding[] {
   const findings: Finding[] = [];
   for (const file of ctx.sourceFiles) {
@@ -67,14 +75,14 @@ function reportIndependentAwaits(
   body: Node,
 ): void {
   const statements = Node.isBlock(body) ? body.getStatements() : [];
-  const sequence: { names: string[]; text: string; uses: Set<string> }[] = [];
+  const sequence: AwaitDescription[] = [];
   for (const statement of statements) {
     if (statement.getFirstDescendantByKind(SyntaxKind.AwaitExpression) === undefined) {
       if (sequence.length >= 2) flush(ctx, findings, relative, name, fn, sequence);
       sequence.length = 0;
       continue;
     }
-    if (inLoop(statement)) {
+    if (inLoop(statement) || isControlFlowStatement(statement)) {
       if (sequence.length >= 2) flush(ctx, findings, relative, name, fn, sequence);
       sequence.length = 0;
       continue;
@@ -90,17 +98,18 @@ function flush(
   relative: string,
   name: string,
   fn: Node,
-  sequence: { names: string[]; text: string; uses: Set<string> }[],
+  sequence: AwaitDescription[],
 ): void {
   const produced = new Set<string>();
   const relations: string[] = [];
   let independent = 0;
   let dependent = 0;
-  for (const item of sequence) {
+  for (const [index, item] of sequence.entries()) {
     const usesPrior = [...item.uses].some((ident) => produced.has(ident));
-    if (usesPrior) {
+    const effectOrdered = index > 0 && requiredEffectOrder(sequence[index - 1]!, item);
+    if (usesPrior || effectOrdered) {
       dependent += 1;
-      relations.push(`${item.text} — clearly dependent`);
+      relations.push(`${item.text} — ${effectOrdered ? "effect ordered" : "clearly dependent"}`);
     } else {
       independent += 1;
       relations.push(`${item.text} — likely independent`);
@@ -127,16 +136,14 @@ function flush(
   );
 }
 
-function describeAwaitStatement(statement: Node): {
-  names: string[];
-  text: string;
-  uses: Set<string>;
-} {
+function describeAwaitStatement(statement: Node): AwaitDescription {
   const names: string[] = [];
   if (Node.isVariableStatement(statement)) {
     for (const decl of statement.getDeclarations()) names.push(...bindingNames(decl));
   }
   const awaitExpr = statement.getFirstDescendantByKind(SyntaxKind.AwaitExpression);
+  const awaited = awaitExpr?.getExpression();
+  const call = awaited && Node.isCallExpression(awaited) ? awaited : undefined;
   const uses = new Set<string>();
   if (awaitExpr) {
     for (const ident of awaitExpr.getDescendantsOfKind(SyntaxKind.Identifier)) {
@@ -144,11 +151,47 @@ function describeAwaitStatement(statement: Node): {
     }
   }
   for (const name of names) uses.delete(name);
+  const callee = call?.getExpression().getText();
+  const resource = call?.getArguments()[0]?.getText();
   return {
     names,
     text: statement.getText().replace(/\s+/g, " ").trim().slice(0, 80),
     uses,
+    ...(callee ? { callee } : {}),
+    ...(resource ? { resource } : {}),
   };
+}
+
+function requiredEffectOrder(left: AwaitDescription, right: AwaitDescription): boolean {
+  const leftCall = simpleCallName(left.callee);
+  const rightCall = simpleCallName(right.callee);
+  if (leftCall === "mkdir" && rightCall === "writeFile" && left.resource && right.resource) {
+    return normalize(left.resource) === `dirname(${normalize(right.resource)})`;
+  }
+  if (leftCall === "writeFile" && rightCall === "chmod") {
+    return normalize(left.resource) === normalize(right.resource);
+  }
+  return false;
+}
+
+function simpleCallName(callee: string | undefined): string | undefined {
+  return callee?.match(/([A-Za-z_$][\w$]*)$/)?.[1];
+}
+
+function normalize(value: string | undefined): string {
+  return (value ?? "").replace(/\s+/g, "");
+}
+
+function isControlFlowStatement(node: Node): boolean {
+  return (
+    Node.isIfStatement(node) ||
+    Node.isTryStatement(node) ||
+    Node.isSwitchStatement(node) ||
+    Node.isForStatement(node) ||
+    Node.isForOfStatement(node) ||
+    Node.isForInStatement(node) ||
+    Node.isWhileStatement(node)
+  );
 }
 
 function bindingNames(decl: VariableDeclaration): string[] {

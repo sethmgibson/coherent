@@ -1,5 +1,5 @@
 import { execFile, spawn } from "node:child_process";
-import { cp, mkdtemp, readFile, readdir, rm } from "node:fs/promises";
+import { cp, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -82,6 +82,7 @@ describe("CLI", () => {
       const result = await runCli(["plan", root]);
       expect(result.code).toBe(0);
       expect(result.stdout).toMatch(/Coherent cleanup plan|READY|No cleanup nodes/);
+      expect(result.stdout).toMatch(/Signals: \d+.*Dismissed:/);
       await expect(readdir(join(root, ".coherent"))).rejects.toMatchObject({ code: "ENOENT" });
 
       const output = "artifacts/plan.json";
@@ -102,6 +103,18 @@ describe("CLI", () => {
       expect([0, 1]).toContain(result.code);
       expect(result.stdout).toMatch(/Coherent fix next|No unlocked cleanup node/);
       await expect(readdir(join(root, ".coherent"))).rejects.toMatchObject({ code: "ENOENT" });
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it("treats an empty reviewed plan as a successful fix-next terminal", async () => {
+    const root = await mkdtemp(join(tmpdir(), "coherent-fix-clean-"));
+    try {
+      await writeFile(join(root, "package.json"), '{"name":"clean"}\n', "utf8");
+      const result = await runCli(["fix", "next", root]);
+      expect(result.code).toBe(0);
+      expect(result.stdout).toMatch(/reviewed plan is clean/i);
     } finally {
       await rm(root, { recursive: true, force: true });
     }
@@ -159,6 +172,9 @@ describe("CLI", () => {
     const update = await runCli(["update", "--help"]);
     expect(update.code).toBe(0);
     expect(update.stdout).toMatch(/Refresh|adapter|edits/i);
+    const prune = await runCli(["review", "prune", "--help"]);
+    expect(prune.code).toBe(0);
+    expect(prune.stdout).toContain("--write");
   });
 
   it("runs audit without writing project state and supports explicit output", async () => {

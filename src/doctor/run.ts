@@ -25,8 +25,8 @@ export async function runDoctor(
   const issues: DoctorIssue[] = [];
   checkLegacyStateDir(root, issues);
   await checkArchitecture(root, issues);
-  await checkBaseline(root, issues);
-  await checkDecisions(root, issues, options.deep === true);
+  const baselineFingerprints = await checkBaseline(root, issues);
+  await checkDecisions(root, issues, options.deep === true, baselineFingerprints);
   return { issues, ok: issues.length === 0 };
 }
 
@@ -71,14 +71,15 @@ async function checkArchitecture(root: string, issues: DoctorIssue[]): Promise<v
   }
 }
 
-async function checkBaseline(root: string, issues: DoctorIssue[]): Promise<void> {
+async function checkBaseline(root: string, issues: DoctorIssue[]): Promise<Set<string>> {
   try {
     const raw = JSON.parse(await readFile(join(resolveStateDir(root).path, BASELINE_FILE), "utf8")) as BaselineFile;
     if (!raw || !Array.isArray(raw.findings)) {
       issues.push({ code: "baseline-versions", message: "baseline.json is invalid. Re-run `coherent baseline`." });
-      return;
+      return new Set();
     }
-    if (isBaselineStale(raw) || raw.schemaVersion === undefined) {
+    const stale = isBaselineStale(raw) || raw.schemaVersion === undefined;
+    if (stale) {
       issues.push({
         code: "baseline-versions",
         message: "Baseline is missing versions or they do not match this CLI. Re-run `coherent baseline`.",
@@ -92,8 +93,9 @@ async function checkBaseline(root: string, issues: DoctorIssue[]): Promise<void>
     }
     const fingerprints = raw.findings.map((entry) => entry.fingerprint);
     reportDuplicates(fingerprints, "baseline.json", issues);
+    return stale ? new Set() : new Set(fingerprints);
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") return;
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return new Set();
     throw error;
   }
 }
@@ -102,6 +104,7 @@ async function checkDecisions(
   root: string,
   issues: DoctorIssue[],
   deep: boolean,
+  baselineFingerprints: ReadonlySet<string>,
 ): Promise<void> {
   try {
     const decisions = await readDecisions(root);
@@ -110,13 +113,14 @@ async function checkDecisions(
       "decisions.json findings",
       issues,
     );
+    const semanticFingerprints = new Set(
+      decisions.findings
+        .filter((finding) => finding.detectionMode === "semantic")
+        .map((finding) => finding.fingerprint),
+    );
     const stale = new Set<string>();
     for (const review of decisions.reviews) {
-      const exactSemantic = decisions.findings.some(
-        (finding) =>
-          finding.detectionMode === "semantic" &&
-          finding.fingerprint === review.fingerprint,
-      );
+      const exactSemantic = semanticFingerprints.has(review.fingerprint);
       if (!exactSemantic && !hasCurrentDetectorRevision(review)) {
         stale.add(review.fingerprint);
         reportStaleReview(review, issues);
@@ -128,6 +132,7 @@ async function checkDecisions(
     for (const review of decisions.reviews) {
       const match = classifyReview(review, known);
       if (match === "orphan") {
+        if (baselineFingerprints.has(review.fingerprint)) continue;
         issues.push({
           code: "orphan-review",
           message: `Review ${review.decision} ${review.ruleId} ${review.identity} matches no current finding.`,

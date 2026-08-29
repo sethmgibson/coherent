@@ -60,6 +60,7 @@ describe("hybrid detectors on scanner-app", () => {
     expect(findingFor(hops, "persistCharge")?.status).toBe("confirmed");
     expect(findingFor(hops, "authorizeAndCharge")).toBeUndefined();
     expect(findingFor(hops, "validateThenWrite")).toBeUndefined();
+    expect(findingFor(hops, "isChargeId")).toBeUndefined();
   });
 
   it("C03 flags many booleans but not a two-flag toggle", async () => {
@@ -112,6 +113,8 @@ describe("hybrid detectors on scanner-app", () => {
     expect(findingFor(seq, "loadDashboard")?.evidence.summary).toMatch(/independent/i);
     expect(findingFor(seq, "loadThenUse")).toBeUndefined();
     expect(findingFor(seq, "loadUsersNPlusOne")?.identity).toMatch(/await-in-loop/);
+    expect(findingFor(seq, "writeJsonFile")).toBeUndefined();
+    expect(findingFor(seq, "writeWhenEnabled")).toBeUndefined();
 
     const algo = byRule(findings, "E06");
     expect(findingFor(algo, "matchItems")).toBeDefined();
@@ -119,6 +122,9 @@ describe("hybrid detectors on scanner-app", () => {
     expect(findingFor(algo, "nestedWalk")).toBeDefined();
     expect(findingFor(algo, "sortInside")).toBeDefined();
     expect(findingFor(algo, "linearScan")).toBeUndefined();
+    expect(findingFor(algo, "knownStatuses")).toBeUndefined();
+    expect(findingFor(algo, "derivedTupleLoop")).toBeUndefined();
     expect(algo.every((finding) => /probable complexity/i.test(finding.explanation))).toBe(true);
+    expect(algo.every((finding) => /input size/i.test(finding.evidence.details.join(" ")))).toBe(true);
   });
 });

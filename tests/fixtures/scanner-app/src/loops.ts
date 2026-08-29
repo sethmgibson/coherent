@@ -35,3 +35,21 @@ export function sortInside(groups: string[][]): string[][] {
 export function linearScan(items: string[]): string[] {
   return items.filter((item) => item.startsWith("a"));
 }
+
+const FIXED_STATUSES = ["ready", "blocked", "done"] as const;
+
+export function knownStatuses(values: string[]): string[] {
+  const found: string[] = [];
+  for (const value of values) {
+    if ((FIXED_STATUSES as readonly string[]).includes(value)) found.push(value);
+  }
+  return found;
+}
+
+export function derivedTupleLoop(values: string[][]): number {
+  let count = 0;
+  for (const [index, group] of values.entries()) {
+    for (const value of group) count += index + value.length;
+  }
+  return count;
+}

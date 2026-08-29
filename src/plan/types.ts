@@ -41,6 +41,16 @@ export interface CleanupPlan {
   readyNodeIds: string[];
   blockedNodeIds: string[];
   needsReviewNodeIds: string[];
+  reviewSummary?: PlanReviewSummary;
+}
+
+export interface PlanReviewSummary {
+  detected: number;
+  dismissed: number;
+  confirmed: number;
+  deferred: number;
+  awaitingReview: number;
+  cleanupNodes: number;
 }
 
 export interface FindingGroup {

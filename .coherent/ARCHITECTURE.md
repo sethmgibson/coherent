@@ -36,7 +36,7 @@ Detected frameworks:
 
 Languages: TypeScript
 
-Approximate size: 142 files, 9810 source lines.
+Approximate size: 143 files, 10291 source lines.
 
 Dependencies: 2 runtime, 4 development.
 <!-- /coherent:discovered -->
@@ -70,7 +70,7 @@ generic tiers:
 - `src/cli.ts` — Commander entry
 - `src/config.ts` — optional `coherent.json` and `.coherent` filenames (`BACKEND_DIR` is a deprecated alias for `COHERENT_DIR`)
 - `src/state-dir.ts` — resolves `.coherent/` vs leftover `.backend/` during one release
-- `skills/coherent/` — provider-neutral skill; taxonomy and phase markdown are generated from the catalog
+- `skills/coherent/` — provider-neutral skill; taxonomy and phase markdown are generated from the catalog. Cursor adapter source uses non-discoverable `skill-template.md`, not a nested `SKILL.md`.
 - `.agents/skills/coherent` — Codex discovery adapter; not a second methodology
 - `.cursor/skills/coherent` — Cursor adapter only; not a second methodology. `.cursor/skills/backend` is a skill alias.
 
@@ -156,6 +156,7 @@ Observed top-level modules:
 - `init --force` and `refresh` replace only fenced discovered interiors. Semantic prose stays. Unfenced migration (one-release `.backend/` / pre-fence files) keeps unknown human-authored `##` sections verbatim.
 - Hybrid and semantic findings are not `fix next` targets until `coherent review confirm`.
 - Dismissed findings are absent from the cleanup DAG. Architecture prose alone does not dismiss them. Mechanical and hybrid reviews require a matching `detectorRevision`, including exact fingerprints; exact pure-semantic reviews may survive detector bumps.
+- A review whose exact fingerprint remains in the current baseline but is absent from the current audit is resolved history, not an orphan. Deep doctor still rejects reviews absent from both.
 - `check` fails only on new confirmed high/critical deterministic findings. Version-skewed baselines are stale and must be regenerated.
 - Taxonomy ID order is not cleanup execution order. The cleanup DAG is authoritative.
 - Dead-code (A08) is re-scanned after A07, after canonicalization, and after architecture collapse.
@@ -222,13 +223,13 @@ None. The CLI is synchronous process work. No queues, cron, or subscriptions.
 - `coherent init [root]` keeps inventory in memory and writes architecture context.
 - `coherent refresh [root]` updates fenced discovered facts only.
 - `coherent audit [root]` parses TypeScript once and runs implemented detectors without writing metadata; `--output` is explicit.
-- `coherent review dismiss|confirm|defer <fingerprint>` writes one decision to `.coherent/decisions.json`; `review apply` validates a JSON batch against one audit before one write.
-- `coherent baseline [root]` snapshots finding fingerprints with portable schema versions.
+- `coherent review dismiss|confirm|defer <fingerprint>` writes one decision to `.coherent/decisions.json`; `review apply` validates a JSON batch against one audit before one write and accepts one or several fingerprints per evidence-backed batch item. `review prune` previews stale and orphaned records and writes only with `--write`, retaining baseline-backed resolved history.
+- `coherent baseline [root]` snapshots finding fingerprints with portable schema versions and leaves an equivalent existing file byte-for-byte unchanged.
 - `coherent plan [root]` builds a cleanup DAG from a fresh audit merged with reviews and semantic findings.
-- `coherent fix next [root]` selects one unlocked `ready` node and prints a work brief.
+- `coherent fix next [root]` selects one unlocked `ready` node and prints a work brief. An empty reviewed plan is a successful clean terminal; remaining blocked or review-only nodes are not.
 - `coherent check [root]` compares a fresh audit to the baseline and classifies new debt. `--changed` parses git-diff files plus importers and does not treat unscoped baseline findings as resolved.
 - `coherent install [root]` and `update` write nothing without explicit adapter, rule, Cursor hook, or Git hook flags.
-- `coherent doctor [root]` checks stale discovery, decision integrity, stale review revisions, baseline integrity when present, and leftover `.backend/` state without auditing; `--deep` adds orphan and current-finding review validation through one full audit.
+- `coherent doctor [root]` checks stale discovery, decision integrity, stale review revisions, baseline integrity when present, and leftover `.backend/` state without auditing; `--deep` adds orphan and current-finding review validation through one full audit while retaining baseline-backed resolved reviews.
 - `pnpm test` covers catalog integrity, inventory fixtures, init, detectors, fingerprints, baseline/check, planner, review merge, and CLI behavior.
 - `pnpm generate:skill-docs` must keep `skills/coherent/reference/taxonomy.md` and `cleanup-phases.md` identical to the catalog renderer.
 

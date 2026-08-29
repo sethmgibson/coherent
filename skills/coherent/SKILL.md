@@ -62,7 +62,7 @@ A successful audit result may be: "Superficially similar but intentionally diffe
 | `init` | Inventory the repo and write durable `.coherent/ARCHITECTURE.md` | [reference/init.md](reference/init.md), [reference/architecture-analysis.md](reference/architecture-analysis.md) |
 | `refresh` | Update fenced discovered architecture facts only | [reference/init.md](reference/init.md) |
 | `audit` | Read-only deterministic scan plus agent semantic investigation | [reference/audit.md](reference/audit.md), [reference/semantic-audits.md](reference/semantic-audits.md) |
-| `review` | Persist one decision, or atomically apply many decisions from stdin with one audit | [reference/semantic-audits.md](reference/semantic-audits.md), [reference/plan.md](reference/plan.md) |
+| `review` | Persist decisions, batch grouped fingerprints, or preview/prune obsolete reviews | [reference/semantic-audits.md](reference/semantic-audits.md), [reference/plan.md](reference/plan.md) |
 | `baseline` | Snapshot current findings to `.coherent/baseline.json` | [reference/baseline.md](reference/baseline.md) |
 | `plan` | Build the cleanup DAG in memory from findings and decisions | [reference/cleanup-planning.md](reference/cleanup-planning.md), [reference/plan.md](reference/plan.md) |
 | `fix next` | Select and perform one unlocked cleanup node | [reference/fix-safety.md](reference/fix-safety.md), [reference/fix.md](reference/fix.md) |
@@ -76,6 +76,7 @@ Rule playbooks, when present: [reference/rules/](reference/rules/).
 Routing:
 
 - **No argument:** recommend `init` if `.coherent/ARCHITECTURE.md` is missing; otherwise recommend `audit`.
+- **Full repository cleanup / run everything:** load [reference/full-cleanup.md](reference/full-cleanup.md), then the command playbook needed for the current loop step.
 - **Explicit command:** load that reference and follow it.
 - **Taxonomy questions:** load [reference/taxonomy.md](reference/taxonomy.md).
 - **Ordinary feature work:** load [reference/prevention.md](reference/prevention.md). Do not run a full legacy cleanup for a small feature.

@@ -7,6 +7,10 @@ coherent fix next
 coherent fix next --json
 ```
 
+When the reviewed plan has zero nodes, `fix next` reports a clean terminal and
+exits successfully. A no-node failure means work still exists but is blocked
+or needs review.
+
 ## Selection
 
 The CLI picks the highest-scoring ready node: prerequisites satisfied, then confidence, surface reduction, unlock value, simplification, risk, tests, and default phase. Early in a legacy repository this is often high-confidence dead code or a stale path.

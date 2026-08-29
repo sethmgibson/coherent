@@ -16,6 +16,11 @@ Implemented detectors cover dead code, stale compatibility, implicit string prot
 
 Mechanical findings are regenerated on demand. Record agent decisions with `coherent review`. Author semantic-only findings in the `findings` array of `.coherent/decisions.json`. `coherent plan` merges current mechanical findings with those durable decisions.
 
+`audit` deliberately shows raw detector status, not review disposition. A
+reviewed repository can therefore have non-zero audit signals. Use `plan` for
+actionability and its reviewed signal summary; zero plan nodes is the clean
+terminal state.
+
 ## Agent step
 
 Follow [semantic-audits.md](semantic-audits.md). Cleanup order is not taxonomy order. See [cleanup-phases.md](cleanup-phases.md) and [cleanup-planning.md](cleanup-planning.md).

@@ -16,6 +16,13 @@ npx skills add sethmgibson/coherent
 pnpm add --save-dev github:sethmgibson/coherent
 ```
 
+With Codex's standard skill installer, point at the canonical skill directory.
+The repository's current default branch is `master`:
+
+```text
+$skill-installer install https://github.com/sethmgibson/coherent/tree/master/skills/coherent
+```
+
 Restart your coding tool so it discovers the skill. The core skill follows the
 open agent skills format and works with Codex and Cursor. This repository also
 checks in discovery adapters for both tools: `.agents/skills/coherent` for Codex
@@ -33,6 +40,10 @@ $coherent init
 $coherent audit
 $coherent fix next
 ```
+
+For a whole-repository cleanup, ask `$coherent` to run the full cleanup. It
+will review and fix one DAG node at a time until no safe work remains; it does
+not literally run optional integration commands.
 
 - `init` records the repository's living architecture so later work has context.
 - `audit` finds maintainability problems without changing code or writing project files.
@@ -77,7 +88,7 @@ Some findings can be proven mechanically. Others require judgment about meaning,
 | `$coherent init` | Inventory the repository and create durable architecture context |
 | `$coherent refresh` | Refresh discovered facts without overwriting confirmed architecture notes |
 | `$coherent audit` | Run deterministic checks and guide semantic investigation |
-| `$coherent review` | Confirm, dismiss, or defer findings; batch many decisions with `review apply` |
+| `$coherent review` | Confirm, dismiss, defer, batch, or preview/prune obsolete reviews |
 | `$coherent baseline` | Record existing debt so it does not block adoption |
 | `$coherent plan` | Build a dependency-aware cleanup plan |
 | `$coherent fix next` | Select one safe, unblocked cleanup |
@@ -114,6 +125,15 @@ Coherent does not create caches or reports by default. Its durable project state
 
 When reviewing several findings, send a JSON array to `coherent review apply`. Coherent resolves the whole batch with one audit and writes `decisions.json` only after every item validates. Individual `confirm`, `dismiss`, and `defer` commands remain convenient for one decision.
 
+A batch item may use `fingerprints: ["...", "..."]` when one evidence-backed
+conclusion applies to a genuine finding group. Raw audit signals remain visible
+after dismissal; the reviewed plan is the action queue, and zero plan nodes is
+the clean terminal state.
+
+`coherent review prune` previews stale and orphaned review records. Add
+`--write` only after verifying the preview; baseline-backed resolved reviews
+are preserved automatically.
+
 TypeScript analysis reads repository tsconfigs, including inherited compiler options, path aliases, and the owning child config in project-reference workspaces. Resolution stays in memory; Coherent does not generate a synthetic tsconfig or cache.
 
 Optional Cursor and Git integrations are also zero-install by default. Select only what you want, for example `coherent install --rule`, `--cursor-hook`, or `--git-hook`; use `--adapter` only when Cursor needs a project-local adapter. Codex discovers repo-scoped skills from `.agents/skills`, so it does not require the Cursor adapter command.
@@ -147,6 +167,10 @@ pnpm test
 pnpm typecheck
 pnpm generate:skill-docs
 ```
+
+When running Coherent against its own checkout before build, invoke
+`pnpm exec tsx src/cli.ts <command>`; after build, use
+`node dist/cli.js <command>`.
 
 ## License
 

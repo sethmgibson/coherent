@@ -14,7 +14,12 @@ import { renderPlan } from "./plan/render.js";
 import { renderFixNext, runFixNext } from "./fix/run.js";
 import { runDoctor } from "./doctor/run.js";
 import { renderDoctor } from "./doctor/render.js";
-import { parseReviewRequests, runReview, runReviewBatch } from "./review/run.js";
+import {
+  parseReviewRequests,
+  runReview,
+  runReviewBatch,
+  runReviewPrune,
+} from "./review/run.js";
 import type { ReviewDecision } from "./review/types.js";
 import { RULES_BY_ID } from "./catalog/rules.js";
 
@@ -96,9 +101,8 @@ program
   .action(async (root: string) => {
     const result = await runBaseline(resolve(root));
     process.stdout.write(renderAudit(result.audit));
-    console.log(
-      `Wrote ${result.baselinePath} (${result.baseline.findings.length} fingerprint(s)).`,
-    );
+    const action = result.wroteBaseline ? "Wrote" : "Left unchanged";
+    console.log(`${action} ${result.baselinePath} (${result.baseline.findings.length} fingerprint(s)).`);
   });
 
 program
@@ -200,7 +204,7 @@ program
     } else {
       process.stdout.write(renderFixNext(result));
     }
-    if (!result.node) process.exitCode = 1;
+    if (!result.node && result.plan.nodes.length > 0) process.exitCode = 1;
   });
 
 program
@@ -280,6 +284,29 @@ review
   .requiredOption("--reason <reason>", "why this decision")
   .action(async (fingerprint: string, root: string, options: { reason: string }) => {
     await printReview(root, "deferred", fingerprint, options.reason);
+  });
+
+review
+  .command("prune")
+  .description("Preview stale and orphaned reviews; remove them only with --write")
+  .argument("[root]", "repository root", ".")
+  .option("--write", "remove the reported stale and orphaned reviews", false)
+  .action(async (root: string, options: { write: boolean }) => {
+    try {
+      const result = await runReviewPrune(resolve(root), options.write);
+      const action = result.wrote ? "Removed" : "Would remove";
+      console.log(`${action} ${result.removable.length} stale or orphaned review(s).`);
+      for (const item of result.removable.slice(0, 12)) {
+        console.log(`  ${item.ruleId} ${item.identity}`);
+      }
+      if (result.removable.length > 12) {
+        console.log(`  … ${result.removable.length - 12} more`);
+      }
+      if (result.wrote) console.log(`Wrote ${result.decisionsPath}`);
+    } catch (error) {
+      console.error(error instanceof Error ? error.message : error);
+      process.exitCode = 1;
+    }
   });
 
 async function printReview(

@@ -14,7 +14,7 @@ export function packageRoot(): string {
 }
 
 export function adapterSkillPath(pkgRoot: string): string {
-  return join(pkgRoot, "skills", "coherent", "adapters", "cursor", "SKILL.md");
+  return join(pkgRoot, "skills", "coherent", "adapters", "cursor", "skill-template.md");
 }
 
 export function preventionTemplatePath(pkgRoot: string): string {

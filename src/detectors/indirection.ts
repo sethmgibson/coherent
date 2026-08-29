@@ -28,6 +28,8 @@ function consider(
 ): void {
   const name = fn.getName();
   if (!name || MEANINGFUL.test(name)) return;
+  const returnType = fn.getReturnTypeNode();
+  if (returnType && Node.isTypePredicate(returnType)) return;
   const params = fn.getParameters();
   if (params.length === 0) return;
   const body = fn.getBody();

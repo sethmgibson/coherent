@@ -2,12 +2,12 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { DETECTOR_REVISION, FINGERPRINT_VERSION } from "../src/config.js";
+import { artifactVersions, DETECTOR_REVISION, FINGERPRINT_VERSION } from "../src/config.js";
 import { createFinding, type FindingInput } from "../src/domain/finding.js";
 import { applyReviews, classifyReview } from "../src/review/apply.js";
 import type { FindingReview } from "../src/review/types.js";
 import { readDecisions, upsertReview } from "../src/review/store.js";
-import { parseReviewRequests, runReviewBatch } from "../src/review/run.js";
+import { parseReviewRequests, runReviewBatch, runReviewPrune } from "../src/review/run.js";
 import { buildPlan } from "../src/plan/build.js";
 import { selectNextNode } from "../src/fix/select.js";
 
@@ -336,5 +336,77 @@ describe("review merge into plan", () => {
     expect(() =>
       parseReviewRequests([{ fingerprint: "abc", decision: "dismissed", reason: "" }]),
     ).toThrow(/missing reason/);
+  });
+
+  it("expands one grouped batch decision across several fingerprints", () => {
+    const requests = parseReviewRequests([
+      {
+        fingerprints: ["aaa", "bbb"],
+        decision: "dismissed",
+        reason: "One reviewed compatibility path.",
+      },
+    ]);
+    expect(requests).toEqual([
+      { fingerprint: "aaa", decision: "dismissed", reason: "One reviewed compatibility path." },
+      { fingerprint: "bbb", decision: "dismissed", reason: "One reviewed compatibility path." },
+    ]);
+    expect(() => parseReviewRequests([{
+      fingerprint: "aaa",
+      fingerprints: ["bbb"],
+      decision: "dismissed",
+      reason: "ambiguous",
+    }])).toThrow(/not both/);
+  });
+
+  it("previews review pruning and preserves current or baseline-backed history", async () => {
+    const root = await mkdtemp(join(tmpdir(), "coherent-review-prune-"));
+    try {
+      const state = join(root, ".coherent");
+      await mkdir(state, { recursive: true });
+      const current = finding({
+        ruleId: "A01",
+        identity: "fossil:Current",
+        detectionMode: "semantic",
+      });
+      const resolved: FindingReview = {
+        ...review(current, "confirmed"),
+        fingerprint: "resolved-fingerprint",
+        identity: "fossil:Resolved",
+      };
+      const orphan: FindingReview = {
+        ...review(current, "dismissed"),
+        fingerprint: "orphan-fingerprint",
+        identity: "fossil:Orphan",
+      };
+      await writeFile(
+        join(state, "decisions.json"),
+        `${JSON.stringify({
+          schemaVersion: 1,
+          reviews: [review(current, "dismissed"), resolved, orphan],
+          findings: [current],
+        }, null, 2)}\n`,
+      );
+      await writeFile(
+        join(state, "baseline.json"),
+        `${JSON.stringify({
+          ...artifactVersions(),
+          createdAt: "2026-01-01T00:00:00.000Z",
+          findings: [{ fingerprint: resolved.fingerprint }],
+        }, null, 2)}\n`,
+      );
+
+      const preview = await runReviewPrune(root);
+      expect(preview.removable.map((item) => item.identity)).toEqual(["fossil:Orphan"]);
+      expect((await readDecisions(root)).reviews).toHaveLength(3);
+
+      const applied = await runReviewPrune(root, true);
+      expect(applied.wrote).toBe(true);
+      expect((await readDecisions(root)).reviews.map((item) => item.identity).sort()).toEqual([
+        "fossil:Current",
+        "fossil:Resolved",
+      ]);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
   });
 });

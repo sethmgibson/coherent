@@ -29,3 +29,7 @@ Hooks run `coherent check --changed` only after a baseline exists. Full `audit` 
 The Cursor adapter is not a second methodology. Load
 `skills/coherent/SKILL.md` from the installed package. The checked-in Codex
 adapter at `.agents/skills/coherent/SKILL.md` follows the same rule.
+
+The packaged Cursor adapter source is
+`skills/coherent/adapters/cursor/skill-template.md`, intentionally not named
+`SKILL.md` so recursive Codex discovery does not register it as another skill.

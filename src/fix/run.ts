@@ -17,6 +17,9 @@ export async function runFixNext(root: string): Promise<FixNextResult> {
 
 export function renderFixNext(result: FixNextResult): string {
   if (!result.node) {
+    if (result.plan.nodes.length === 0) {
+      return "Coherent fix next\n\nNo cleanup nodes. Reviewed plan is clean.\n";
+    }
     return "Coherent fix next\n\nNo unlocked cleanup node. Remaining nodes need review or are blocked.\n";
   }
   return `${workBrief(result.node)}\n`;
