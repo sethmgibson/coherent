@@ -3,12 +3,12 @@ dist/
 coverage/
 *.tsbuildinfo
 
-# Regenerable machine snapshots. Durable context and baselines stay tracked.
-.coherent/inventory.json
-.coherent/findings.json
-.coherent/plan.json
-.coherent/next.json
-.backend/inventory.json
-.backend/findings.json
-.backend/plan.json
-.backend/next.json
+# Regenerable machine snapshots at any depth. Durable context and baselines stay tracked.
+**/.coherent/inventory.json
+**/.coherent/findings.json
+**/.coherent/plan.json
+**/.coherent/next.json
+**/.backend/inventory.json
+**/.backend/findings.json
+**/.backend/plan.json
+**/.backend/next.json
