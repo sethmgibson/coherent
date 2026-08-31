@@ -94,7 +94,7 @@ export async function readBaseline(root: string): Promise<BaselineFile | undefin
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined;
     const message = error instanceof Error ? error.message : String(error);
-    throw new Error(`Invalid baseline at ${path}: ${message}`);
+    throw new Error(`Invalid baseline at ${path}: ${message}`, { cause: error });
   }
 }
 
@@ -187,7 +187,7 @@ function requireNonEmptyString(value: unknown, field: string): string {
 }
 
 function requireStringArray(value: unknown, field: string): string[] {
-  if (!Array.isArray(value) || value.some((item) => typeof item !== "string")) {
+  if (!Array.isArray(value) || !value.every((item: unknown) => typeof item === "string")) {
     throw new Error(`Invalid baseline: ${field} must be an array of strings`);
   }
   return value;

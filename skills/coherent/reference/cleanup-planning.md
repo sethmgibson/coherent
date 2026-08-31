@@ -27,6 +27,10 @@ The CLI rebuilds the DAG from a fresh audit and prints ready vs blocked nodes. I
 - What downstream work it unlocks
 - Existing test and safety evidence
 
+Analysis-only prerequisites on separate files require an actually shared
+authoritative concept. Confidence describes the finding, not the safety of
+the edit: nodes retain the explicit change-risk warnings from every finding.
+
 ## Priority (in this order)
 
 1. Prerequisite readiness

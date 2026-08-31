@@ -35,7 +35,7 @@ export function classifyNewDebt<T extends DebtItem>(newFindings: T[]): NewDebt<T
 
 export function conceptualHardness<T extends DebtItem>(newFindings: T[], debt: NewDebt<T>[]): string {
   if (newFindings.length === 0) {
-    return "No. This change did not introduce new maintainability findings against the baseline.";
+    return "No new mechanical findings against the baseline. Semantic architecture changes still require review.";
   }
   if (debt.length === 0) {
     return "Unclear. There are new findings, but none match the usual new-debt shapes. Inspect the diff.";

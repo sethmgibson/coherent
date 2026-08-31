@@ -282,7 +282,8 @@ function exportPaths(value: unknown): string[] {
   if (typeof value === "string") return [value];
   if (!value || typeof value !== "object") return [];
   const paths: string[] = [];
-  for (const item of Object.values(value)) {
+  const values: unknown[] = Object.values(value);
+  for (const item of values) {
     if (typeof item === "string") paths.push(item);
     else if (item && typeof item === "object") {
       for (const nested of Object.values(item)) {

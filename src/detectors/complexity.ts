@@ -23,7 +23,7 @@ export function detectAlgorithmicComplexity(ctx: AnalysisContext): Finding[] {
       const body = fn.getBody();
       if (!body) continue;
       collectNestedLoops(ctx, findings, relative, name, fn, body);
-      collectLoopMethods(ctx, findings, relative, name, fn, body);
+      collectLoopMethods(ctx, findings, relative, name, body);
     }
   }
   return findings;
@@ -34,7 +34,6 @@ function collectLoopMethods(
   findings: Finding[],
   relative: string,
   name: string,
-  fn: Node,
   body: Node,
 ): void {
   const sites = new Map<string, { method: string; calls: CallExpression[] }>();

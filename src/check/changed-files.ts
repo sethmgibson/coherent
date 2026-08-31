@@ -34,13 +34,16 @@ function isTsLikeSource(relative: string): boolean {
 
 async function listChangedNames(root: string): Promise<string[]> {
   const names = new Set<string>();
+  // NUL records preserve Git-quoted names. Disable rename detection so both
+  // the deleted source and added destination participate in drift comparison.
+  const diffArgs = ["--name-only", "-z", "--relative", "--no-renames"];
   if (await gitOk(root, ["rev-parse", "--verify", "HEAD"])) {
-    addLines(names, await git(root, ["diff", "--name-only", "HEAD"]));
+    addPaths(names, await git(root, ["diff", ...diffArgs, "HEAD", "--", "."]));
   } else {
-    addLines(names, await git(root, ["diff", "--name-only"]));
-    addLines(names, await git(root, ["diff", "--cached", "--name-only"]));
+    addPaths(names, await git(root, ["diff", ...diffArgs, "--", "."]));
+    addPaths(names, await git(root, ["diff", "--cached", ...diffArgs, "--", "."]));
   }
-  addLines(names, await git(root, ["ls-files", "--others", "--exclude-standard"]));
+  addPaths(names, await git(root, ["ls-files", "--others", "--exclude-standard", "-z", "--", "."]));
   return [...names];
 }
 
@@ -63,10 +66,9 @@ async function git(root: string, args: string[]): Promise<string> {
   return stdout;
 }
 
-function addLines(target: Set<string>, stdout: string): void {
-  for (const line of stdout.split("\n")) {
-    const trimmed = line.trim();
-    if (trimmed) target.add(trimmed);
+function addPaths(target: Set<string>, stdout: string): void {
+  for (const path of stdout.split("\0")) {
+    if (path) target.add(path);
   }
 }
 
@@ -74,7 +76,8 @@ async function pathExists(path: string): Promise<boolean> {
   try {
     await access(path);
     return true;
-  } catch {
-    return false;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return false;
+    throw error;
   }
 }

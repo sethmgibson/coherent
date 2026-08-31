@@ -122,10 +122,7 @@ function parseEvidence(raw: unknown): FindingEvidence {
   if (!isRecord(raw)) throw new Error("Invalid finding: evidence must be an object");
   const summary = requireString(raw.summary, "evidence.summary");
   if (raw.details === undefined) return { summary };
-  if (!Array.isArray(raw.details) || raw.details.some((item) => typeof item !== "string")) {
-    throw new Error("Invalid finding: evidence.details must be an array of strings");
-  }
-  return { summary, details: raw.details };
+  return { summary, details: requireStringArray(raw.details, "evidence.details") };
 }
 
 function parseLocations(raw: unknown): SourceLocation[] {
@@ -173,7 +170,7 @@ function requireNonEmptyString(value: unknown, field: string): string {
 }
 
 function requireStringArray(value: unknown, field: string): string[] {
-  if (!Array.isArray(value) || value.some((item) => typeof item !== "string")) {
+  if (!Array.isArray(value) || !value.every((item: unknown) => typeof item === "string")) {
     throw new Error(`Invalid finding: ${field} must be an array of strings`);
   }
   return value;

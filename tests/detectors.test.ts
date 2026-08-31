@@ -128,6 +128,10 @@ describe("hybrid detectors on scanner-app", () => {
     expect(findingFor(algo, "derivedTupleLoop")).toBeUndefined();
     expect(findingFor(algo, "renderKnownPhases")).toBeUndefined();
     expect(algo.every((finding) => /probable complexity/i.test(finding.explanation))).toBe(true);
-    expect(algo.every((finding) => /input size/i.test(finding.evidence.details.join(" ")))).toBe(true);
+    for (const finding of algo) {
+      expect(finding.evidence.details).toEqual(
+        expect.arrayContaining([expect.stringMatching(/input size/i)]),
+      );
+    }
   });
 });

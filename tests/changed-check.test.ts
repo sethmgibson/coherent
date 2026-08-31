@@ -1,11 +1,12 @@
 import { execFile } from "node:child_process";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import { describe, expect, it } from "vitest";
 import { runBaseline } from "../src/baseline/run.js";
 import { expandWithImporters } from "../src/check/importers.js";
+import { listChangedSourceFiles } from "../src/check/changed-files.js";
 import { runCheck } from "../src/check/run.js";
 
 const execFileAsync = promisify(execFile);
@@ -21,6 +22,59 @@ const gitIdentity = [
 ];
 
 describe("check --changed", () => {
+  it("preserves unicode, whitespace, and newline paths from git", async () => {
+    const root = await mkdtemp(join(tmpdir(), "coherent-changed-paths-"));
+    try {
+      await writeFile(join(root, "README.md"), "fixture\n");
+      await gitInitCommit(root, "init");
+      const paths = ["café.ts", " leading.ts", "line\nbreak.ts"];
+      for (const path of paths) await writeFile(join(root, path), "export {};\n");
+      expect((await listChangedSourceFiles(root)).existing.sort()).toEqual(paths.sort());
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it("scopes git paths to a nested target repository", async () => {
+    const root = await mkdtemp(join(tmpdir(), "coherent-changed-nested-"));
+    try {
+      const child = join(root, "packages", "app");
+      await mkdir(child, { recursive: true });
+      await writeFile(join(child, "live.ts"), "export {};\n");
+      await writeFile(join(root, "outside.ts"), "export {};\n");
+      await gitInitCommit(root, "init");
+      await writeFile(join(child, "live.ts"), "export const x = 1;\n");
+      await writeFile(join(root, "outside.ts"), "export const y = 1;\n");
+      expect(await listChangedSourceFiles(child)).toEqual({ existing: ["live.ts"], deleted: [] });
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it("includes both sides of staged renames in the drift scope", async () => {
+    const root = await mkdtemp(join(tmpdir(), "coherent-changed-rename-"));
+    try {
+      await writeFile(join(root, "old.ts"), "export {};\n");
+      await gitInitCommit(root, "init");
+      await execFileAsync("git", ["mv", "old.ts", "new.ts"], { cwd: root });
+      expect(await listChangedSourceFiles(root)).toEqual({ existing: ["new.ts"], deleted: ["old.ts"] });
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it("does not classify unexpected filesystem failures as deleted files", async () => {
+    const root = await mkdtemp(join(tmpdir(), "coherent-changed-inaccessible-"));
+    try {
+      await writeFile(join(root, "README.md"), "fixture\n");
+      await gitInitCommit(root, "init");
+      await symlink("loop.ts", join(root, "loop.ts"));
+      await expect(listChangedSourceFiles(root)).rejects.toMatchObject({ code: "ELOOP" });
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
   it("scopes NEW/RESOLVED to git-diff files and does not resolve unscoped debt", async () => {
     const root = await mkdtemp(join(tmpdir(), "coherent-changed-"));
     try {
@@ -79,6 +133,52 @@ function unusedInUsed(): number { return 2; }
           (item) => item.symbols.includes("sharedUsed") && item.ruleId === "A08",
         ),
       ).toBe(false);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it("includes alias callers and transitive importers without inventing unused exports", async () => {
+    const root = await mkdtemp(join(tmpdir(), "coherent-importer-alias-"));
+    try {
+      await writeTinyRepo(root);
+      await writeFile(join(root, "tsconfig.json"), JSON.stringify({
+        compilerOptions: { baseUrl: ".", paths: { "@app/*": ["src/*"] } }, include: ["src/**/*.ts"],
+      }));
+      await writeFile(join(root, "src/user.ts"), 'import { sharedUsed } from "@app/used";\nexport function callShared() { return sharedUsed(); }\n');
+      await writeFile(join(root, "src/consumer.ts"), 'import { callShared } from "./user.js";\nconsole.log(callShared());\n');
+      await gitInitCommit(root, "init");
+      await runBaseline(root);
+      await writeFile(join(root, "src/used.ts"), 'export function sharedUsed(): string { return "changed"; }\n');
+
+      const result = await runCheck(root, { changed: true });
+      expect(result.scopedFiles).toEqual(expect.arrayContaining(["src/used.ts", "src/user.ts", "src/consumer.ts"]));
+      expect(result.newFindings.filter((item) => item.ruleId === "A08")).toEqual([]);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it("uses child tsconfig aliases across re-exports and terminates on importer cycles", async () => {
+    const root = await mkdtemp(join(tmpdir(), "coherent-importer-project-"));
+    try {
+      const child = join(root, "packages", "app");
+      await mkdir(join(child, "src"), { recursive: true });
+      await mkdir(join(root, "ignored"));
+      await writeFile(join(root, "package.json"), '{"name":"workspace"}');
+      await writeFile(join(root, "tsconfig.json"), JSON.stringify({ files: [], references: [{ path: "./packages/app" }] }));
+      await writeFile(join(child, "tsconfig.json"), JSON.stringify({
+        compilerOptions: { baseUrl: ".", paths: { "@app/*": ["src/*"] } }, include: ["src/**/*.ts"],
+      }));
+      await writeFile(join(child, "src/value.ts"), 'import "./barrel.js";\nexport const value = 1;\n');
+      await writeFile(join(child, "src/barrel.ts"), 'export { value } from "@app/value";\n');
+      await writeFile(join(child, "src/caller.ts"), 'import("@app/barrel").then(console.log);\n');
+      await writeFile(join(root, "ignored/use.ts"), 'import "../packages/app/src/value.js";\n');
+      const config = { ignore: ["ignored"] };
+      expect(await expandWithImporters(root, ["packages/app/src/value.ts"], config)).toEqual([
+        "packages/app/src/barrel.ts", "packages/app/src/caller.ts", "packages/app/src/value.ts",
+      ]);
+      expect(await expandWithImporters(root, ["ignored/use.ts"], config)).toEqual([]);
     } finally {
       await rm(root, { recursive: true, force: true });
     }

@@ -402,16 +402,6 @@
       "detectorRevision": 5
     },
     {
-      "fingerprint": "260571651f62f56dacc6cf8232b7e992690dc8c01484cf45945565261524d29c",
-      "ruleId": "E06",
-      "identity": "nested-loop:src/check/importers.ts:expandWithImporters",
-      "decision": "dismissed",
-      "reason": "Semantic review found fixed-size catalog/render work or required pairwise static-analysis/DAG comparisons; there is no hot-path or input-scale evidence for replacement on this repository.",
-      "reviewedAt": "2026-08-31T02:24:39.662Z",
-      "fingerprintVersion": 2,
-      "detectorRevision": 5
-    },
-    {
       "fingerprint": "e27e5ea14f0dd87d98771322973b9f9b65ef7e9bdc27e158ce029a9e4023b7a8",
       "ruleId": "E06",
       "identity": "loop-sort:src/audit/metrics.ts:competingConcepts",
@@ -428,6 +418,16 @@
       "decision": "dismissed",
       "reason": "Semantic review found fixed-size catalog/render work or required pairwise static-analysis/DAG comparisons; there is no hot-path or input-scale evidence for replacement on this repository.",
       "reviewedAt": "2026-08-31T02:24:39.662Z",
+      "fingerprintVersion": 2,
+      "detectorRevision": 5
+    },
+    {
+      "fingerprint": "260571651f62f56dacc6cf8232b7e992690dc8c01484cf45945565261524d29c",
+      "ruleId": "E06",
+      "identity": "nested-loop:src/check/importers.ts:expandWithImporters",
+      "decision": "dismissed",
+      "reason": "Importer discovery now builds a reverse dependency index with the shared TypeScript resolver and traverses each reachable caller once using Set membership. The nested loops visit source imports and graph edges, not a Cartesian product of repository files; cycle and child-config regression tests pass.",
+      "reviewedAt": "2026-08-31T14:51:51.481Z",
       "fingerprintVersion": 2,
       "detectorRevision": 5
     }

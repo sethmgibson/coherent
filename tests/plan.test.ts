@@ -27,6 +27,33 @@ function finding(overrides: Partial<FindingInput> & Pick<FindingInput, "ruleId" 
 }
 
 describe("cleanup DAG", () => {
+  it("does not block unrelated concepts behind an analysis-only prerequisite", () => {
+    const analysis = finding({
+      ruleId: "A01", identity: "billing-boundary", detectionMode: "semantic",
+      authoritativeConcept: "Billing", locations: [{ file: "src/billing.ts" }], affectedSymbols: [],
+    });
+    const cleanup = finding({
+      ruleId: "A04", identity: "payment-duplicates", detectionMode: "semantic",
+      authoritativeConcept: "Payments", locations: [{ file: "src/payments.ts" }], affectedSymbols: [],
+    });
+    const plan = buildPlan("/tmp/repo", [analysis, cleanup], { needsReview: new Set() });
+    expect(plan.nodes.find((node) => node.ruleIds.includes("A04"))?.prerequisiteNodeIds).toEqual([]);
+
+    const related = buildPlan("/tmp/repo", [analysis, { ...cleanup, authoritativeConcept: "Billing" }], {
+      needsReview: new Set(),
+    });
+    expect(related.nodes.find((node) => node.ruleIds.includes("A04"))?.state).toBe("blocked");
+  });
+
+  it("preserves all explicit change risks even after high-confidence confirmation", () => {
+    const findings = ["High: changes the public contract.", "Requires a data migration."].map((changeRisk, index) =>
+      finding({ ruleId: "A08", identity: `risk-${index}`, status: "confirmed", changeRisk }),
+    );
+    const plan = buildPlan("/tmp/repo", findings, { needsReview: new Set() });
+    expect(plan.nodes).toHaveLength(1);
+    for (const item of findings) expect(plan.nodes[0]?.behavioralRisk).toContain(item.changeRisk);
+  });
+
   it("does not sort by rule ID and prefers high-confidence A08 over semantic A01", () => {
     const findings = [
       finding({

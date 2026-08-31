@@ -107,6 +107,7 @@ describe("fingerprints, baseline, and check", () => {
       await mkdir(state, { recursive: true });
       await writeFile(join(state, "baseline.json"), "{not json}\n", "utf8");
       await expect(runBaseline(root)).rejects.toThrow();
+      await expect(readBaseline(root)).rejects.toHaveProperty("cause", expect.any(SyntaxError));
       expect(await readFile(join(state, "baseline.json"), "utf8")).toBe("{not json}\n");
     } finally {
       await rm(root, { recursive: true, force: true });

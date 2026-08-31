@@ -56,14 +56,16 @@ describe("repository inventory", () => {
     const inventory = await collectInventory(join(fixtures, "pnpm-workspace"));
 
     expect(inventory.packageManager).toBe("pnpm");
-    expect(inventory.workspace).toEqual({
+    expect(inventory.workspace).toMatchObject({
       kind: "pnpm",
       patterns: ["packages/*"],
-      packages: expect.arrayContaining([
+    });
+    expect(inventory.workspace?.packages).toEqual(
+      expect.arrayContaining([
         "packages/api/package.json",
         "packages/shared/package.json",
       ]),
-    });
+    );
     expect(inventory.frameworks).toEqual(["NestJS"]);
     expect(inventory.persistenceLibraries).toContain("@prisma/client");
     expect(inventory.packages.map((pkg) => pkg.name).sort()).toEqual([

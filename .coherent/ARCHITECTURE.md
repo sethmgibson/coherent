@@ -35,11 +35,11 @@ Detected frameworks:
 
 - None detected from package dependencies.
 
-Languages: TypeScript
+Languages: JavaScript, TypeScript
 
-Approximate size: 150 files, 11448 source lines.
+Approximate size: 157 files, 11902 source lines.
 
-Dependencies: 2 runtime, 4 development.
+Dependencies: 2 runtime, 9 development.
 <!-- /coherent:discovered -->
 
 > Status: confirmed
@@ -58,7 +58,7 @@ generic tiers:
 
 - `src/catalog` — rule and phase source of truth; `types.ts` is a public barrel derived from those catalogs
 - `src/domain` — Finding
-- `src/analysis` — one in-memory ts-morph project per scan; helpers current detectors need. Module resolution uses parsed repository tsconfigs, inherited compiler options, path aliases, and the owning child config in project-reference workspaces without generating files or caches.
+- `src/analysis` — one in-memory ts-morph project per scan; helpers current detectors need. `createModuleResolver` shares parsed repository tsconfigs, inherited compiler options, path aliases, and owning child configs between full analysis and scoped importer discovery without generating files or caches.
 - `src/detectors` — one function per implemented rule, called explicitly
 - `src/audit`, `src/baseline`, `src/check` — CLI workflows and on-disk snapshots
 - `src/review` — durable review decisions and semantic-only findings
@@ -165,6 +165,7 @@ Observed top-level modules:
 - `check` fails only on new confirmed high/critical deterministic findings. Version-skewed baselines are stale and must be regenerated.
 - Taxonomy ID order is not cleanup execution order. The cleanup DAG is authoritative.
 - `prerequisiteFindingIds` names current finding fingerprints. The planner maps them through finding groups, ignores same-node references, treats absent fingerprints as satisfied, and preserves explicit `unlocks` text in work briefs.
+- Analysis-only prerequisite matching requires a genuinely shared concept, not merely two non-empty concept names. Work briefs preserve all explicit `changeRisk` warnings; high confidence does not imply a low-risk edit.
 - Dead-code (A08) is re-scanned after A07, after canonicalization, and after architecture collapse.
 - Analysis parses repository tsconfigs and uses the owning config for each containing file, so inherited options, path aliases, and child project-reference configs participate in module resolution.
 
@@ -234,11 +235,12 @@ None. The CLI is synchronous process work. No queues, cron, or subscriptions.
 - `coherent baseline [root]` snapshots finding fingerprints with portable schema versions and leaves an equivalent existing file byte-for-byte unchanged.
 - `coherent plan [root]` builds a cleanup DAG from a fresh audit merged with reviews and semantic findings.
 - `coherent fix next [root]` selects one unlocked `ready` node and prints a work brief. An empty reviewed plan is a successful clean terminal; remaining blocked or review-only nodes are not.
-- `coherent check [root]` compares a fresh audit to the baseline and classifies new debt. `--changed` parses git-diff files plus importers and does not treat unscoped baseline findings as resolved.
+- `coherent check [root]` compares a fresh audit to the baseline and classifies new debt. `--changed` uses lossless target-relative Git paths (including both rename sides) and TypeScript-resolved transitive importers, respects inventory ignores, and does not treat unscoped baseline findings as resolved. Full `check` remains necessary for repository-wide conclusions and config-only changes.
+- JSON output stays parseable on stdout when combined with explicit `--output`; write acknowledgements go to stderr.
 - `coherent install [root]` and `update` write nothing without explicit adapter, rule, Cursor hook, or Git hook flags.
 - `coherent doctor [root]` checks stale discovery, decision integrity, stale review revisions, compatibility review lifecycles, baseline integrity when present, and leftover `.backend/` state without auditing; `--deep` adds orphan and current-finding review validation through one full audit while retaining baseline-backed resolved reviews whose lifecycle remains current.
 - `pnpm test` covers catalog integrity, inventory fixtures, init, detectors, fingerprints, baseline/check, planner, review merge, and CLI behavior.
-- `pnpm validate` runs tests, typecheck, build, generated skill-doc consistency, and committed fingerprint uniqueness; `pnpm generate:skill-docs` owns the two generated catalog references.
+- `pnpm validate` runs zero-warning type-aware ESLint, dependency hygiene/security checks, tests, typecheck, packed-package validation (including the prepack build), generated skill-doc consistency, and committed fingerprint uniqueness. CI runs the same gates plus Coherent check and deep doctor. `pnpm check:package` applies strict publint to the tarball and tests installed CLI aliases and public exports in an isolated runtime-only consumer. ESLint uses `tsconfig.typecheck.json` for source, tests, scripts, and the Vitest configuration while excluding generated output and intentionally problematic fixtures. `pnpm generate:skill-docs` owns the two generated catalog references.
 
 ## Transitional/legacy architecture
 

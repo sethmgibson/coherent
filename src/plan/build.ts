@@ -22,7 +22,7 @@ export function buildPlan(
     );
   const prereq = prerequisiteMap(groups, byFingerprint);
   const dependents = invert(prereq);
-  const indirect = indirectMap(groups, byFingerprint);
+  const indirect = indirectMap(groups);
 
   const nodes: CleanupNode[] = groups.map((group) => {
     const groupFindings = fingerprintsOf(group, byFingerprint);
@@ -162,20 +162,17 @@ function sharesConcept(
   byFingerprint: Map<string, Finding>,
 ): boolean {
   const concepts = new Set(
-    [...fingerprintsOf(left, byFingerprint), ...fingerprintsOf(right, byFingerprint)]
+    fingerprintsOf(left, byFingerprint)
       .map((finding) => finding.authoritativeConcept)
       .filter((value): value is string => Boolean(value)),
   );
-  return concepts.size > 0 && fingerprintsOf(left, byFingerprint).some((finding) =>
-    finding.authoritativeConcept ? concepts.has(finding.authoritativeConcept) : false,
-  ) && fingerprintsOf(right, byFingerprint).some((finding) =>
+  return concepts.size > 0 && fingerprintsOf(right, byFingerprint).some((finding) =>
     finding.authoritativeConcept ? concepts.has(finding.authoritativeConcept) : false,
   );
 }
 
 function indirectMap(
   groups: FindingGroup[],
-  byFingerprint: Map<string, Finding>,
 ): Map<string, string[]> {
   const map = new Map<string, string[]>();
   const deleters = groups.filter((group) =>
@@ -196,7 +193,6 @@ function indirectMap(
     }
     if (resolved.length > 0) map.set(deleter.id, unique(resolved));
   }
-  void byFingerprint;
   return map;
 }
 
@@ -251,13 +247,7 @@ function conceptsOf(findings: Finding[]): string[] {
 }
 
 function riskOf(findings: Finding[]): string {
-  if (findings.some((finding) => /do not delete/i.test(finding.changeRisk))) {
-    return findings.find((finding) => /do not delete/i.test(finding.changeRisk))?.changeRisk ?? "";
-  }
-  if (findings.every((finding) => finding.status === "confirmed" && finding.confidence === "high")) {
-    return "Low if static evidence holds; still confirm dynamic reachability.";
-  }
-  return findings[0]?.changeRisk ?? "Needs review.";
+  return unique(findings.map((finding) => finding.changeRisk).filter(Boolean)).join(" ") || "Needs review.";
 }
 
 function simplificationOf(group: FindingGroup, findings: Finding[]): string {

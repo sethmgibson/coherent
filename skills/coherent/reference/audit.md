@@ -22,6 +22,10 @@ reviewed repository can therefore have non-zero audit signals. Use `plan` for
 actionability and its reviewed signal summary; zero plan nodes is the clean
 terminal state.
 
+JSON modes keep stdout machine-readable even with `--output`; the write
+acknowledgement goes to stderr. The same output-channel contract applies to
+`plan --json --output`.
+
 ## Agent step
 
 Follow [semantic-audits.md](semantic-audits.md). Cleanup order is not taxonomy order. See [cleanup-phases.md](cleanup-phases.md) and [cleanup-planning.md](cleanup-planning.md).

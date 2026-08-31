@@ -38,7 +38,7 @@ program
   .command("init")
   .description("Inventory a repository and write .coherent/ARCHITECTURE.md")
   .argument("[root]", "repository root", ".")
-  .option("--force", "overwrite an existing ARCHITECTURE.md", false)
+  .option("--force", "refresh discovered sections while preserving semantic prose", false)
   .action(async (root: string, options: { force: boolean }) => {
     const resolved = resolve(root);
     const result = await runInit(resolved, { force: options.force });
@@ -56,7 +56,7 @@ program
       `Discovered ${result.inventory.packages.length} package(s), ${result.inventory.frameworks.join(", ") || "no frameworks"}, ${result.inventory.fileCount} files.`,
     );
     console.log(
-      "Semantic sections in ARCHITECTURE.md still require human or agent completion. See /coherent init.",
+      "Review semantic sections using the Coherent skill's init workflow.",
     );
   });
 
@@ -106,7 +106,7 @@ program
     if (options.output) {
       const path = resolve(resolved, options.output);
       await writeJsonOutput(path, jsonOutput, options.compactJson ? 0 : 2);
-      console.log(`Wrote ${path}`);
+      console.error(`Wrote ${path}`);
     }
   });
 
@@ -216,7 +216,7 @@ program
     if (options.output) {
       const path = resolve(resolved, options.output);
       await writeJsonOutput(path, result.plan);
-      console.log(`Wrote ${path}`);
+      console.error(`Wrote ${path}`);
     }
   });
 

@@ -35,6 +35,12 @@ after build use `node dist/cli.js <command>`.
    successfully for that terminal state; it fails only when nodes remain but
    are blocked or need review.
 
+Mechanical findings disappear on rescan. Semantic-only findings do not:
+after tests and source inspection prove one fixed, remove that exact entry
+from the active `findings` array in `decisions.json`. Preserve unrelated
+findings and reviews. Do not dismiss a real fixed issue as a false positive;
+report its evidence and fix in the final response, then preview review pruning.
+
 Reviews for findings proven by the baseline but absent from the current audit
 are resolved history, not doctor errors. Keep them so a recurrence remains
 reviewed. A review absent from both current findings and the current baseline

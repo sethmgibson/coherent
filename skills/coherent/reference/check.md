@@ -17,7 +17,17 @@ Default exit policy:
 - Hybrid and candidate findings are printed and do not fail by default.
 - Resolved findings are reported.
 
-`--changed` parses only TypeScript files in the git diff (unstaged, staged, and untracked), plus files that import those modules so A08 can still see callers. Findings outside that scope are not reported as RESOLVED. Neither scoped nor full checks write Coherent metadata.
+`--changed` parses TypeScript files in the git diff (unstaged, staged, and
+untracked), plus their transitive importers so A08 can still see callers. Git
+paths are relative to the requested target, including nested package roots;
+renames include both old and new paths. Import discovery shares full analysis's
+TypeScript resolver, including aliases and owning child configs. Inventory
+ignores still apply. Findings outside that scope are not reported as RESOLVED.
+Neither scoped nor full checks write Coherent metadata.
+
+Use full `check` for repository-wide conclusions, particularly after changing
+package manifests, compiler configuration, or cross-file representations.
+No new mechanical findings is not proof of semantic architectural cleanliness.
 
 If `.coherent/baseline.json` is missing, the command exits non-zero and tells you to run `coherent baseline` first. If the baseline schema, fingerprint version, or detector revision does not match this CLI, the command tells you to re-run `coherent baseline` instead of reporting every finding as NEW.
 

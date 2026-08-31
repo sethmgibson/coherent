@@ -176,13 +176,48 @@ The skill and CLI currently install separately. The unscoped `coherent` name on 
 
 ## Development
 
+Use Node.js 20.19+, 22.13+, or 24+ for the development toolchain.
+
 ```bash
 pnpm install
 pnpm build
+pnpm lint
 pnpm test
 pnpm typecheck
 pnpm generate:skill-docs
 ```
+
+`pnpm validate` runs the full local validation suite. CI also runs `pnpm lint`
+with zero allowed warnings. Typed ESLint covers source, tests, scripts, and the
+Vitest configuration using `tsconfig.typecheck.json`; generated output and
+intentionally problematic test fixtures are excluded. The rules focus on unsafe
+`any` operations, unhandled/misused promises, and exhaustive switches, without a
+formatting preset. A `void` prefix does not excuse an unhandled promise.
+
+Dependency gates run locally through `pnpm validate` and in CI:
+
+- `pnpm check:dependencies` runs Knip for unused/unlisted dependencies and
+  unresolved imports, then repeats against production entrypoints in strict
+  mode. CLI and public entrypoints come from `package.json`; scripts and tests
+  participate in the development pass. Intentional fixtures are excluded.
+- `pnpm check:security` audits runtime and development dependencies and fails
+  on high/critical known vulnerabilities or registry errors. It does not run
+  automatic fixes or ignore advisories without a resolution.
+
+Dependabot proposes weekly package and GitHub Actions updates. Development
+minor/patch updates are grouped; runtime and major updates remain separate.
+Updates require review; no auto-merge workflow is installed. Dependency gates
+do not replace Coherent's semantic review or its baseline drift checks.
+
+`pnpm check:package` validates the shipped artifact, and runs in CI and
+`pnpm validate`. It packs the project (running the existing `prepack` build),
+runs publint with warnings treated as errors against that tarball, then installs
+it with runtime dependencies only in a temporary directory outside the checkout.
+It exercises both CLI names, performs an audit, and compiles and executes a strict
+TypeScript consumer of every public export. Consumer imports cannot resolve to
+repository sources or development dependencies; only the compiler executable
+comes from the checkout. Installation disables lifecycle scripts, requires
+registry access for uncached dependencies, and cleans up the temporary files.
 
 When running Coherent against its own checkout before build, invoke
 `pnpm exec tsx src/cli.ts <command>`; after build, use

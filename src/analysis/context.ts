@@ -5,7 +5,6 @@ import {
   ModuleKind,
   ModuleResolutionKind,
   ts,
-  type ResolutionHostFactory,
 } from "ts-morph";
 import type { SourceFile } from "ts-morph";
 import type { CoherentConfig } from "../config.js";
@@ -37,22 +36,13 @@ export async function createAnalysisContext(
   config: CoherentConfig = {},
   scope: AnalysisScope = {},
 ): Promise<AnalysisContext> {
-  const tsConfigs = loadTsConfigs(root, inventory);
-  const compilerOptions =
-    tsConfigs.find((config) => config.path === join(root, "tsconfig.json"))?.options ??
-    tsConfigs[0]?.options ?? {
-      target: ScriptTarget.ES2022,
-      module: ModuleKind.Node16,
-      moduleResolution: ModuleResolutionKind.Node16,
-      strict: true,
-      skipLibCheck: true,
-      allowJs: false,
-      experimentalDecorators: true,
-      noEmit: true,
-    };
+  const resolver = createModuleResolver(root, inventory);
   const project = new Project({
-    compilerOptions,
-    resolutionHost: createResolutionHost(tsConfigs),
+    compilerOptions: resolver.compilerOptions,
+    resolutionHost: (host) => ({
+      resolveModuleNames: (names, containingFile) =>
+        names.map((name) => resolver.resolve(name, containingFile, host)),
+    }),
     skipAddingFilesFromTsConfig: true,
     skipFileDependencyResolution: false,
   });
@@ -73,6 +63,7 @@ export async function createAnalysisContext(
     } catch (error) {
       throw new Error(
         `Incomplete analysis: failed to load source file ${file.relativePath}: ${errorMessage(error)}`,
+        { cause: error },
       );
     }
   }
@@ -112,7 +103,7 @@ function loadTsConfigs(root: string, inventory: Inventory): LoadedTsConfig[] {
   const configs: LoadedTsConfig[] = [];
   for (const relativePath of inventory.tsconfigFiles) {
     const path = join(root, relativePath);
-    const read = ts.readConfigFile(path, ts.sys.readFile);
+    const read = ts.readConfigFile(path, (filePath) => ts.sys.readFile(filePath));
     if (read.error) {
       throw new Error(
         `Incomplete analysis: failed to read TypeScript config ${relativePath}: ${diagnosticMessage(read.error)}`,
@@ -157,16 +148,28 @@ function compareTsConfigs(left: LoadedTsConfig, right: LoadedTsConfig): number {
   return left.path.localeCompare(right.path);
 }
 
-function createResolutionHost(configs: LoadedTsConfig[]): ResolutionHostFactory {
-  return (host, getCompilerOptions) => ({
-    resolveModuleNames(moduleNames, containingFile) {
-      const options = optionsForFile(containingFile, configs) ?? getCompilerOptions();
-      return moduleNames.map(
-        (moduleName) =>
-          ts.resolveModuleName(moduleName, containingFile, options, host).resolvedModule,
-      );
+/** One resolution policy for full analysis and changed-file importer discovery. */
+export function createModuleResolver(root: string, inventory: Inventory) {
+  const configs = loadTsConfigs(root, inventory);
+  const compilerOptions =
+    configs.find((config) => config.path === join(root, "tsconfig.json"))?.options ??
+    configs[0]?.options ?? {
+      target: ScriptTarget.ES2022,
+      module: ModuleKind.Node16,
+      moduleResolution: ModuleResolutionKind.Node16,
+      strict: true,
+      skipLibCheck: true,
+      allowJs: false,
+      experimentalDecorators: true,
+      noEmit: true,
+    };
+  return {
+    compilerOptions,
+    resolve(name: string, containingFile: string, host: ts.ModuleResolutionHost = ts.sys) {
+      const options = optionsForFile(containingFile, configs) ?? compilerOptions;
+      return ts.resolveModuleName(name, containingFile, options, host).resolvedModule;
     },
-  });
+  };
 }
 
 function optionsForFile(

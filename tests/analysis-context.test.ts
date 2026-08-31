@@ -47,6 +47,10 @@ describe("analysis completeness", () => {
       await expect(runAudit(root, { include: ["src/missing.ts"] })).rejects.toThrow(
         /Incomplete analysis: failed to load source file src\/missing\.ts:/,
       );
+      await expect(runAudit(root, { include: ["src/missing.ts"] })).rejects.toHaveProperty(
+        "cause",
+        expect.any(Error),
+      );
     } finally {
       await rm(root, { recursive: true, force: true });
     }

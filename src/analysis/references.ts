@@ -20,9 +20,8 @@ function nodesOverlap(left: Node, right: Node): boolean {
 }
 
 function getNameNode(node: Node): Node | undefined {
-  if ("getNameNode" in node && typeof node.getNameNode === "function") {
+  if (Node.hasName(node)) {
     return node.getNameNode() ?? undefined;
   }
   return undefined;
 }
-

@@ -142,7 +142,8 @@ describe("parseFindingInput", () => {
       "prerequisiteFindingIds",
     ] as const;
     for (const field of required) {
-      const { [field]: _omit, ...incomplete } = sample();
+      const incomplete: Partial<FindingInput> = sample();
+      delete incomplete[field];
       expect(() => parseFindingInput(incomplete)).toThrow(/Invalid finding/);
     }
   });
@@ -154,6 +155,9 @@ describe("parseFindingInput", () => {
     expect(() => parseFindingInput(sample({ evidence: { summary: 1 } as never }))).toThrow(
       /evidence/,
     );
+    expect(() =>
+      parseFindingInput(sample({ evidence: { summary: "valid", details: [1] } as never })),
+    ).toThrow(/evidence\.details must be an array of strings/);
     expect(() =>
       parseFindingInput(sample({ locations: [{ line: 4 }] as never })),
     ).toThrow(/locations\[0\] must include file/);

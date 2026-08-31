@@ -89,7 +89,7 @@ function sameArguments(
 ): boolean {
   const args = call.getArguments();
   if (args.length !== params.length) {
-    if (args.length === 1 && Node.isSpreadElement(args[0]!)) return true;
+    if (args.length === 1 && Node.isSpreadElement(args[0])) return true;
     return false;
   }
   return args.every((arg, index) => {

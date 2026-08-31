@@ -56,6 +56,21 @@ async function runCliWithInput(
 }
 
 describe("CLI", () => {
+  it.each([
+    ["audit", "--json"], ["audit", "--compact-json"], ["plan", "--json"],
+  ])("keeps %s %s stdout parseable with an explicit output file", async (command, format) => {
+    const root = await mkdtemp(join(tmpdir(), "coherent-cli-json-output-"));
+    try {
+      await writeFile(join(root, "package.json"), '{"name":"clean"}\n');
+      const result = await runCli([command, root, format, "--output", "result.json"]);
+      expect(result.code).toBe(0);
+      expect(JSON.parse(result.stdout)).toEqual(JSON.parse(await readFile(join(root, "result.json"), "utf8")));
+      expect(result.stderr).toContain("Wrote ");
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
   it("reports the package manifest version", async () => {
     const packageJson = JSON.parse(await readFile(join(repoRoot, "package.json"), "utf8")) as {
       version: string;
@@ -63,6 +78,19 @@ describe("CLI", () => {
     const result = await runCli(["--version"]);
 
     expect(result).toEqual({ stdout: `${packageJson.version}\n`, stderr: "", code: 0 });
+  });
+
+  it("runs install and update without creating files when no integration is selected", async () => {
+    const root = await mkdtemp(join(tmpdir(), "coherent-cli-no-integration-"));
+    try {
+      for (const command of ["install", "update"]) {
+        const result = await runCli([command, root]);
+        expect(result.code).toBe(0);
+        expect(await readdir(root)).toEqual([]);
+      }
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
   });
 
   it("inits a repository through the public command", async () => {
@@ -97,8 +125,8 @@ describe("CLI", () => {
       const output = "artifacts/plan.json";
       const saved = await runCli(["plan", root, "--output", output]);
       expect(saved.code).toBe(0);
-      const plan = JSON.parse(await readFile(join(root, output), "utf8"));
-      expect(Array.isArray(plan.nodes)).toBe(true);
+      const plan: unknown = JSON.parse(await readFile(join(root, output), "utf8"));
+      expect(plan).toHaveProperty("nodes", expect.any(Array));
     } finally {
       await rm(root, { recursive: true, force: true });
     }
@@ -246,10 +274,10 @@ describe("CLI", () => {
       const output = "artifacts/findings.json";
       const saved = await runCli(["audit", root, "--output", output]);
       expect(saved.code).toBe(0);
-      const findings = JSON.parse(
+      const findings: unknown = JSON.parse(
         await readFile(join(root, output), "utf8"),
       );
-      expect(Array.isArray(findings.findings)).toBe(true);
+      expect(findings).toHaveProperty("findings", expect.any(Array));
     } finally {
       await rm(root, { recursive: true, force: true });
     }
@@ -289,12 +317,10 @@ describe("CLI", () => {
       expect(new Set(compact.findings.map((finding) => finding.fingerprint)).size).toBe(
         compact.findings.length,
       );
-      expect(compact.findings[0]).toMatchObject({
-        fingerprint: expect.any(String),
-        identity: expect.any(String),
-        evidence: { summary: expect.any(String) },
-        locations: expect.any(Array),
-      });
+      expect(compact.findings[0]?.fingerprint).toEqual(expect.any(String));
+      expect(compact.findings[0]?.identity).toEqual(expect.any(String));
+      expect(compact.findings[0]?.evidence.summary).toEqual(expect.any(String));
+      expect(compact.findings[0]?.locations).toEqual(expect.any(Array));
       expect(compact.candidates).toBeUndefined();
       expect(compact.confirmed).toBeUndefined();
       expect(compact.groups).toBeUndefined();
@@ -306,7 +332,7 @@ describe("CLI", () => {
       const output = "artifacts/compact-findings.json";
       const saved = await runCli(["audit", root, "--compact-json", "--output", output]);
       expect(saved.code).toBe(0);
-      const written = JSON.parse(await readFile(join(root, output), "utf8"));
+      const written = JSON.parse(await readFile(join(root, output), "utf8")) as typeof compact;
       expect(written.summary.total).toBe(compact.summary.total);
       expect(written.candidates).toBeUndefined();
       const serialized = await readFile(join(root, output), "utf8");
