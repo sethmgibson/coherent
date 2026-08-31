@@ -47,6 +47,18 @@ export async function loadOrTranslate(id: string): Promise<string> {
   }
 }
 
+export async function loadAll(ids: string[]): Promise<string[]> {
+  const loaded: string[] = [];
+  for (const id of ids) {
+    try {
+      loaded.push(await lookup(id));
+    } catch {
+      continue;
+    }
+  }
+  return loaded;
+}
+
 async function lookup(id: string): Promise<string> {
   if (!id) throw new Error("missing");
   return id;

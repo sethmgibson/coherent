@@ -49,7 +49,7 @@ export function buildPlan(
       behavioralRisk: riskOf(groupFindings),
       expectedSimplification: simplificationOf(group, groupFindings),
       deletionPotential: deletionOf(groupFindings),
-      unlocks: unlocksOf(group, rescanAfter, indirect.get(group.id) ?? []),
+      unlocks: unlocksOf(groupFindings, group, rescanAfter, indirect.get(group.id) ?? []),
       testSafetyEvidence: testEvidence(groupFindings),
       rescanAfter,
       mayResolveIndirectly: indirect.get(group.id) ?? [],
@@ -110,30 +110,47 @@ function prerequisiteMap(
   byFingerprint: Map<string, Finding>,
 ): Map<string, Set<string>> {
   const map = new Map<string, Set<string>>();
+  const groupIdByFingerprint = new Map(
+    groups.flatMap((group) =>
+      group.fingerprints.map((fingerprint) => [fingerprint, group.id] as const),
+    ),
+  );
   for (const group of groups) {
+    const prerequisites = new Set<string>();
+    for (const finding of fingerprintsOf(group, byFingerprint)) {
+      for (const prerequisiteFingerprint of finding.prerequisiteFindingIds) {
+        const prerequisiteGroupId = groupIdByFingerprint.get(prerequisiteFingerprint);
+        if (prerequisiteGroupId && prerequisiteGroupId !== group.id) {
+          prerequisites.add(prerequisiteGroupId);
+        }
+      }
+    }
+
     const needed = new Set<RuleId>();
     for (const ruleId of group.ruleIds) {
       for (const prerequisite of RULES_BY_ID[ruleId].prerequisites) {
         needed.add(prerequisite);
       }
     }
-    if (needed.size === 0) continue;
-    const files = new Set(group.files);
-    const symbols = new Set(group.symbols);
-    for (const other of groups) {
-      if (other.id === group.id) continue;
-      if (!other.ruleIds.some((id) => needed.has(id))) continue;
-      const otherFindings = fingerprintsOf(other, byFingerprint);
-      const analysisOnly = other.ruleIds.every((id) => RULES_BY_ID[id].workKind === "analysis");
-      const overlaps =
-        other.files.some((file) => files.has(file)) ||
-        other.symbols.some((symbol) => symbols.has(symbol)) ||
-        otherFindings.some((finding) => finding.authoritativeConcept && symbols.has(finding.authoritativeConcept));
-      if (!overlaps && !analysisOnly) continue;
-      if (!overlaps && analysisOnly && !sharesConcept(group, other, byFingerprint)) continue;
-      const list = map.get(group.id) ?? new Set<string>();
-      list.add(other.id);
-      map.set(group.id, list);
+    if (needed.size > 0) {
+      const files = new Set(group.files);
+      const symbols = new Set(group.symbols);
+      for (const other of groups) {
+        if (other.id === group.id) continue;
+        if (!other.ruleIds.some((id) => needed.has(id))) continue;
+        const otherFindings = fingerprintsOf(other, byFingerprint);
+        const analysisOnly = other.ruleIds.every((id) => RULES_BY_ID[id].workKind === "analysis");
+        const overlaps =
+          other.files.some((file) => files.has(file)) ||
+          other.symbols.some((symbol) => symbols.has(symbol)) ||
+          otherFindings.some((finding) => finding.authoritativeConcept && symbols.has(finding.authoritativeConcept));
+        if (!overlaps && !analysisOnly) continue;
+        if (!overlaps && analysisOnly && !sharesConcept(group, other, byFingerprint)) continue;
+        prerequisites.add(other.id);
+      }
+    }
+    if (prerequisites.size > 0) {
+      map.set(group.id, prerequisites);
     }
   }
   return map;
@@ -266,8 +283,21 @@ function deletionOf(findings: Finding[]): string {
     : "Moderate.";
 }
 
-function unlocksOf(group: FindingGroup, rescan: RuleId[], indirect: string[]): string {
-  const parts = [rescanReason(group.ruleIds)];
+function unlocksOf(
+  findings: Finding[],
+  group: FindingGroup,
+  rescan: RuleId[],
+  indirect: string[],
+): string {
+  const parts = unique(
+    findings
+      .map((finding) => finding.unlocks)
+      .filter((value): value is string => Boolean(value)),
+  );
+  const rescanText = rescanReason(group.ruleIds);
+  if (rescan.length > 0 || parts.length === 0) {
+    parts.push(rescanText);
+  }
   if (indirect.length > 0) {
     parts.push(`${indirect.length} other finding(s) may disappear once this surface is gone.`);
   }

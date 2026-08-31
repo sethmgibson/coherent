@@ -56,6 +56,15 @@ async function runCliWithInput(
 }
 
 describe("CLI", () => {
+  it("reports the package manifest version", async () => {
+    const packageJson = JSON.parse(await readFile(join(repoRoot, "package.json"), "utf8")) as {
+      version: string;
+    };
+    const result = await runCli(["--version"]);
+
+    expect(result).toEqual({ stdout: `${packageJson.version}\n`, stderr: "", code: 0 });
+  });
+
   it("inits a repository through the public command", async () => {
     const root = await mkdtemp(join(tmpdir(), "coherent-cli-"));
     await cp(expressFixture, root, { recursive: true });
@@ -90,6 +99,45 @@ describe("CLI", () => {
       expect(saved.code).toBe(0);
       const plan = JSON.parse(await readFile(join(root, output), "utf8"));
       expect(Array.isArray(plan.nodes)).toBe(true);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it("inspects one audit snapshot, reviewed plan, and next node", async () => {
+    const root = await mkdtemp(join(tmpdir(), "coherent-inspect-"));
+    await cp(scannerFixture, root, { recursive: true });
+    try {
+      const stateBefore = await readdir(join(root, ".coherent"));
+      const result = await runCli(["inspect", root, "--json"]);
+      expect(result.code).toBe(0);
+      const inspection = JSON.parse(result.stdout) as {
+        audit: {
+          summary: { total: number };
+          findings: Array<{ fingerprint: string }>;
+          candidates?: unknown;
+        };
+        plan: {
+          readyNodeIds: string[];
+          reviewSummary?: { detected: number };
+        };
+        nextNode: { id: string } | null;
+      };
+      expect(inspection.audit.findings).toHaveLength(inspection.audit.summary.total);
+      expect(inspection.audit.candidates).toBeUndefined();
+      expect(inspection.plan.reviewSummary?.detected).toBe(
+        inspection.audit.summary.total,
+      );
+      if (inspection.nextNode) {
+        expect(inspection.plan.readyNodeIds).toContain(inspection.nextNode.id);
+      }
+      expect(await readdir(join(root, ".coherent"))).toEqual(stateBefore);
+
+      const plain = await runCli(["inspect", root]);
+      expect(plain.code).toBe(0);
+      expect(plain.stdout).toContain("Coherent inspect");
+      expect(plain.stdout).toContain("Coherent cleanup plan");
+      expect(plain.stdout).toContain("Coherent fix next");
     } finally {
       await rm(root, { recursive: true, force: true });
     }
@@ -175,6 +223,15 @@ describe("CLI", () => {
     const prune = await runCli(["review", "prune", "--help"]);
     expect(prune.code).toBe(0);
     expect(prune.stdout).toContain("--write");
+    const dismiss = await runCli(["review", "dismiss", "--help"]);
+    expect(dismiss.code).toBe(0);
+    expect(dismiss.stdout).toContain("--expires-at");
+    expect(dismiss.stdout).toContain("--removal-milestone");
+    expect(dismiss.stdout).toContain("--not-compatibility");
+    const defer = await runCli(["review", "defer", "--help"]);
+    expect(defer.code).toBe(0);
+    expect(defer.stdout).toContain("--expires-at");
+    expect(defer.stdout).toContain("--removal-milestone");
   });
 
   it("runs audit without writing project state and supports explicit output", async () => {
@@ -193,6 +250,71 @@ describe("CLI", () => {
         await readFile(join(root, output), "utf8"),
       );
       expect(Array.isArray(findings.findings)).toBe(true);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it("prints compact audit JSON without duplicate finding collections", async () => {
+    const root = await mkdtemp(join(tmpdir(), "coherent-audit-compact-"));
+    await cp(scannerFixture, root, { recursive: true });
+    try {
+      const result = await runCli(["audit", root, "--compact-json"]);
+      expect(result.code).toBe(0);
+      const compact = JSON.parse(result.stdout) as {
+        summary: {
+          total: number;
+          confirmed: number;
+          candidates: number;
+          byRule: Array<{ ruleId: string; total: number }>;
+        };
+        findings: Array<{
+          fingerprint: string;
+          identity: string;
+          evidence: { summary: string };
+          locations: Array<{ file: string }>;
+        }>;
+        candidates?: unknown;
+        confirmed?: unknown;
+        groups?: unknown;
+        metrics?: unknown;
+      };
+      expect(compact.findings).toHaveLength(compact.summary.total);
+      expect(compact.summary.confirmed + compact.summary.candidates).toBe(
+        compact.summary.total,
+      );
+      expect(compact.summary.byRule.reduce((sum, rule) => sum + rule.total, 0)).toBe(
+        compact.summary.total,
+      );
+      expect(new Set(compact.findings.map((finding) => finding.fingerprint)).size).toBe(
+        compact.findings.length,
+      );
+      expect(compact.findings[0]).toMatchObject({
+        fingerprint: expect.any(String),
+        identity: expect.any(String),
+        evidence: { summary: expect.any(String) },
+        locations: expect.any(Array),
+      });
+      expect(compact.candidates).toBeUndefined();
+      expect(compact.confirmed).toBeUndefined();
+      expect(compact.groups).toBeUndefined();
+      expect(compact.metrics).toBeUndefined();
+      expect(compact.findings[0]).not.toHaveProperty("title");
+      expect(compact.findings[0]).not.toHaveProperty("affectedSymbols");
+      expect(compact.findings[0]).not.toHaveProperty("changeRisk");
+
+      const output = "artifacts/compact-findings.json";
+      const saved = await runCli(["audit", root, "--compact-json", "--output", output]);
+      expect(saved.code).toBe(0);
+      const written = JSON.parse(await readFile(join(root, output), "utf8"));
+      expect(written.summary.total).toBe(compact.summary.total);
+      expect(written.candidates).toBeUndefined();
+      const serialized = await readFile(join(root, output), "utf8");
+      expect(serialized.split("\n")).toHaveLength(2);
+
+      const conflicting = await runCli(["audit", root, "--json", "--compact-json"]);
+      expect(conflicting.code).toBe(1);
+      expect(conflicting.stderr).toContain("either --json or --compact-json");
     } finally {
       await rm(root, { recursive: true, force: true });
     }

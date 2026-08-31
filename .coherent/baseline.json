@@ -2,8 +2,8 @@
   "schemaVersion": 1,
   "coherentVersion": "0.1.0",
   "fingerprintVersion": 2,
-  "detectorRevision": 4,
-  "createdAt": "2026-08-29T07:46:48.922Z",
+  "detectorRevision": 5,
+  "createdAt": "2026-08-31T02:24:52.935Z",
   "findings": [
     {
       "fingerprint": "20ff585611cc01ae46baddc5585ed07a0543d116aa738d659793b21d1b90acea",
@@ -153,22 +153,6 @@
       ],
       "symbols": [
         "legacySemanticFindingsPath"
-      ]
-    },
-    {
-      "fingerprint": "de4373bcece329e7bbf0759102f08dc4dec14ee6c3f8beffe1a1bdb13f58cf06",
-      "ruleId": "A06",
-      "identity": "duplicate-rep:CleanupPhase+RuleCategory",
-      "title": "Structurally similar representations",
-      "detectionMode": "hybrid",
-      "status": "candidate",
-      "severity": "medium",
-      "files": [
-        "src/catalog/types.ts"
-      ],
-      "symbols": [
-        "CleanupPhase",
-        "RuleCategory"
       ]
     },
     {
@@ -555,22 +539,6 @@
       ],
       "symbols": [
         "filter",
-        "overlappingPairs"
-      ]
-    },
-    {
-      "fingerprint": "ffd212fb5bdadaa9a0711befd17e103e8f15cf37eab84615bbce4f4351f2f437",
-      "ruleId": "E06",
-      "identity": "loop-includes:src/detectors/duplicate-reps.ts:overlappingPairs",
-      "title": "Collection .includes() inside a loop",
-      "detectionMode": "hybrid",
-      "status": "candidate",
-      "severity": "medium",
-      "files": [
-        "src/detectors/duplicate-reps.ts"
-      ],
-      "symbols": [
-        "includes",
         "overlappingPairs"
       ]
     },

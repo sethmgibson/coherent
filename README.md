@@ -45,6 +45,13 @@ For a whole-repository cleanup, ask `$coherent` to run the full cleanup. It
 will review and fix one DAG node at a time until no safe work remains; it does
 not literally run optional integration commands.
 
+The cleanup loop uses one combined inspection command so audit, planning, and
+next-node selection share the same scan:
+
+```text
+$coherent inspect
+```
+
 - `init` records the repository's living architecture so later work has context.
 - `audit` finds maintainability problems without changing code or writing project files.
 - `fix next` chooses one safe, unblocked cleanup instead of rewriting the repository wholesale.
@@ -88,6 +95,7 @@ Some findings can be proven mechanically. Others require judgment about meaning,
 | `$coherent init` | Inventory the repository and create durable architecture context |
 | `$coherent refresh` | Refresh discovered facts without overwriting confirmed architecture notes |
 | `$coherent audit` | Run deterministic checks and guide semantic investigation |
+| `$coherent inspect` | Audit once, build the reviewed plan, and show the next cleanup node |
 | `$coherent review` | Confirm, dismiss, defer, batch, or preview/prune obsolete reviews |
 | `$coherent baseline` | Record existing debt so it does not block adoption |
 | `$coherent plan` | Build a dependency-aware cleanup plan |
@@ -121,18 +129,26 @@ Coherent does not create caches or reports by default. Its durable project state
 - Commit `.coherent/baseline.json` only when the repository uses `check` for drift prevention.
 - Commit `.coherent/decisions.json` when reviews or semantic findings should survive across agents.
 
-`audit`, `plan`, `check`, `doctor`, and `fix next` write no Coherent metadata. To retain machine-readable output explicitly, use `coherent audit --output <path>` or `coherent plan --output <path>`.
+`audit`, `inspect`, `plan`, `check`, `doctor`, and `fix next` write no Coherent metadata. Use `coherent inspect --json` for compact audit evidence, the reviewed plan, and the selected next node from one scan. Use `coherent audit --compact-json` when only the non-duplicated finding payload is needed. To retain machine-readable output explicitly, use `coherent audit --output <path>`, combine `--compact-json` with `--output` for the compact shape, or use `coherent plan --output <path>`.
 
 When reviewing several findings, send a JSON array to `coherent review apply`. Coherent resolves the whole batch with one audit and writes `decisions.json` only after every item validates. Individual `confirm`, `dismiss`, and `defer` commands remain convenient for one decision.
+
+Dismissed or deferred Stale compatibility findings must carry a lifecycle.
+Use `--expires-at <iso>` when the decision needs a calendar re-review, or
+`--removal-milestone <text>` when a release or consumer migration permits
+removal. Batch items use `expiresAt` or `removalMilestone`. An expired review
+stops applying and the finding becomes reviewable again. If an A07 signal is
+not compatibility behavior, use `--not-compatibility` (or
+`"notCompatibility": true` in a batch) instead of inventing a lifecycle.
 
 A batch item may use `fingerprints: ["...", "..."]` when one evidence-backed
 conclusion applies to a genuine finding group. Raw audit signals remain visible
 after dismissal; the reviewed plan is the action queue, and zero plan nodes is
 the clean terminal state.
 
-`coherent review prune` previews stale and orphaned review records. Add
+`coherent review prune` previews stale, expired, and orphaned review records. Add
 `--write` only after verifying the preview; baseline-backed resolved reviews
-are preserved automatically.
+are preserved automatically while their lifecycle remains current.
 
 TypeScript analysis reads repository tsconfigs, including inherited compiler options, path aliases, and the owning child config in project-reference workspaces. Resolution stays in memory; Coherent does not generate a synthetic tsconfig or cache.
 

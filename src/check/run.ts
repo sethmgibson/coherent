@@ -1,8 +1,8 @@
-import { readFile } from "node:fs/promises";
 import { runAudit, type AuditResult } from "../audit/run.js";
 import {
   baselinePath,
   isBaselineStale,
+  readBaseline,
   type BaselineEntry,
   type BaselineFile,
   toBaselineEntry,
@@ -137,7 +137,9 @@ export function renderCheck(result: CheckResult): string {
   }
   if (result.existingFindings.length > 0) {
     lines.push("");
-    lines.push(`Existing debt: ${result.existingFindings.length} (does not fail the check).`);
+    lines.push(
+      `Existing baseline signals: ${result.existingFindings.length} (does not fail the check).`,
+    );
   }
   lines.push("");
   lines.push("Did this feature make the system conceptually harder to change?");
@@ -157,7 +159,9 @@ export function renderCheck(result: CheckResult): string {
   } else {
     lines.push("No new confirmed high/critical deterministic findings.");
   }
-  lines.push("Existing debt does not fail the check. Hybrid and candidate findings are reported.");
+  lines.push(
+    "Existing baseline signals do not fail the check. Hybrid and candidate findings are reported.",
+  );
   return `${lines.join("\n")}\n`;
 }
 
@@ -175,15 +179,4 @@ function itemFromFinding(finding: Finding, kind: DriftKind): DriftItem {
 function inScope(files: string[], scope?: Set<string>): boolean {
   if (!scope) return true;
   return files.some((file) => scope.has(file));
-}
-
-async function readBaseline(root: string): Promise<BaselineFile | undefined> {
-  try {
-    const raw = JSON.parse(await readFile(baselinePath(root), "utf8")) as BaselineFile;
-    if (!raw || !Array.isArray(raw.findings)) return undefined;
-    return raw;
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined;
-    throw error;
-  }
 }

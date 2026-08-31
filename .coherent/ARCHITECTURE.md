@@ -16,7 +16,8 @@ Success today means a working inventory, a single typed rule catalog, a
 default cleanup-phase model, `init` / `refresh`, a scanner (`audit`,
 `baseline`, `check`), a durable decision loop (`decisions.json`), a
 finding-specific cleanup DAG (`plan`), a
-one-node work brief (`fix next`), and a read-only `doctor`. The coding
+single-scan combined inspection (`inspect`), a one-node work brief
+(`fix next`), and a read-only `doctor`. The coding
 agent performs semantic reasoning; there is no hosted LLM service.
 
 ## Major applications/services
@@ -36,7 +37,7 @@ Detected frameworks:
 
 Languages: TypeScript
 
-Approximate size: 143 files, 10291 source lines.
+Approximate size: 150 files, 11448 source lines.
 
 Dependencies: 2 runtime, 4 development.
 <!-- /coherent:discovered -->
@@ -55,7 +56,7 @@ and `ts-morph`.
 This is not a layered web service. Modules are named by domain, not by
 generic tiers:
 
-- `src/catalog` — rule and phase source of truth
+- `src/catalog` — rule and phase source of truth; `types.ts` is a public barrel derived from those catalogs
 - `src/domain` — Finding
 - `src/analysis` — one in-memory ts-morph project per scan; helpers current detectors need. Module resolution uses parsed repository tsconfigs, inherited compiler options, path aliases, and the owning child config in project-reference workspaces without generating files or caches.
 - `src/detectors` — one function per implemented rule, called explicitly
@@ -63,6 +64,7 @@ generic tiers:
 - `src/review` — durable review decisions and semantic-only findings
 - `src/plan` — cleanup DAG from merged findings; default phases are tie-breaks only
 - `src/fix` — select one unlocked node and write a work brief
+- `src/inspect.ts` — one read-only audit snapshot feeding the reviewed plan and next-node selection
 - `src/doctor` — read-only integrity checks
 - `src/inventory.ts`, `src/inventory-walk.ts`, `src/inventory-scan.ts` — repository inventory
 - `src/init` — ARCHITECTURE.md generation and fenced refresh
@@ -141,10 +143,13 @@ Observed top-level modules:
 
 - A rule exists only in `src/catalog/rules.ts`. Skill markdown is generated.
 - A cleanup phase exists only in `src/catalog/phases.ts`.
+- The release version exists only in `package.json`; `src/version.ts` reads it for artifacts and the CLI.
 - A cleanup node exists only in the plan built from current findings and decisions; JSON is written only through explicit `--output`.
 - `RuleCategory` and `CleanupPhase` share `id`/`title`/`summary` by coincidence. They are intentionally different; do not merge. That decision is also recorded in `.coherent/decisions.json`.
 - `FindingStatus` (`confirmed` | `candidate`) is the typed status protocol. Review decisions remain distinct from Finding status inside the consolidated decisions file.
 - A Finding's identity is its fingerprint of rule ID, `identity`, files, and symbols. Line and column are presentation only.
+- Serialized Findings are parsed through `parseFindingInput`; `parseFinding` also requires the stored fingerprint to match the canonical recomputed identity.
+- Baseline JSON is parsed only through `parseBaselineFile` / `readBaseline`; baseline, check, review, and doctor consumers share that schema validation.
 - Discovered repository facts live in the inventory object; `ARCHITECTURE.md` may quote them but must not become a second inventory.
 
 ## Important invariants
@@ -159,6 +164,7 @@ Observed top-level modules:
 - A review whose exact fingerprint remains in the current baseline but is absent from the current audit is resolved history, not an orphan. Deep doctor still rejects reviews absent from both.
 - `check` fails only on new confirmed high/critical deterministic findings. Version-skewed baselines are stale and must be regenerated.
 - Taxonomy ID order is not cleanup execution order. The cleanup DAG is authoritative.
+- `prerequisiteFindingIds` names current finding fingerprints. The planner maps them through finding groups, ignores same-node references, treats absent fingerprints as satisfied, and preserves explicit `unlocks` text in work briefs.
 - Dead-code (A08) is re-scanned after A07, after canonicalization, and after architecture collapse.
 - Analysis parses repository tsconfigs and uses the owning config for each containing file, so inherited options, path aliases, and child project-reference configs participate in module resolution.
 
@@ -207,7 +213,7 @@ Probable entrypoint files:
 > Status: confirmed
 
 User-facing commands are `init`, `refresh`, `audit`, `review`, `baseline`,
-`plan`, `fix next`, `check`, `install`, `update`, and `doctor`. Catalog
+`inspect`, `plan`, `fix next`, `check`, `install`, `update`, and `doctor`. Catalog
 types are also exported for tests and callers.
 
 ## Async/event boundaries
@@ -223,15 +229,16 @@ None. The CLI is synchronous process work. No queues, cron, or subscriptions.
 - `coherent init [root]` keeps inventory in memory and writes architecture context.
 - `coherent refresh [root]` updates fenced discovered facts only.
 - `coherent audit [root]` parses TypeScript once and runs implemented detectors without writing metadata; `--output` is explicit.
-- `coherent review dismiss|confirm|defer <fingerprint>` writes one decision to `.coherent/decisions.json`; `review apply` validates a JSON batch against one audit before one write and accepts one or several fingerprints per evidence-backed batch item. `review prune` previews stale and orphaned records and writes only with `--write`, retaining baseline-backed resolved history.
+- `coherent inspect [root]` uses one audit snapshot for compact findings, the reviewed cleanup DAG, and next-node selection without writing metadata.
+- `coherent review dismiss|confirm|defer <fingerprint>` writes one decision to `.coherent/decisions.json`; dismissed or deferred live A07 reviews require a future expiry or named removal milestone, expiry reopens the finding, and reviewed false signals are explicitly marked `notCompatibility`. `review apply` validates a JSON batch against one audit before one write and accepts one or several fingerprints per evidence-backed batch item. `review prune` previews stale, expired, and orphaned records and writes only with `--write`, retaining baseline-backed resolved history only while its lifecycle is current.
 - `coherent baseline [root]` snapshots finding fingerprints with portable schema versions and leaves an equivalent existing file byte-for-byte unchanged.
 - `coherent plan [root]` builds a cleanup DAG from a fresh audit merged with reviews and semantic findings.
 - `coherent fix next [root]` selects one unlocked `ready` node and prints a work brief. An empty reviewed plan is a successful clean terminal; remaining blocked or review-only nodes are not.
 - `coherent check [root]` compares a fresh audit to the baseline and classifies new debt. `--changed` parses git-diff files plus importers and does not treat unscoped baseline findings as resolved.
 - `coherent install [root]` and `update` write nothing without explicit adapter, rule, Cursor hook, or Git hook flags.
-- `coherent doctor [root]` checks stale discovery, decision integrity, stale review revisions, baseline integrity when present, and leftover `.backend/` state without auditing; `--deep` adds orphan and current-finding review validation through one full audit while retaining baseline-backed resolved reviews.
+- `coherent doctor [root]` checks stale discovery, decision integrity, stale review revisions, compatibility review lifecycles, baseline integrity when present, and leftover `.backend/` state without auditing; `--deep` adds orphan and current-finding review validation through one full audit while retaining baseline-backed resolved reviews whose lifecycle remains current.
 - `pnpm test` covers catalog integrity, inventory fixtures, init, detectors, fingerprints, baseline/check, planner, review merge, and CLI behavior.
-- `pnpm generate:skill-docs` must keep `skills/coherent/reference/taxonomy.md` and `cleanup-phases.md` identical to the catalog renderer.
+- `pnpm validate` runs tests, typecheck, build, generated skill-doc consistency, and committed fingerprint uniqueness; `pnpm generate:skill-docs` owns the two generated catalog references.
 
 ## Transitional/legacy architecture
 

@@ -240,7 +240,12 @@ function isStringIncludes(call: Node): boolean {
 
 function isKnownSmallCollection(expr: Node | undefined, seen = new Set<string>()): boolean {
   if (!expr) return false;
-  if (Node.isParenthesizedExpression(expr) || Node.isAsExpression(expr)) {
+  if (
+    Node.isParenthesizedExpression(expr) ||
+    Node.isAsExpression(expr) ||
+    Node.isSatisfiesExpression(expr) ||
+    Node.isTypeAssertion(expr)
+  ) {
     return isKnownSmallCollection(expr.getExpression(), seen);
   }
   if (Node.isArrayLiteralExpression(expr)) {

@@ -49,11 +49,13 @@ describe("doctor", () => {
       await writeFile(
         join(backend, "baseline.json"),
         `${JSON.stringify({
+          ...artifactVersions(),
+          detectorRevision: 99,
           createdAt: "2026-01-01T00:00:00.000Z",
           root,
           findings: [
-            { fingerprint: "aaa", ruleId: "A08", identity: "x", title: "x" },
-            { fingerprint: "aaa", ruleId: "A08", identity: "y", title: "y" },
+            baselineEntry("aaa", "x"),
+            baselineEntry("aaa", "y"),
           ],
         }, null, 2)}\n`,
         "utf8",
@@ -139,6 +141,66 @@ describe("doctor", () => {
     }
   });
 
+  it("reports missing and expired compatibility review lifecycles", async () => {
+    const root = await seededRoot();
+    try {
+      const state = join(root, ".coherent");
+      const compatibilityFinding = (identity: string) => createFinding({
+        ruleId: "A07",
+        identity,
+        title: "Compatibility path",
+        severity: "medium",
+        confidence: "high",
+        detectionMode: "semantic",
+        status: "candidate",
+        explanation: "A live client still uses the old path.",
+        evidence: { summary: "Test evidence." },
+        locations: [{ file: "src/legacy.ts", symbol: identity }],
+        affectedSymbols: [identity],
+        cleanupBenefit: "Remove the compatibility branch.",
+        changeRisk: "Verify the client migration.",
+        prerequisiteFindingIds: [],
+      });
+      const missing = compatibilityFinding("compat:name:src/legacy.ts:missingLifecycle");
+      const expired = compatibilityFinding("compat:name:src/legacy.ts:expiredLifecycle");
+      const current = compatibilityFinding("compat:name:src/legacy.ts:currentLifecycle");
+      const reviewFor = (target: typeof missing) => ({
+        fingerprint: target.fingerprint,
+        ruleId: target.ruleId,
+        identity: target.identity,
+        decision: "dismissed" as const,
+        reason: "A real client remains.",
+        reviewedAt: "2026-01-01T00:00:00.000Z",
+        fingerprintVersion: FINGERPRINT_VERSION,
+        detectorRevision: DETECTOR_REVISION,
+      });
+      await writeFile(
+        join(state, "decisions.json"),
+        `${JSON.stringify({
+          schemaVersion: 1,
+          reviews: [
+            reviewFor(missing),
+            { ...reviewFor(expired), expiresAt: "2020-01-01T00:00:00.000Z" },
+            {
+              ...reviewFor(current),
+              removalMilestone: "Remove after the v1 client migration.",
+            },
+          ],
+          findings: [missing, expired, current],
+        }, null, 2)}\n`,
+      );
+
+      const result = await runDoctor(root);
+      expect(result.issues.filter((issue) => issue.code === "missing-review-lifecycle"))
+        .toHaveLength(1);
+      expect(result.issues.filter((issue) => issue.code === "expired-review"))
+        .toHaveLength(1);
+      expect(result.ok).toBe(false);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
   it("retains baseline-backed reviews after their finding is resolved", async () => {
     const root = await seededRoot();
     try {
@@ -149,7 +211,7 @@ describe("doctor", () => {
         `${JSON.stringify({
           ...artifactVersions(),
           createdAt: "2026-01-01T00:00:00.000Z",
-          findings: [{ fingerprint }],
+          findings: [baselineEntry(fingerprint, "resolved")],
         }, null, 2)}\n`,
         "utf8",
       );
@@ -210,6 +272,19 @@ describe("doctor", () => {
     }
   });
 
+  it("reports malformed baseline data as an integrity issue", async () => {
+    const root = await seededRoot();
+    try {
+      await writeFile(join(root, ".coherent", "baseline.json"), "{not json}\n", "utf8");
+      const result = await runDoctor(root);
+      const issue = result.issues.find((item) => item.code === "invalid-baseline");
+      expect(issue?.message).toMatch(/Invalid baseline/);
+      expect(result.ok).toBe(false);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
   it("reports leftover .backend/ next to .coherent/", async () => {
     const root = await seededRoot();
     try {
@@ -236,3 +311,17 @@ describe("doctor", () => {
     }
   });
 });
+
+function baselineEntry(fingerprint: string, identity: string) {
+  return {
+    fingerprint,
+    ruleId: "A08",
+    identity,
+    title: identity,
+    detectionMode: "deterministic",
+    status: "confirmed",
+    severity: "high",
+    files: ["src/example.ts"],
+    symbols: [identity],
+  };
+}

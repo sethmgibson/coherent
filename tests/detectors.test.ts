@@ -89,6 +89,8 @@ describe("hybrid detectors on scanner-app", () => {
     expect(findingFor(errors, "loadProfile")?.status).toBe("confirmed");
     expect(findingFor(errors, "loadOrLog")?.status).toBe("candidate");
     expect(findingFor(errors, "loadAndIgnore")?.status).toBe("confirmed");
+    expect(findingFor(errors, "loadAll")?.status).toBe("confirmed");
+    expect(findingFor(errors, "loadAll")?.evidence.summary).toMatch(/skips the current loop work/i);
     expect(findingFor(errors, "loadOrRethrow")).toBeUndefined();
     expect(findingFor(errors, "loadOrTranslate")).toBeUndefined();
   });
@@ -124,6 +126,7 @@ describe("hybrid detectors on scanner-app", () => {
     expect(findingFor(algo, "linearScan")).toBeUndefined();
     expect(findingFor(algo, "knownStatuses")).toBeUndefined();
     expect(findingFor(algo, "derivedTupleLoop")).toBeUndefined();
+    expect(findingFor(algo, "renderKnownPhases")).toBeUndefined();
     expect(algo.every((finding) => /probable complexity/i.test(finding.explanation))).toBe(true);
     expect(algo.every((finding) => /input size/i.test(finding.evidence.details.join(" ")))).toBe(true);
   });

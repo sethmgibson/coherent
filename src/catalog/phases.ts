@@ -1,4 +1,4 @@
-import type { CleanupPhase } from "./types.js";
+import type { RuleId } from "./rules.js";
 
 /**
  * Default cleanup phase order. Taxonomy IDs, audit order, cleanup
@@ -6,7 +6,7 @@ import type { CleanupPhase } from "./types.js";
  * The planner builds a finding-specific DAG; these phases only
  * break ties when dependencies are otherwise equal.
  */
-export const PHASES: readonly CleanupPhase[] = [
+export const PHASES = [
   {
     id: 0,
     slug: "safety-and-understanding",
@@ -79,7 +79,17 @@ export const PHASES: readonly CleanupPhase[] = [
       "Address performance only on architecture that survived earlier phases. Do not optimize code that should be deleted.",
     sequence: ["E01", "E02", "E03", "E04", "E05", "E06"],
   },
-];
+] as const satisfies readonly {
+  id: number;
+  slug: string;
+  title: string;
+  summary: string;
+  sequence: readonly RuleId[];
+}[];
+
+export type PhaseId = (typeof PHASES)[number]["id"];
+export type CleanupPhase = (typeof PHASES)[number];
+export const PHASE_IDS = PHASES.map((phase) => phase.id) as readonly PhaseId[];
 
 export const PHASES_BY_ID: Readonly<Record<CleanupPhase["id"], CleanupPhase>> =
   Object.fromEntries(PHASES.map((phase) => [phase.id, phase])) as Record<

@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { DETECTOR_REVISION, FINGERPRINT_VERSION } from "../src/config.js";
 import { runAudit } from "../src/audit/run.js";
-import { runBaseline } from "../src/baseline/run.js";
+import { readBaseline, runBaseline } from "../src/baseline/run.js";
 import { runCheck } from "../src/check/run.js";
 import { fingerprintFinding } from "../src/domain/finding.js";
 import { scannerFixture } from "./helpers/audit-fixture.js";
@@ -108,6 +108,24 @@ describe("fingerprints, baseline, and check", () => {
       await writeFile(join(state, "baseline.json"), "{not json}\n", "utf8");
       await expect(runBaseline(root)).rejects.toThrow();
       expect(await readFile(join(state, "baseline.json"), "utf8")).toBe("{not json}\n");
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it("rejects malformed baseline entries through the canonical reader", async () => {
+    const root = await mkdtemp(join(tmpdir(), "coherent-baseline-entry-invalid-"));
+    await cp(scannerFixture, root, { recursive: true });
+    try {
+      const result = await runBaseline(root);
+      const raw = JSON.parse(await readFile(result.baselinePath, "utf8")) as {
+        findings: Array<Record<string, unknown>>;
+      };
+      delete raw.findings[0]?.severity;
+      await writeFile(result.baselinePath, `${JSON.stringify(raw, null, 2)}\n`, "utf8");
+      await expect(readBaseline(root)).rejects.toThrow(/findings\[0\]\.severity/);
+      await expect(runCheck(root)).rejects.toThrow(/findings\[0\]\.severity/);
+      await expect(runBaseline(root)).rejects.toThrow(/findings\[0\]\.severity/);
     } finally {
       await rm(root, { recursive: true, force: true });
     }

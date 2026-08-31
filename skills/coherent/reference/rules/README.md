@@ -37,7 +37,7 @@ does not match; the review is kept and not applied.
       "reason": "Share id/title/summary by coincidence. Taxonomy grouping is not a cleanup phase.",
       "reviewedAt": "2026-08-28T00:00:00.000Z",
       "fingerprintVersion": 2,
-      "detectorRevision": 4,
+      "detectorRevision": 5,
       "semanticEquivalence": "Superficially similar but intentionally different; do not merge.",
       "authoritativeConcept": "Keep both: RuleCategory and CleanupPhase."
     }
@@ -56,9 +56,11 @@ Prefer `coherent review confirm|dismiss|defer <fingerprint>` for one decision.
 For several decisions, send a JSON array to `coherent review apply`. Each item
 may use `{ "fingerprint", "decision", "reason" }` or
 `{ "fingerprints": ["...", "..."], "decision", "reason" }`; the batch is
-validated before one decisions write. Use a grouped item only when the same
+validated before one decisions write. Dismissed or deferred A07 items also
+require `"expiresAt"` or `"removalMilestone"`; a dismissed false signal uses
+`"notCompatibility": true`. Use a grouped item only when the same
 evidence supports every fingerprint. Do not invent a parallel review schema.
-Use `coherent review prune` to preview stale or orphaned reviews and add
+Use `coherent review prune` to preview stale, expired, or orphaned reviews and add
 `--write` only after inspecting the proposed removals.
 
 ### Semantic-only findings → `decisions.json`

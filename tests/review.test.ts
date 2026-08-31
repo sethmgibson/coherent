@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import { artifactVersions, DETECTOR_REVISION, FINGERPRINT_VERSION } from "../src/config.js";
 import { createFinding, type FindingInput } from "../src/domain/finding.js";
 import { applyReviews, classifyReview } from "../src/review/apply.js";
+import { validateReviewLifecycle } from "../src/review/lifecycle.js";
 import type { FindingReview } from "../src/review/types.js";
 import { readDecisions, upsertReview } from "../src/review/store.js";
 import { parseReviewRequests, runReviewBatch, runReviewPrune } from "../src/review/run.js";
@@ -219,6 +220,40 @@ describe("review merge into plan", () => {
     expect(classifyReview(oldRevision, [current])).toBe("applied");
   });
 
+  it("reopens compatibility findings when their review lifecycle is missing or expired", () => {
+    const current = finding({
+      ruleId: "A07",
+      identity: "compat:name:src/legacy.ts:oldMode",
+      detectionMode: "semantic",
+    });
+    const missing = review(current, "dismissed");
+    const milestone: FindingReview = {
+      ...missing,
+      removalMilestone: "Remove after the v1 client migration.",
+    };
+    const expired: FindingReview = {
+      ...missing,
+      expiresAt: "2020-01-01T00:00:00.000Z",
+    };
+    const future: FindingReview = {
+      ...missing,
+      expiresAt: "2099-01-01T00:00:00.000Z",
+    };
+    const falsePositive: FindingReview = {
+      ...missing,
+      notCompatibility: true,
+    };
+
+    expect(applyReviews([], [missing], [current]).findings).toEqual([current]);
+    expect(classifyReview(missing, [current])).toBe("stale");
+    expect(applyReviews([], [milestone], [current]).findings).toEqual([]);
+    expect(applyReviews([], [expired], [current]).findings).toEqual([current]);
+    expect(classifyReview(expired, [current])).toBe("stale");
+    expect(applyReviews([], [future], [current]).findings).toEqual([]);
+    expect(applyReviews([], [falsePositive], [current]).findings).toEqual([]);
+    expect(classifyReview(falsePositive, [current])).toBe("applied");
+  });
+
   it("applies identity fallback across fingerprintVersion churn when detectorRevision matches", () => {
     const current = finding({
       ruleId: "A06",
@@ -336,6 +371,84 @@ describe("review merge into plan", () => {
     expect(() =>
       parseReviewRequests([{ fingerprint: "abc", decision: "dismissed", reason: "" }]),
     ).toThrow(/missing reason/);
+    expect(() => parseReviewRequests([{
+      fingerprint: "abc",
+      decision: "dismissed",
+      reason: "Has an invalid expiry.",
+      expiresAt: "next release",
+    }])).toThrow(/ISO date or timestamp/);
+  });
+
+  it("validates compatibility lifecycle scope and expiry", () => {
+    const now = Date.parse("2026-08-29T00:00:00.000Z");
+    expect(() => validateReviewLifecycle("A07", "dismissed", {}, now))
+      .toThrow(/require expiresAt or removalMilestone/);
+    expect(() => validateReviewLifecycle(
+      "A07",
+      "deferred",
+      { expiresAt: "2026-08-28" },
+      now,
+    )).toThrow(/must be in the future/);
+    expect(() => validateReviewLifecycle(
+      "A07",
+      "dismissed",
+      { expiresAt: "2026-09-01" },
+      now,
+    )).not.toThrow();
+    expect(() => validateReviewLifecycle(
+      "A01",
+      "dismissed",
+      { removalMilestone: "Remove after v1." },
+      now,
+    )).toThrow(/only valid for A07/);
+    expect(() => validateReviewLifecycle(
+      "A07",
+      "dismissed",
+      { notCompatibility: true },
+      now,
+    )).not.toThrow();
+    expect(() => validateReviewLifecycle(
+      "A07",
+      "deferred",
+      { notCompatibility: true },
+      now,
+    )).toThrow(/only valid when dismissing/);
+    expect(() => validateReviewLifecycle("A07", "confirmed", {}, now)).not.toThrow();
+  });
+
+  it("requires lifecycle metadata when dismissing or deferring compatibility", async () => {
+    const root = await mkdtemp(join(tmpdir(), "coherent-review-lifecycle-"));
+    try {
+      const state = join(root, ".coherent");
+      await mkdir(state, { recursive: true });
+      const compatibility = finding({
+        ruleId: "A07",
+        identity: "compat:name:src/legacy.ts:oldMode",
+        detectionMode: "semantic",
+      });
+      await writeFile(
+        join(state, "decisions.json"),
+        `${JSON.stringify({ schemaVersion: 1, reviews: [], findings: [compatibility] }, null, 2)}\n`,
+      );
+
+      await expect(runReviewBatch(root, [{
+        fingerprint: compatibility.fingerprint,
+        decision: "dismissed",
+        reason: "A real client still uses this path.",
+      }])).rejects.toThrow(/require expiresAt or removalMilestone/);
+
+      const applied = await runReviewBatch(root, [{
+        fingerprint: compatibility.fingerprint,
+        decision: "dismissed",
+        reason: "A real client still uses this path.",
+        removalMilestone: "Remove after the v1 client migration.",
+      }]);
+      expect(applied.reviews[0]?.removalMilestone).toBe(
+        "Remove after the v1 client migration.",
+      );
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
   });
 
   it("expands one grouped batch decision across several fingerprints", () => {
@@ -344,11 +457,22 @@ describe("review merge into plan", () => {
         fingerprints: ["aaa", "bbb"],
         decision: "dismissed",
         reason: "One reviewed compatibility path.",
+        removalMilestone: "Remove after the client migration.",
       },
     ]);
     expect(requests).toEqual([
-      { fingerprint: "aaa", decision: "dismissed", reason: "One reviewed compatibility path." },
-      { fingerprint: "bbb", decision: "dismissed", reason: "One reviewed compatibility path." },
+      {
+        fingerprint: "aaa",
+        decision: "dismissed",
+        reason: "One reviewed compatibility path.",
+        removalMilestone: "Remove after the client migration.",
+      },
+      {
+        fingerprint: "bbb",
+        decision: "dismissed",
+        reason: "One reviewed compatibility path.",
+        removalMilestone: "Remove after the client migration.",
+      },
     ]);
     expect(() => parseReviewRequests([{
       fingerprint: "aaa",
@@ -378,11 +502,18 @@ describe("review merge into plan", () => {
         fingerprint: "orphan-fingerprint",
         identity: "fossil:Orphan",
       };
+      const expired: FindingReview = {
+        ...review(current, "dismissed"),
+        fingerprint: "expired-fingerprint",
+        ruleId: "A07",
+        identity: "compat:name:src/old.ts:legacyClient",
+        expiresAt: "2020-01-01T00:00:00.000Z",
+      };
       await writeFile(
         join(state, "decisions.json"),
         `${JSON.stringify({
           schemaVersion: 1,
-          reviews: [review(current, "dismissed"), resolved, orphan],
+          reviews: [review(current, "dismissed"), resolved, orphan, expired],
           findings: [current],
         }, null, 2)}\n`,
       );
@@ -391,13 +522,39 @@ describe("review merge into plan", () => {
         `${JSON.stringify({
           ...artifactVersions(),
           createdAt: "2026-01-01T00:00:00.000Z",
-          findings: [{ fingerprint: resolved.fingerprint }],
+          findings: [
+            {
+              fingerprint: resolved.fingerprint,
+              ruleId: "A01",
+              identity: resolved.identity,
+              title: "Resolved fossil",
+              detectionMode: "semantic",
+              status: "confirmed",
+              severity: "medium",
+              files: ["src/old.ts"],
+              symbols: ["Resolved"],
+            },
+            {
+              fingerprint: expired.fingerprint,
+              ruleId: "A07",
+              identity: expired.identity,
+              title: "Expired compatibility path",
+              detectionMode: "hybrid",
+              status: "candidate",
+              severity: "medium",
+              files: ["src/old.ts"],
+              symbols: ["legacyClient"],
+            },
+          ],
         }, null, 2)}\n`,
       );
 
       const preview = await runReviewPrune(root);
-      expect(preview.removable.map((item) => item.identity)).toEqual(["fossil:Orphan"]);
-      expect((await readDecisions(root)).reviews).toHaveLength(3);
+      expect(preview.removable.map((item) => item.identity)).toEqual([
+        "fossil:Orphan",
+        "compat:name:src/old.ts:legacyClient",
+      ]);
+      expect((await readDecisions(root)).reviews).toHaveLength(4);
 
       const applied = await runReviewPrune(root, true);
       expect(applied.wrote).toBe(true);

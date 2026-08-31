@@ -80,27 +80,52 @@ function collectShapes(ctx: AnalysisContext): ShapedType[] {
 
 function overlappingPairs(shapes: ShapedType[]): Overlap[] {
   const pairs: Overlap[] = [];
-  for (let i = 0; i < shapes.length; i += 1) {
-    const left = shapes[i];
-    if (!left) continue;
-    for (let j = i + 1; j < shapes.length; j += 1) {
-      const right = shapes[j];
-      if (!right || (left.name === right.name && left.file === right.file)) continue;
-      if (extendsOther(left, right)) continue;
-      const shared = left.properties.filter((name) => right.properties.includes(name));
-      const larger = Math.max(left.properties.length, right.properties.length);
-      const overlap = shared.length / larger;
-      if (shared.length < 3 || overlap < 0.6) continue;
-      pairs.push({
-        left: i,
-        right: j,
-        shared,
-        onlyLeft: left.properties.filter((name) => !right.properties.includes(name)),
-        onlyRight: right.properties.filter((name) => !left.properties.includes(name)),
-        overlap,
-        named: nameStem(left.name) === nameStem(right.name) && nameStem(left.name).length > 1,
-      });
+  const propertiesByShape = shapes.map((shape) => new Set(shape.properties));
+  const indexesByProperty = new Map<string, number[]>();
+  for (const [index, properties] of propertiesByShape.entries()) {
+    for (const property of properties) {
+      const indexes = indexesByProperty.get(property) ?? [];
+      indexes.push(index);
+      indexesByProperty.set(property, indexes);
     }
+  }
+
+  const candidates = new Map<string, { left: number; right: number; shared: string[] }>();
+  for (const [property, indexes] of indexesByProperty) {
+    for (let leftOffset = 0; leftOffset < indexes.length; leftOffset += 1) {
+      for (let rightOffset = leftOffset + 1; rightOffset < indexes.length; rightOffset += 1) {
+        const left = indexes[leftOffset];
+        const right = indexes[rightOffset];
+        if (left === undefined || right === undefined) continue;
+        const key = `${left}:${right}`;
+        const candidate = candidates.get(key) ?? { left, right, shared: [] };
+        candidate.shared.push(property);
+        candidates.set(key, candidate);
+      }
+    }
+  }
+
+  for (const candidate of candidates.values()) {
+    if (candidate.shared.length < 3) continue;
+    const left = shapes[candidate.left];
+    const right = shapes[candidate.right];
+    const leftProperties = propertiesByShape[candidate.left];
+    const rightProperties = propertiesByShape[candidate.right];
+    if (!left || !right || !leftProperties || !rightProperties) continue;
+    if (left.name === right.name && left.file === right.file) continue;
+    if (extendsOther(left, right)) continue;
+    const larger = Math.max(left.properties.length, right.properties.length);
+    const overlap = candidate.shared.length / larger;
+    if (overlap < 0.6) continue;
+    pairs.push({
+      left: candidate.left,
+      right: candidate.right,
+      shared: candidate.shared,
+      onlyLeft: left.properties.filter((name) => !rightProperties.has(name)),
+      onlyRight: right.properties.filter((name) => !leftProperties.has(name)),
+      overlap,
+      named: nameStem(left.name) === nameStem(right.name) && nameStem(left.name).length > 1,
+    });
   }
   return pairs;
 }

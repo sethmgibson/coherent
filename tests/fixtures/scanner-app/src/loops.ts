@@ -37,6 +37,10 @@ export function linearScan(items: string[]): string[] {
 }
 
 const FIXED_STATUSES = ["ready", "blocked", "done"] as const;
+const FIXED_PHASES = [
+  { id: 0, title: "prepare" },
+  { id: 1, title: "repair" },
+] as const satisfies readonly { id: number; title: string }[];
 
 export function knownStatuses(values: string[]): string[] {
   const found: string[] = [];
@@ -50,6 +54,14 @@ export function derivedTupleLoop(values: string[][]): number {
   let count = 0;
   for (const [index, group] of values.entries()) {
     for (const value of group) count += index + value.length;
+  }
+  return count;
+}
+
+export function renderKnownPhases(values: string[]): number {
+  let count = 0;
+  for (const phase of FIXED_PHASES) {
+    for (const value of values) count += phase.id + value.length;
   }
   return count;
 }

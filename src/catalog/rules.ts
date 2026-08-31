@@ -1,6 +1,6 @@
-import type { Rule, RuleCategory, RuleId } from "./types.js";
+import type { RuleDefinition } from "./schema.js";
 
-export const CATEGORIES: readonly RuleCategory[] = [
+export const CATEGORIES = [
   {
     id: "A",
     title: "Leftover structure and representations",
@@ -31,9 +31,17 @@ export const CATEGORIES: readonly RuleCategory[] = [
     summary:
       "Redundant I/O, repeated work, over-fetching, serialization cost, and accidental complexity — only after the design survives.",
   },
-];
+] as const satisfies readonly {
+  id: string;
+  title: string;
+  summary: string;
+}[];
 
-export const RULES: readonly Rule[] = [
+export type CategoryId = (typeof CATEGORIES)[number]["id"];
+export type RuleCategory = (typeof CATEGORIES)[number];
+export const CATEGORY_IDS = CATEGORIES.map((category) => category.id) as readonly CategoryId[];
+
+export const RULES = [
   {
     id: "A01",
     slug: "architecture-fossilization",
@@ -484,7 +492,11 @@ export const RULES: readonly Rule[] = [
     prerequisites: [],
     rescanAfter: [],
   },
-];
+] as const satisfies readonly RuleDefinition<CategoryId>[];
+
+export type RuleId = (typeof RULES)[number]["id"];
+export type Rule = (typeof RULES)[number];
+export const RULE_IDS = RULES.map((rule) => rule.id) as readonly RuleId[];
 
 export const RULES_BY_ID: { readonly [K in RuleId]: Rule } = Object.fromEntries(
   RULES.map((rule) => [rule.id, rule]),

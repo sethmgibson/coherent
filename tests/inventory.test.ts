@@ -1,3 +1,5 @@
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
@@ -9,6 +11,18 @@ const fixtures = join(testsDir, "fixtures");
 const repoRoot = join(testsDir, "..");
 
 describe("repository inventory", () => {
+  it("fails closed when a discovered package manifest is malformed", async () => {
+    const root = await mkdtemp(join(tmpdir(), "coherent-invalid-package-"));
+    try {
+      await writeFile(join(root, "package.json"), "{ invalid", "utf8");
+      await expect(collectInventory(root)).rejects.toThrow(
+        /Incomplete inventory: invalid package manifest package\.json/,
+      );
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
   it("inventories a single Express app", async () => {
     const inventory = await collectInventory(join(fixtures, "express-app"));
 

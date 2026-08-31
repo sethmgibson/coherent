@@ -1,18 +1,23 @@
-import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { runAudit } from "../audit/run.js";
-import { baselinePath, isBaselineStale, type BaselineFile } from "../baseline/run.js";
+import { isBaselineStale, readBaseline } from "../baseline/run.js";
 import { DETECTOR_REVISION, FINGERPRINT_VERSION } from "../config.js";
 import type { Finding } from "../domain/finding.js";
 import { classifyReview } from "./apply.js";
+import {
+  isReviewExpiry,
+  reviewLifecycleState,
+  validateReviewLifecycle,
+} from "./lifecycle.js";
 import { decisionsPath, readDecisions, writeDecisions } from "./store.js";
 import {
   REVIEW_DECISIONS,
   type FindingReview,
   type ReviewDecision,
+  type ReviewLifecycle,
 } from "./types.js";
 
-export interface ReviewRequest {
+export interface ReviewRequest extends ReviewLifecycle {
   fingerprint: string;
   decision: ReviewDecision;
   reason: string;
@@ -40,8 +45,11 @@ export async function runReview(
   decision: ReviewDecision,
   fingerprint: string,
   reason: string,
+  lifecycle: ReviewLifecycle = {},
 ): Promise<ReviewResult> {
-  const result = await runReviewBatch(root, [{ fingerprint, decision, reason }]);
+  const result = await runReviewBatch(root, [
+    { fingerprint, decision, reason, ...lifecycle },
+  ]);
   return { review: result.reviews[0]!, decisionsPath: result.decisionsPath };
 }
 
@@ -70,6 +78,7 @@ export async function runReviewBatch(
     }
     seenFingerprints.add(finding.fingerprint);
     seenIdentities.add(identityKey);
+    validateReviewLifecycle(finding.ruleId, request.decision, request);
     reviews.push(toReview(finding, request));
   }
 
@@ -104,7 +113,10 @@ export async function runReviewPrune(
   const retained: FindingReview[] = [];
   for (const review of decisions.reviews) {
     const match = classifyReview(review, known);
-    const resolvedHistory = match === "orphan" && baselineFingerprints.has(review.fingerprint);
+    const resolvedHistory =
+      match === "orphan" &&
+      reviewLifecycleState(review) === "current" &&
+      baselineFingerprints.has(review.fingerprint);
     if (match === "applied" || resolvedHistory) retained.push(review);
     else removable.push(review);
   }
@@ -139,12 +151,44 @@ export function parseReviewRequests(raw: unknown): ReviewRequest[] {
       throw new Error(`Review batch item ${index + 1} is missing reason.`);
     }
     const reason = record.reason.trim();
+    const expiresAt = reviewText(record.expiresAt, "expiresAt", index);
+    if (expiresAt && !isReviewExpiry(expiresAt)) {
+      throw new Error(
+        `Review batch item ${index + 1} expiresAt must be an ISO date or timestamp.`,
+      );
+    }
+    const removalMilestone = reviewText(
+      record.removalMilestone,
+      "removalMilestone",
+      index,
+    );
+    if (record.notCompatibility !== undefined && record.notCompatibility !== true) {
+      throw new Error(
+        `Review batch item ${index + 1} notCompatibility must be true when present.`,
+      );
+    }
+    const notCompatibility = record.notCompatibility === true;
     return fingerprints.map((fingerprint) => ({
       fingerprint,
       decision: record.decision as ReviewDecision,
       reason,
+      ...(expiresAt ? { expiresAt } : {}),
+      ...(removalMilestone ? { removalMilestone } : {}),
+      ...(notCompatibility ? { notCompatibility: true as const } : {}),
     }));
   });
+}
+
+function reviewText(
+  value: unknown,
+  field: string,
+  index: number,
+): string | undefined {
+  if (value === undefined) return undefined;
+  if (typeof value !== "string" || !value.trim()) {
+    throw new Error(`Review batch item ${index + 1} ${field} must be a non-empty string.`);
+  }
+  return value.trim();
 }
 
 function reviewFingerprints(record: Record<string, unknown>, index: number): string[] {
@@ -185,6 +229,11 @@ function toReview(finding: Finding, request: ReviewRequest): FindingReview {
     reviewedAt: new Date().toISOString(),
     fingerprintVersion: FINGERPRINT_VERSION,
     detectorRevision: DETECTOR_REVISION,
+    ...(request.expiresAt ? { expiresAt: request.expiresAt } : {}),
+    ...(request.removalMilestone
+      ? { removalMilestone: request.removalMilestone }
+      : {}),
+    ...(request.notCompatibility ? { notCompatibility: true as const } : {}),
     ...(finding.semanticEquivalence
       ? { semanticEquivalence: finding.semanticEquivalence }
       : {}),
@@ -195,14 +244,7 @@ function toReview(finding: Finding, request: ReviewRequest): FindingReview {
 }
 
 async function currentBaselineFingerprints(root: string): Promise<Set<string>> {
-  try {
-    const baseline = JSON.parse(await readFile(baselinePath(root), "utf8")) as BaselineFile;
-    if (!baseline || !Array.isArray(baseline.findings) || isBaselineStale(baseline)) {
-      return new Set();
-    }
-    return new Set(baseline.findings.map((finding) => finding.fingerprint));
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") return new Set();
-    throw error;
-  }
+  const baseline = await readBaseline(root);
+  if (!baseline || isBaselineStale(baseline)) return new Set();
+  return new Set(baseline.findings.map((finding) => finding.fingerprint));
 }

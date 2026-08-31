@@ -31,6 +31,7 @@
     "generate:skill-docs": "tsx scripts/generate-skill-docs.ts",
     "check:skill-docs": "pnpm generate:skill-docs && git diff --exit-code -- skills/coherent/reference/taxonomy.md skills/coherent/reference/cleanup-phases.md",
     "check:unique-fingerprints": "tsx scripts/check-unique-fingerprints.ts",
+    "validate": "pnpm test && pnpm typecheck && pnpm build && pnpm check:skill-docs && pnpm check:unique-fingerprints",
     "prepack": "pnpm build"
   },
   "keywords": [

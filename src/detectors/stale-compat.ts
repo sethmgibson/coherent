@@ -11,6 +11,7 @@ const COMMENT_SIGNAL =
   /(legacy|deprecated|compat(?:ibility)?|fallback|temporary migration|remove (?:when|after|once)|todo:.*remove|obsolete|old path|new path)/i;
 const BRANCH_SIGNAL =
   /(legacy|compat|oldMode|newMode|useV1|useV2|oldPath|newPath|isLegacy|enableLegacy)/i;
+const REVIEW_LIFECYCLE_SIGNAL = /\b(?:notCompatibility|requiresCompatibilityLifecycle)\b/;
 
 export function detectStaleCompatibility(ctx: AnalysisContext): Finding[] {
   const findings: Finding[] = [];
@@ -34,7 +35,11 @@ export function detectStaleCompatibility(ctx: AnalysisContext): Finding[] {
         : Node.isConditionalExpression(node)
           ? node.getCondition()
           : undefined;
-      if (condition && BRANCH_SIGNAL.test(condition.getText())) {
+      if (
+        condition &&
+        BRANCH_SIGNAL.test(condition.getText()) &&
+        !REVIEW_LIFECYCLE_SIGNAL.test(condition.getText())
+      ) {
         addCompat(ctx, findings, seen, node, condition.getText(), relative, "branch", [
           `Branch condition '${condition.getText()}' looks like an old/new mode check.`,
           ...removalCondition(node),

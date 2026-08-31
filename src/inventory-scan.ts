@@ -65,8 +65,10 @@ export async function readPackages(
     let parsed: Record<string, unknown>;
     try {
       parsed = JSON.parse(raw) as Record<string, unknown>;
-    } catch {
-      continue;
+    } catch (error) {
+      throw new Error(`Incomplete inventory: invalid package manifest ${relativePath}.`, {
+        cause: error,
+      });
     }
     packages.push({
       path: relativePath,

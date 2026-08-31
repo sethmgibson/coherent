@@ -1,9 +1,9 @@
-import { runAudit } from "../audit/run.js";
+import { runAudit, type AuditResult } from "../audit/run.js";
 import { PORTABLE_ROOT } from "../config.js";
 import type { Finding } from "../domain/finding.js";
 import { applyReviews, matchReview } from "../review/apply.js";
 import { readDecisions } from "../review/store.js";
-import type { FindingReview } from "../review/types.js";
+import type { DecisionsFile, FindingReview } from "../review/types.js";
 import { buildPlan } from "./build.js";
 import type { CleanupPlan, PlanReviewSummary } from "./types.js";
 
@@ -17,6 +17,13 @@ export async function runPlan(root: string): Promise<PlanResult> {
     runAudit(root),
     readDecisions(root),
   ]);
+  return planFromAudit(audit, decisions);
+}
+
+export function planFromAudit(
+  audit: AuditResult,
+  decisions: DecisionsFile,
+): PlanResult {
   const merged = applyReviews(audit.findings, decisions.reviews, decisions.findings);
   const plan = buildPlan(PORTABLE_ROOT, merged.findings, merged);
   plan.reviewSummary = reviewSummary(

@@ -49,7 +49,7 @@ export async function writeManagedFile(
 export const BACKEND_ALIAS_SKILL = `---
 name: backend
 description: "Alias for /coherent. Use when the user wants Impeccable-style maintainability work on a backend or large AI-built codebase. Prefer /coherent. Not for frontend visual design."
-argument-hint: "[init|refresh|audit|review|baseline|check|plan|fix|doctor|install|update] [target]"
+argument-hint: "[init|refresh|audit|inspect|review|baseline|check|plan|fix|doctor|install|update] [target]"
 ---
 
 ${ADAPTER_OPEN}

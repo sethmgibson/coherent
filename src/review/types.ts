@@ -4,7 +4,16 @@ import type { Finding } from "../domain/finding.js";
 export const REVIEW_DECISIONS = ["confirmed", "dismissed", "deferred"] as const;
 export type ReviewDecision = (typeof REVIEW_DECISIONS)[number];
 
-export interface FindingReview {
+export interface ReviewLifecycle {
+  /** ISO date or timestamp after which a compatibility review must be revisited. */
+  expiresAt?: string;
+  /** Named release, consumer migration, or other condition that permits removal. */
+  removalMilestone?: string;
+  /** The A07 signal was reviewed and is not compatibility behavior. */
+  notCompatibility?: true;
+}
+
+export interface FindingReview extends ReviewLifecycle {
   fingerprint: string;
   ruleId: RuleId;
   identity: string;

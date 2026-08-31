@@ -1,8 +1,8 @@
 import { readFile } from "node:fs/promises";
 import { isAbsolute, join } from "node:path";
 import { runAudit } from "../audit/run.js";
-import { isBaselineStale, type BaselineFile } from "../baseline/run.js";
-import { ARCHITECTURE_FILE, BASELINE_FILE, loadConfig } from "../config.js";
+import { isBaselineStale, readBaseline } from "../baseline/run.js";
+import { ARCHITECTURE_FILE, loadConfig } from "../config.js";
 import { legacyStateDirWarning, resolveStateDir } from "../state-dir.js";
 import { generateArchitectureMarkdown } from "../init/architecture.js";
 import {
@@ -11,6 +11,7 @@ import {
 } from "../init/refresh.js";
 import { collectInventory } from "../inventory.js";
 import { classifyReview, hasCurrentDetectorRevision } from "../review/apply.js";
+import { reviewLifecycleState } from "../review/lifecycle.js";
 import { readDecisions } from "../review/store.js";
 import type { DoctorIssue, DoctorResult } from "./types.js";
 
@@ -73,11 +74,8 @@ async function checkArchitecture(root: string, issues: DoctorIssue[]): Promise<v
 
 async function checkBaseline(root: string, issues: DoctorIssue[]): Promise<Set<string>> {
   try {
-    const raw = JSON.parse(await readFile(join(resolveStateDir(root).path, BASELINE_FILE), "utf8")) as BaselineFile;
-    if (!raw || !Array.isArray(raw.findings)) {
-      issues.push({ code: "baseline-versions", message: "baseline.json is invalid. Re-run `coherent baseline`." });
-      return new Set();
-    }
+    const raw = await readBaseline(root);
+    if (!raw) return new Set();
     const stale = isBaselineStale(raw) || raw.schemaVersion === undefined;
     if (stale) {
       issues.push({
@@ -95,8 +93,11 @@ async function checkBaseline(root: string, issues: DoctorIssue[]): Promise<Set<s
     reportDuplicates(fingerprints, "baseline.json", issues);
     return stale ? new Set() : new Set(fingerprints);
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") return new Set();
-    throw error;
+    issues.push({
+      code: "invalid-baseline",
+      message: error instanceof Error ? error.message : "Invalid baseline.json",
+    });
+    return new Set();
   }
 }
 
@@ -120,6 +121,12 @@ async function checkDecisions(
     );
     const stale = new Set<string>();
     for (const review of decisions.reviews) {
+      const lifecycle = reviewLifecycleState(review);
+      if (lifecycle !== "current") {
+        stale.add(review.fingerprint);
+        reportLifecycleReview(review, lifecycle, issues);
+        continue;
+      }
       const exactSemantic = semanticFingerprints.has(review.fingerprint);
       if (!exactSemantic && !hasCurrentDetectorRevision(review)) {
         stale.add(review.fingerprint);
@@ -147,6 +154,24 @@ async function checkDecisions(
       message: error instanceof Error ? error.message : "Invalid decisions.json",
     });
   }
+}
+
+function reportLifecycleReview(
+  review: Awaited<ReturnType<typeof readDecisions>>["reviews"][number],
+  state: "missing" | "expired",
+  issues: DoctorIssue[],
+): void {
+  if (state === "missing") {
+    issues.push({
+      code: "missing-review-lifecycle",
+      message: `Compatibility review ${review.decision} ${review.ruleId} ${review.identity} has no expiresAt or removalMilestone. Re-review it with a lifecycle condition, or mark a false signal notCompatibility.`,
+    });
+    return;
+  }
+  issues.push({
+    code: "expired-review",
+    message: `Compatibility review ${review.decision} ${review.ruleId} ${review.identity} expired at ${review.expiresAt}. Re-review it before applying it.`,
+  });
 }
 
 function reportStaleReview(

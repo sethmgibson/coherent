@@ -53,6 +53,7 @@ export interface Finding {
   unlocks?: string;
   changeRisk: string;
   testSafetyEvidence?: string;
+  /** Current-finding fingerprints that must be cleaned first. Absent fingerprints are already satisfied. */
   prerequisiteFindingIds: string[];
   fingerprint: string;
 }
@@ -207,15 +208,14 @@ export function serializeFinding(finding: Finding): string {
 }
 
 export function parseFinding(json: string): Finding {
-  const value = JSON.parse(json) as Finding;
-  if (
-    typeof value !== "object" ||
-    value === null ||
-    typeof value.ruleId !== "string" ||
-    typeof value.fingerprint !== "string" ||
-    !Array.isArray(value.locations)
-  ) {
-    throw new Error("Invalid finding JSON");
+  const value = JSON.parse(json) as unknown;
+  const input = parseFindingInput(value);
+  if (!isRecord(value) || typeof value.fingerprint !== "string") {
+    throw new Error("Invalid finding: missing fingerprint");
   }
-  return value;
+  const finding = createFinding(input);
+  if (value.fingerprint !== finding.fingerprint) {
+    throw new Error("Invalid finding: fingerprint does not match canonical identity");
+  }
+  return finding;
 }

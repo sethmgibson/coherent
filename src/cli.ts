@@ -3,7 +3,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { Command } from "commander";
 import { runInit, runRefresh } from "./init/run.js";
-import { runAudit } from "./audit/run.js";
+import { compactFindingsFile, runAudit } from "./audit/run.js";
 import { renderAudit } from "./audit/render.js";
 import { runBaseline } from "./baseline/run.js";
 import { renderCheck, runCheck } from "./check/run.js";
@@ -12,6 +12,7 @@ import type { InstallOptions } from "./install/run.js";
 import { runPlan } from "./plan/run.js";
 import { renderPlan } from "./plan/render.js";
 import { renderFixNext, runFixNext } from "./fix/run.js";
+import { inspectJson, renderInspect, runInspect } from "./inspect.js";
 import { runDoctor } from "./doctor/run.js";
 import { renderDoctor } from "./doctor/render.js";
 import {
@@ -20,8 +21,9 @@ import {
   runReviewBatch,
   runReviewPrune,
 } from "./review/run.js";
-import type { ReviewDecision } from "./review/types.js";
+import type { ReviewDecision, ReviewLifecycle } from "./review/types.js";
 import { RULES_BY_ID } from "./catalog/rules.js";
+import { COHERENT_VERSION } from "./version.js";
 
 const program = new Command();
 
@@ -30,7 +32,7 @@ program
   .description(
     "Maintainability tooling for backend and large AI-built codebases.",
   )
-  .version("0.1.0");
+  .version(COHERENT_VERSION);
 
 program
   .command("init")
@@ -78,18 +80,32 @@ program
   .description("Scan a repository for maintainability findings")
   .argument("[root]", "repository root", ".")
   .option("--json", "print findings as JSON", false)
+  .option("--compact-json", "print one review-focused copy of each finding as JSON", false)
   .option("--output <path>", "write JSON to an explicit path relative to the repository")
-  .action(async (root: string, options: { json: boolean; output?: string }) => {
+  .action(async (
+    root: string,
+    options: { json: boolean; compactJson: boolean; output?: string },
+  ) => {
+    if (options.json && options.compactJson) {
+      console.error("Choose either --json or --compact-json, not both.");
+      process.exitCode = 1;
+      return;
+    }
     const resolved = resolve(root);
     const result = await runAudit(resolved);
-    if (options.json) {
-      console.log(JSON.stringify(result.file, null, 2));
+    const jsonOutput = options.compactJson
+      ? compactFindingsFile(result.file)
+      : result.file;
+    if (options.compactJson) {
+      console.log(JSON.stringify(jsonOutput));
+    } else if (options.json) {
+      console.log(JSON.stringify(jsonOutput, null, 2));
     } else {
       process.stdout.write(renderAudit(result));
     }
     if (options.output) {
       const path = resolve(resolved, options.output);
-      await writeJsonOutput(path, result.file);
+      await writeJsonOutput(path, jsonOutput, options.compactJson ? 0 : 2);
       console.log(`Wrote ${path}`);
     }
   });
@@ -103,6 +119,20 @@ program
     process.stdout.write(renderAudit(result.audit));
     const action = result.wroteBaseline ? "Wrote" : "Left unchanged";
     console.log(`${action} ${result.baselinePath} (${result.baseline.findings.length} fingerprint(s)).`);
+  });
+
+program
+  .command("inspect")
+  .description("Audit once, build the reviewed plan, and show the next cleanup node")
+  .argument("[root]", "repository root", ".")
+  .option("--json", "print compact audit, plan, and next node as JSON", false)
+  .action(async (root: string, options: { json: boolean }) => {
+    const result = await runInspect(resolve(root));
+    if (options.json) {
+      console.log(JSON.stringify(inspectJson(result), null, 2));
+    } else {
+      process.stdout.write(renderInspect(result));
+    }
   });
 
 program
@@ -257,8 +287,20 @@ review
   .argument("<fingerprint>", "finding fingerprint")
   .argument("[root]", "repository root", ".")
   .requiredOption("--reason <reason>", "why this decision")
-  .action(async (fingerprint: string, root: string, options: { reason: string }) => {
-    await printReview(root, "dismissed", fingerprint, options.reason);
+  .option("--expires-at <iso>", "ISO date or timestamp when compatibility must be re-reviewed")
+  .option("--removal-milestone <text>", "release, consumer migration, or condition permitting removal")
+  .option("--not-compatibility", "classify an A07 signal as a reviewed false positive")
+  .action(async (
+    fingerprint: string,
+    root: string,
+    options: {
+      reason: string;
+      expiresAt?: string;
+      removalMilestone?: string;
+      notCompatibility?: true;
+    },
+  ) => {
+    await printReview(root, "dismissed", fingerprint, options.reason, options);
   });
 
 review
@@ -282,20 +324,26 @@ review
   .argument("<fingerprint>", "finding fingerprint")
   .argument("[root]", "repository root", ".")
   .requiredOption("--reason <reason>", "why this decision")
-  .action(async (fingerprint: string, root: string, options: { reason: string }) => {
-    await printReview(root, "deferred", fingerprint, options.reason);
+  .option("--expires-at <iso>", "ISO date or timestamp when compatibility must be re-reviewed")
+  .option("--removal-milestone <text>", "release, consumer migration, or condition permitting removal")
+  .action(async (
+    fingerprint: string,
+    root: string,
+    options: { reason: string; expiresAt?: string; removalMilestone?: string },
+  ) => {
+    await printReview(root, "deferred", fingerprint, options.reason, options);
   });
 
 review
   .command("prune")
-  .description("Preview stale and orphaned reviews; remove them only with --write")
+  .description("Preview stale, expired, and orphaned reviews; remove them only with --write")
   .argument("[root]", "repository root", ".")
-  .option("--write", "remove the reported stale and orphaned reviews", false)
+  .option("--write", "remove the reported stale, expired, and orphaned reviews", false)
   .action(async (root: string, options: { write: boolean }) => {
     try {
       const result = await runReviewPrune(resolve(root), options.write);
       const action = result.wrote ? "Removed" : "Would remove";
-      console.log(`${action} ${result.removable.length} stale or orphaned review(s).`);
+      console.log(`${action} ${result.removable.length} stale, expired, or orphaned review(s).`);
       for (const item of result.removable.slice(0, 12)) {
         console.log(`  ${item.ruleId} ${item.identity}`);
       }
@@ -314,9 +362,16 @@ async function printReview(
   decision: ReviewDecision,
   fingerprint: string,
   reason: string,
+  lifecycle: ReviewLifecycle = {},
 ): Promise<void> {
   try {
-    const result = await runReview(resolve(root), decision, fingerprint, reason);
+    const result = await runReview(
+      resolve(root),
+      decision,
+      fingerprint,
+      reason,
+      lifecycle,
+    );
     console.log(
       `${decision} ${RULES_BY_ID[result.review.ruleId].title}: ${result.review.identity}\nWrote ${result.decisionsPath}`,
     );
@@ -326,9 +381,9 @@ async function printReview(
   }
 }
 
-async function writeJsonOutput(path: string, value: unknown): Promise<void> {
+async function writeJsonOutput(path: string, value: unknown, space = 2): Promise<void> {
   await mkdir(dirname(path), { recursive: true });
-  await writeFile(path, `${JSON.stringify(value, null, 2)}\n`, "utf8");
+  await writeFile(path, `${JSON.stringify(value, null, space)}\n`, "utf8");
 }
 
 async function readStdin(): Promise<string> {

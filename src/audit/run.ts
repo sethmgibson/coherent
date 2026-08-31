@@ -36,6 +36,38 @@ export interface FindingsFile {
   metrics: Metric[];
 }
 
+export interface CompactFindingsFile {
+  generatedAt: string;
+  root: string;
+  durationMs: number;
+  architecturePath?: string;
+  summary: {
+    total: number;
+    confirmed: number;
+    candidates: number;
+    byRule: Array<{
+      ruleId: Finding["ruleId"];
+      total: number;
+      confirmed: number;
+      candidates: number;
+    }>;
+  };
+  findings: Array<
+    Pick<
+      Finding,
+      | "fingerprint"
+      | "ruleId"
+      | "identity"
+      | "severity"
+      | "confidence"
+      | "detectionMode"
+      | "status"
+      | "evidence"
+      | "locations"
+    >
+  >;
+}
+
 export interface AuditResult {
   inventory: Inventory;
   findings: Finding[];
@@ -87,6 +119,47 @@ export async function runAudit(
     metrics: computeMetrics(findings),
   };
   return { inventory, findings, durationMs, file };
+}
+
+export function compactFindingsFile(file: FindingsFile): CompactFindingsFile {
+  const byRule = new Map<
+    Finding["ruleId"],
+    CompactFindingsFile["summary"]["byRule"][number]
+  >();
+  for (const finding of file.findings) {
+    const counts = byRule.get(finding.ruleId) ?? {
+      ruleId: finding.ruleId,
+      total: 0,
+      confirmed: 0,
+      candidates: 0,
+    };
+    counts.total += 1;
+    counts[finding.status === "confirmed" ? "confirmed" : "candidates"] += 1;
+    byRule.set(finding.ruleId, counts);
+  }
+  return {
+    generatedAt: file.generatedAt,
+    root: file.root,
+    durationMs: file.durationMs,
+    ...(file.architecturePath ? { architecturePath: file.architecturePath } : {}),
+    summary: {
+      total: file.findings.length,
+      confirmed: file.confirmed.length,
+      candidates: file.candidates.length,
+      byRule: [...byRule.values()],
+    },
+    findings: file.findings.map((finding) => ({
+      fingerprint: finding.fingerprint,
+      ruleId: finding.ruleId,
+      identity: finding.identity,
+      severity: finding.severity,
+      confidence: finding.confidence,
+      detectionMode: finding.detectionMode,
+      status: finding.status,
+      evidence: finding.evidence,
+      locations: finding.locations,
+    })),
+  };
 }
 
 async function fileExists(path: string): Promise<boolean> {

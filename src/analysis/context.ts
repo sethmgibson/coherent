@@ -70,8 +70,10 @@ export async function createAnalysisContext(
     if (!SOURCE_EXTENSIONS.has(ext)) continue;
     try {
       sourceFiles.push(project.addSourceFileAtPath(file.absolutePath));
-    } catch {
-      continue;
+    } catch (error) {
+      throw new Error(
+        `Incomplete analysis: failed to load source file ${file.relativePath}: ${errorMessage(error)}`,
+      );
     }
   }
 
@@ -111,7 +113,11 @@ function loadTsConfigs(root: string, inventory: Inventory): LoadedTsConfig[] {
   for (const relativePath of inventory.tsconfigFiles) {
     const path = join(root, relativePath);
     const read = ts.readConfigFile(path, ts.sys.readFile);
-    if (read.error) continue;
+    if (read.error) {
+      throw new Error(
+        `Incomplete analysis: failed to read TypeScript config ${relativePath}: ${diagnosticMessage(read.error)}`,
+      );
+    }
     const parsed = ts.parseJsonConfigFileContent(
       read.config,
       ts.sys,
@@ -119,6 +125,11 @@ function loadTsConfigs(root: string, inventory: Inventory): LoadedTsConfig[] {
       undefined,
       path,
     );
+    if (parsed.errors.length > 0) {
+      throw new Error(
+        `Incomplete analysis: failed to parse TypeScript config ${relativePath}: ${parsed.errors.map(diagnosticMessage).join("; ")}`,
+      );
+    }
     configs.push({
       path,
       directory: dirname(path),
@@ -127,6 +138,14 @@ function loadTsConfigs(root: string, inventory: Inventory): LoadedTsConfig[] {
     });
   }
   return configs.sort(compareTsConfigs);
+}
+
+function diagnosticMessage(diagnostic: ts.Diagnostic): string {
+  return `TS${diagnostic.code}: ${ts.flattenDiagnosticMessageText(diagnostic.messageText, "\n")}`;
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
 
 function compareTsConfigs(left: LoadedTsConfig, right: LoadedTsConfig): number {

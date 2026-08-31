@@ -108,6 +108,16 @@ describe("finding serialization", () => {
   it("rejects invalid JSON payloads", () => {
     expect(() => parseFinding("{}")).toThrow(/Invalid finding/);
     expect(() => parseFinding("null")).toThrow(/Invalid finding/);
+    expect(() =>
+      parseFinding(JSON.stringify({ ruleId: "A01", fingerprint: "invented", locations: [] })),
+    ).toThrow(/Invalid finding/);
+  });
+
+  it("rejects a serialized fingerprint that does not match the canonical identity", () => {
+    const finding = createFinding(sample());
+    expect(() =>
+      parseFinding(JSON.stringify({ ...finding, fingerprint: "invented" })),
+    ).toThrow(/fingerprint does not match/);
   });
 });
 

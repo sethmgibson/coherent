@@ -1,5 +1,6 @@
 import { DETECTOR_REVISION } from "../config.js";
 import type { Finding } from "../domain/finding.js";
+import { reviewLifecycleState } from "./lifecycle.js";
 import type { FindingReview, MergedFindings } from "./types.js";
 
 export type ReviewMatch = "applied" | "stale" | "orphan";
@@ -41,12 +42,13 @@ export function matchReview(
 ): FindingReview | undefined {
   const exact = reviews.find((review) => review.fingerprint === finding.fingerprint);
   if (exact) {
-    return finding.detectionMode === "semantic" || hasCurrentDetectorRevision(exact)
-      ? exact
-      : undefined;
+    return reviewApplies(finding, exact) ? exact : undefined;
   }
   return reviews.find(
-    (review) => sameIdentity(review, finding) && hasCurrentDetectorRevision(review),
+    (review) =>
+      sameIdentity(review, finding) &&
+      hasCurrentDetectorRevision(review) &&
+      reviewLifecycleState(review) === "current",
   );
 }
 
@@ -58,16 +60,22 @@ export function classifyReview(review: FindingReview, findings: Finding[]): Revi
   let staleIdentity = false;
   for (const finding of findings) {
     if (review.fingerprint === finding.fingerprint) {
-      return finding.detectionMode === "semantic" || hasCurrentDetectorRevision(review)
-        ? "applied"
-        : "stale";
+      return reviewApplies(finding, review) ? "applied" : "stale";
     }
     if (sameIdentity(review, finding)) {
-      if (hasCurrentDetectorRevision(review)) return "applied";
+      if (
+        hasCurrentDetectorRevision(review) &&
+        reviewLifecycleState(review) === "current"
+      ) return "applied";
       staleIdentity = true;
     }
   }
   return staleIdentity ? "stale" : "orphan";
+}
+
+function reviewApplies(finding: Finding, review: FindingReview): boolean {
+  if (reviewLifecycleState(review) !== "current") return false;
+  return finding.detectionMode === "semantic" || hasCurrentDetectorRevision(review);
 }
 
 function sameIdentity(review: FindingReview, finding: Finding): boolean {

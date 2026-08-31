@@ -43,8 +43,10 @@ export async function walkFiles(
     let entries;
     try {
       entries = await readdir(current, { withFileTypes: true });
-    } catch {
-      continue;
+    } catch (error) {
+      throw new Error(`Incomplete inventory: could not read directory ${current}.`, {
+        cause: error,
+      });
     }
 
     for (const entry of entries) {

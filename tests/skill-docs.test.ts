@@ -45,6 +45,7 @@ describe("generated skill docs", () => {
       "fix.md",
       "install.md",
       "full-cleanup.md",
+      "inspect.md",
     ];
     for (const file of files) {
       const text = await readFile(join(reference, file), "utf8");

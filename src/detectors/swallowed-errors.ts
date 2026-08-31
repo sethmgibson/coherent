@@ -36,6 +36,9 @@ function classifyCatch(
   const returnsNullish =
     returnExpr === "null" || returnExpr === "undefined" || returnExpr === "void 0";
   const returnsFallback = catchHasReturn(clause) && !returnsNullish;
+  const silentlyExitsLoop =
+    block.getDescendantsOfKind(SyntaxKind.ContinueStatement).length > 0 ||
+    block.getDescendantsOfKind(SyntaxKind.BreakStatement).length > 0;
   const relative = ctx.relativePath(clause.getSourceFile());
   const owner = ownerName(clause);
 
@@ -60,6 +63,14 @@ function classifyCatch(
       swallowFinding(ctx, clause, relative, owner, "candidate", "medium", "log-fallback", [
         `Catch logs and returns fallback '${returnExpr}'. This may be a legitimate boundary fallback.`,
         "Not classified as definite swallowing.",
+      ]),
+    );
+    return;
+  }
+  if (silentlyExitsLoop) {
+    findings.push(
+      swallowFinding(ctx, clause, relative, owner, "confirmed", "high", "swallowed-loop-exit", [
+        "Catch skips the current loop work without rethrowing or exposing the failure to callers.",
       ]),
     );
     return;

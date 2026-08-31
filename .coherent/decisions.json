@@ -2,354 +2,15 @@
   "schemaVersion": 1,
   "reviews": [
     {
-      "fingerprint": "de4373bcece329e7bbf0759102f08dc4dec14ee6c3f8beffe1a1bdb13f58cf06",
-      "ruleId": "A06",
-      "identity": "duplicate-rep:CleanupPhase+RuleCategory",
-      "decision": "dismissed",
-      "reason": "RuleCategory and CleanupPhase share id/title/summary by coincidence. They are intentionally different catalog concepts; do not merge.",
-      "reviewedAt": "2026-08-29T07:46:26.896Z",
-      "fingerprintVersion": 2,
-      "detectorRevision": 4
-    },
-    {
-      "fingerprint": "4cbd3cafffc89e74b67ae36787e3ff6751c9f0acd4706b5c54d022169f56ca64",
-      "ruleId": "E05",
-      "identity": "await-in-loop:src/inventory-scan.ts:readPackages",
-      "decision": "dismissed",
-      "reason": "Semantic review found correctness-ordered effects or deliberate bounded filesystem/process concurrency; no independent surviving hot-path I/O remains at the observed scale.",
-      "reviewedAt": "2026-08-29T07:46:26.896Z",
-      "fingerprintVersion": 2,
-      "detectorRevision": 4
-    },
-    {
-      "fingerprint": "b62cf40ffbc75d2b54785a0db38598d6c868b15df63a0f4e45033fb82b6f35fa",
-      "ruleId": "E05",
-      "identity": "await-in-loop:src/inventory-walk.ts:walkFiles",
-      "decision": "dismissed",
-      "reason": "Semantic review found correctness-ordered effects or deliberate bounded filesystem/process concurrency; no independent surviving hot-path I/O remains at the observed scale.",
-      "reviewedAt": "2026-08-29T07:46:26.896Z",
-      "fingerprintVersion": 2,
-      "detectorRevision": 4
-    },
-    {
-      "fingerprint": "cc30837d1742ed6de51b9d18ddf98e7d902a4b98e539447a7838dbf7ab140399",
-      "ruleId": "E05",
-      "identity": "await-in-loop:src/inventory.ts:collectInventory",
-      "decision": "dismissed",
-      "reason": "Semantic review found correctness-ordered effects or deliberate bounded filesystem/process concurrency; no independent surviving hot-path I/O remains at the observed scale.",
-      "reviewedAt": "2026-08-29T07:46:26.896Z",
-      "fingerprintVersion": 2,
-      "detectorRevision": 4
-    },
-    {
-      "fingerprint": "b719addca1b24de1dcf0ad9015bd2b837b84c46f9307571b42046ba575d791d2",
-      "ruleId": "E05",
-      "identity": "seq-await:src/review/store.ts:writeDecisions",
-      "decision": "dismissed",
-      "reason": "Semantic review found correctness-ordered effects or deliberate bounded filesystem/process concurrency; no independent surviving hot-path I/O remains at the observed scale.",
-      "reviewedAt": "2026-08-29T07:46:26.896Z",
-      "fingerprintVersion": 2,
-      "detectorRevision": 4
-    },
-    {
-      "fingerprint": "9faab7f82c2571955710975fb9acd7006db30a505e4565dd212b27550635c244",
-      "ruleId": "E05",
-      "identity": "await-in-loop:src/install/run.ts:runInstall",
-      "decision": "dismissed",
-      "reason": "Semantic review found correctness-ordered effects or deliberate bounded filesystem/process concurrency; no independent surviving hot-path I/O remains at the observed scale.",
-      "reviewedAt": "2026-08-29T07:46:26.896Z",
-      "fingerprintVersion": 2,
-      "detectorRevision": 4
-    },
-    {
-      "fingerprint": "651cba12b3e3612216a062cc35feb6b1b4ca798d19bc0d99dd36e1042a973f09",
-      "ruleId": "E05",
-      "identity": "seq-await:src/doctor/run.ts:runDoctor",
-      "decision": "dismissed",
-      "reason": "Semantic review found correctness-ordered effects or deliberate bounded filesystem/process concurrency; no independent surviving hot-path I/O remains at the observed scale.",
-      "reviewedAt": "2026-08-29T07:46:26.896Z",
-      "fingerprintVersion": 2,
-      "detectorRevision": 4
-    },
-    {
-      "fingerprint": "034df4528bc50a04bafbc1b4362034754569b1b51d372c517f33471758710fae",
-      "ruleId": "E05",
-      "identity": "await-in-loop:src/check/changed-files.ts:listChangedSourceFiles",
-      "decision": "dismissed",
-      "reason": "Semantic review found correctness-ordered effects or deliberate bounded filesystem/process concurrency; no independent surviving hot-path I/O remains at the observed scale.",
-      "reviewedAt": "2026-08-29T07:46:26.896Z",
-      "fingerprintVersion": 2,
-      "detectorRevision": 4
-    },
-    {
-      "fingerprint": "1a3de982157806a46c1ee7bf69a27b90b777a1ce18897d0b825af4b0bd88fd7a",
-      "ruleId": "E05",
-      "identity": "seq-await:src/check/changed-files.ts:listChangedSourceFiles",
-      "decision": "dismissed",
-      "reason": "Semantic review found correctness-ordered effects or deliberate bounded filesystem/process concurrency; no independent surviving hot-path I/O remains at the observed scale.",
-      "reviewedAt": "2026-08-29T07:46:26.896Z",
-      "fingerprintVersion": 2,
-      "detectorRevision": 4
-    },
-    {
-      "fingerprint": "3bad6c90fbb69f05e3e27cba3dee5aad9374a8bd3d43672d245629d7fdbe25c4",
-      "ruleId": "E05",
-      "identity": "await-in-loop:src/check/importers.ts:expandWithImporters",
-      "decision": "dismissed",
-      "reason": "Semantic review found correctness-ordered effects or deliberate bounded filesystem/process concurrency; no independent surviving hot-path I/O remains at the observed scale.",
-      "reviewedAt": "2026-08-29T07:46:26.896Z",
-      "fingerprintVersion": 2,
-      "detectorRevision": 4
-    },
-    {
-      "fingerprint": "2ae8fce8d55a51a764c8cd34d3eeae649cc8746acd814e6802ef3954cf18a0e1",
-      "ruleId": "E05",
-      "identity": "seq-await:src/baseline/run.ts:runBaseline",
-      "decision": "dismissed",
-      "reason": "Semantic review found correctness-ordered effects or deliberate bounded filesystem/process concurrency; no independent surviving hot-path I/O remains at the observed scale.",
-      "reviewedAt": "2026-08-29T07:46:26.896Z",
-      "fingerprintVersion": 2,
-      "detectorRevision": 4
-    },
-    {
-      "fingerprint": "336faf7272b8f7ab90c5affdff9b8c0c8ae229e6ec5ee080d2065995fe288603",
-      "ruleId": "E06",
-      "identity": "nested-loop:src/plan/build.ts:prerequisiteMap",
-      "decision": "dismissed",
-      "reason": "Semantic review found fixed-size catalog/render work or required pairwise static-analysis/DAG comparisons; there is no hot-path or input-scale evidence for replacement on this repository.",
-      "reviewedAt": "2026-08-29T07:46:26.896Z",
-      "fingerprintVersion": 2,
-      "detectorRevision": 4
-    },
-    {
-      "fingerprint": "bafd9961af0d4f44a35d51fa64e73bce7c0746e208c7b3937b8a7516ec84c311",
-      "ruleId": "E06",
-      "identity": "loop-some:src/plan/build.ts:prerequisiteMap",
-      "decision": "dismissed",
-      "reason": "Semantic review found fixed-size catalog/render work or required pairwise static-analysis/DAG comparisons; there is no hot-path or input-scale evidence for replacement on this repository.",
-      "reviewedAt": "2026-08-29T07:46:26.896Z",
-      "fingerprintVersion": 2,
-      "detectorRevision": 4
-    },
-    {
-      "fingerprint": "d74c201954358b322f297a95d50d3a1bf34a4cc07f4fb4b0a5733718207c7a56",
-      "ruleId": "E06",
-      "identity": "nested-loop:src/plan/build.ts:indirectMap",
-      "decision": "dismissed",
-      "reason": "Semantic review found fixed-size catalog/render work or required pairwise static-analysis/DAG comparisons; there is no hot-path or input-scale evidence for replacement on this repository.",
-      "reviewedAt": "2026-08-29T07:46:26.896Z",
-      "fingerprintVersion": 2,
-      "detectorRevision": 4
-    },
-    {
-      "fingerprint": "0a99af09174370d6537e1af360acba3264825cab825431fcd5ac062e44f24128",
-      "ruleId": "E06",
-      "identity": "loop-some:src/plan/build.ts:indirectMap",
-      "decision": "dismissed",
-      "reason": "Semantic review found fixed-size catalog/render work or required pairwise static-analysis/DAG comparisons; there is no hot-path or input-scale evidence for replacement on this repository.",
-      "reviewedAt": "2026-08-29T07:46:26.896Z",
-      "fingerprintVersion": 2,
-      "detectorRevision": 4
-    },
-    {
-      "fingerprint": "cf92ab953260a1c62bec2c401d19eedf7ccf7614202ee31effa3d12425281d6c",
-      "ruleId": "E06",
-      "identity": "loop-sort:src/detectors/boolean-explosion.ts:detectBooleanExplosion",
-      "decision": "dismissed",
-      "reason": "Semantic review found fixed-size catalog/render work or required pairwise static-analysis/DAG comparisons; there is no hot-path or input-scale evidence for replacement on this repository.",
-      "reviewedAt": "2026-08-29T07:46:26.896Z",
-      "fingerprintVersion": 2,
-      "detectorRevision": 4
-    },
-    {
-      "fingerprint": "f2422be14802a85b034d5f41a3accfb97680fba9b5ecca24e5f1adb954dfcab4",
-      "ruleId": "E06",
-      "identity": "loop-filter:src/detectors/context-explosion.ts:detectContextExplosion",
-      "decision": "dismissed",
-      "reason": "Semantic review found fixed-size catalog/render work or required pairwise static-analysis/DAG comparisons; there is no hot-path or input-scale evidence for replacement on this repository.",
-      "reviewedAt": "2026-08-29T07:46:26.896Z",
-      "fingerprintVersion": 2,
-      "detectorRevision": 4
-    },
-    {
-      "fingerprint": "4ebf01cee3eea6de9fc66984050291386b506e63b1ac234d186591247e61056a",
-      "ruleId": "E06",
-      "identity": "loop-includes:src/detectors/context-explosion.ts:findConsumers",
-      "decision": "dismissed",
-      "reason": "Semantic review found fixed-size catalog/render work or required pairwise static-analysis/DAG comparisons; there is no hot-path or input-scale evidence for replacement on this repository.",
-      "reviewedAt": "2026-08-29T07:46:26.896Z",
-      "fingerprintVersion": 2,
-      "detectorRevision": 4
-    },
-    {
-      "fingerprint": "e8b86680901f951b2ce39ce2c72f0e654c3ad9181ae733e4c970833186ebbc8b",
-      "ruleId": "E06",
-      "identity": "loop-filter:src/detectors/dependency-creep.ts:detectDependencyCreep",
-      "decision": "dismissed",
-      "reason": "Semantic review found fixed-size catalog/render work or required pairwise static-analysis/DAG comparisons; there is no hot-path or input-scale evidence for replacement on this repository.",
-      "reviewedAt": "2026-08-29T07:46:26.896Z",
-      "fingerprintVersion": 2,
-      "detectorRevision": 4
-    },
-    {
-      "fingerprint": "4a2e83dcbeee84e747f154775f3ce429b9d5b42f3107fc35613d959eeddaeae8",
-      "ruleId": "E06",
-      "identity": "loop-sort:src/detectors/dependency-creep.ts:detectDependencyCreep",
-      "decision": "dismissed",
-      "reason": "Semantic review found fixed-size catalog/render work or required pairwise static-analysis/DAG comparisons; there is no hot-path or input-scale evidence for replacement on this repository.",
-      "reviewedAt": "2026-08-29T07:46:26.896Z",
-      "fingerprintVersion": 2,
-      "detectorRevision": 4
-    },
-    {
-      "fingerprint": "5f6fb9398b86f63121a8a992f6a1db71527d7fd3356a3fad08585cbddd80f27b",
-      "ruleId": "E06",
-      "identity": "loop-filter:src/detectors/duplicate-reps.ts:detectDuplicateRepresentations",
-      "decision": "dismissed",
-      "reason": "Semantic review found fixed-size catalog/render work or required pairwise static-analysis/DAG comparisons; there is no hot-path or input-scale evidence for replacement on this repository.",
-      "reviewedAt": "2026-08-29T07:46:26.896Z",
-      "fingerprintVersion": 2,
-      "detectorRevision": 4
-    },
-    {
-      "fingerprint": "889f0299e44ae5fda71a381819aeca1aae0e29cfd453b302719fe9fdc554a843",
-      "ruleId": "E06",
-      "identity": "loop-includes:src/detectors/duplicate-reps.ts:detectDuplicateRepresentations",
-      "decision": "dismissed",
-      "reason": "Semantic review found fixed-size catalog/render work or required pairwise static-analysis/DAG comparisons; there is no hot-path or input-scale evidence for replacement on this repository.",
-      "reviewedAt": "2026-08-29T07:46:26.896Z",
-      "fingerprintVersion": 2,
-      "detectorRevision": 4
-    },
-    {
-      "fingerprint": "89b2f78e99e6c9201f67a21a695f4e39850fbe00ed9aeab59188fed85c1438a6",
-      "ruleId": "E06",
-      "identity": "loop-sort:src/detectors/duplicate-reps.ts:detectDuplicateRepresentations",
-      "decision": "dismissed",
-      "reason": "Semantic review found fixed-size catalog/render work or required pairwise static-analysis/DAG comparisons; there is no hot-path or input-scale evidence for replacement on this repository.",
-      "reviewedAt": "2026-08-29T07:46:26.896Z",
-      "fingerprintVersion": 2,
-      "detectorRevision": 4
-    },
-    {
-      "fingerprint": "f8dbb95acbffc055beac0415637fd04a82f2043fba950c89438127e083c60c0e",
-      "ruleId": "E06",
-      "identity": "loop-some:src/detectors/duplicate-reps.ts:detectDuplicateRepresentations",
-      "decision": "dismissed",
-      "reason": "Semantic review found fixed-size catalog/render work or required pairwise static-analysis/DAG comparisons; there is no hot-path or input-scale evidence for replacement on this repository.",
-      "reviewedAt": "2026-08-29T07:46:26.896Z",
-      "fingerprintVersion": 2,
-      "detectorRevision": 4
-    },
-    {
-      "fingerprint": "5fb39b9d4360f90928dff5c2aa02b312e45c558239ecd333ea765a70e4221579",
-      "ruleId": "E06",
-      "identity": "nested-loop:src/detectors/duplicate-reps.ts:overlappingPairs",
-      "decision": "dismissed",
-      "reason": "Semantic review found fixed-size catalog/render work or required pairwise static-analysis/DAG comparisons; there is no hot-path or input-scale evidence for replacement on this repository.",
-      "reviewedAt": "2026-08-29T07:46:26.896Z",
-      "fingerprintVersion": 2,
-      "detectorRevision": 4
-    },
-    {
-      "fingerprint": "d705b7dcd7ab928906e0a098d6d412ba5952ccb1920d4e671e7ea840b01e7dec",
-      "ruleId": "E06",
-      "identity": "loop-filter:src/detectors/duplicate-reps.ts:overlappingPairs",
-      "decision": "dismissed",
-      "reason": "Semantic review found fixed-size catalog/render work or required pairwise static-analysis/DAG comparisons; there is no hot-path or input-scale evidence for replacement on this repository.",
-      "reviewedAt": "2026-08-29T07:46:26.896Z",
-      "fingerprintVersion": 2,
-      "detectorRevision": 4
-    },
-    {
-      "fingerprint": "ffd212fb5bdadaa9a0711befd17e103e8f15cf37eab84615bbce4f4351f2f437",
-      "ruleId": "E06",
-      "identity": "loop-includes:src/detectors/duplicate-reps.ts:overlappingPairs",
-      "decision": "dismissed",
-      "reason": "Semantic review found fixed-size catalog/render work or required pairwise static-analysis/DAG comparisons; there is no hot-path or input-scale evidence for replacement on this repository.",
-      "reviewedAt": "2026-08-29T07:46:26.896Z",
-      "fingerprintVersion": 2,
-      "detectorRevision": 4
-    },
-    {
-      "fingerprint": "8a64d875358e15a14bfb379305d6db9904db54660fd76a96575827c7dade6fc8",
-      "ruleId": "E06",
-      "identity": "loop-filter:src/detectors/premature-abstraction.ts:detectPrematureAbstraction",
-      "decision": "dismissed",
-      "reason": "Semantic review found fixed-size catalog/render work or required pairwise static-analysis/DAG comparisons; there is no hot-path or input-scale evidence for replacement on this repository.",
-      "reviewedAt": "2026-08-29T07:46:26.896Z",
-      "fingerprintVersion": 2,
-      "detectorRevision": 4
-    },
-    {
-      "fingerprint": "c07a6231664c5f6d26ba2c5755044620b0b1cc365a08c1e4135d3cca0e7b0766",
-      "ruleId": "E06",
-      "identity": "nested-loop:src/detectors/redundant-db.ts:detectRedundantDbAccess",
-      "decision": "dismissed",
-      "reason": "Semantic review found fixed-size catalog/render work or required pairwise static-analysis/DAG comparisons; there is no hot-path or input-scale evidence for replacement on this repository.",
-      "reviewedAt": "2026-08-29T07:46:26.896Z",
-      "fingerprintVersion": 2,
-      "detectorRevision": 4
-    },
-    {
-      "fingerprint": "da445b691a33be48b5211ee7a497d2092d5072acd965fe9abe9cf8d3832c0376",
-      "ruleId": "E06",
-      "identity": "loop-some:src/detectors/sequential-io.ts:flush",
-      "decision": "dismissed",
-      "reason": "Semantic review found fixed-size catalog/render work or required pairwise static-analysis/DAG comparisons; there is no hot-path or input-scale evidence for replacement on this repository.",
-      "reviewedAt": "2026-08-29T07:46:26.896Z",
-      "fingerprintVersion": 2,
-      "detectorRevision": 4
-    },
-    {
-      "fingerprint": "7d591aad50bac4db6d2686e54fa696c6bccba643a8cfeb20b635ab44040216ca",
-      "ruleId": "E06",
-      "identity": "loop-filter:src/detectors/stale-compat.ts:detectStaleCompatibility",
-      "decision": "dismissed",
-      "reason": "Semantic review found fixed-size catalog/render work or required pairwise static-analysis/DAG comparisons; there is no hot-path or input-scale evidence for replacement on this repository.",
-      "reviewedAt": "2026-08-29T07:46:26.896Z",
-      "fingerprintVersion": 2,
-      "detectorRevision": 4
-    },
-    {
-      "fingerprint": "260571651f62f56dacc6cf8232b7e992690dc8c01484cf45945565261524d29c",
-      "ruleId": "E06",
-      "identity": "nested-loop:src/check/importers.ts:expandWithImporters",
-      "decision": "dismissed",
-      "reason": "Semantic review found fixed-size catalog/render work or required pairwise static-analysis/DAG comparisons; there is no hot-path or input-scale evidence for replacement on this repository.",
-      "reviewedAt": "2026-08-29T07:46:26.896Z",
-      "fingerprintVersion": 2,
-      "detectorRevision": 4
-    },
-    {
-      "fingerprint": "e27e5ea14f0dd87d98771322973b9f9b65ef7e9bdc27e158ce029a9e4023b7a8",
-      "ruleId": "E06",
-      "identity": "loop-sort:src/audit/metrics.ts:competingConcepts",
-      "decision": "dismissed",
-      "reason": "Semantic review found fixed-size catalog/render work or required pairwise static-analysis/DAG comparisons; there is no hot-path or input-scale evidence for replacement on this repository.",
-      "reviewedAt": "2026-08-29T07:46:26.896Z",
-      "fingerprintVersion": 2,
-      "detectorRevision": 4
-    },
-    {
-      "fingerprint": "a122541d1267b5e19c981d011ab27e73ebd6f052d84e65ba0ce201cec698f777",
-      "ruleId": "E06",
-      "identity": "loop-filter:src/audit/render.ts:renderAudit",
-      "decision": "dismissed",
-      "reason": "Semantic review found fixed-size catalog/render work or required pairwise static-analysis/DAG comparisons; there is no hot-path or input-scale evidence for replacement on this repository.",
-      "reviewedAt": "2026-08-29T07:46:26.896Z",
-      "fingerprintVersion": 2,
-      "detectorRevision": 4
-    },
-    {
       "fingerprint": "20ff585611cc01ae46baddc5585ed07a0543d116aa738d659793b21d1b90acea",
       "ruleId": "A07",
       "identity": "compat:branch:src/cli.ts:result.legacyWarning",
       "decision": "dismissed",
       "reason": "Supported one-release migration path: existing backend-named state, aliases, and split decision files are live consumers; removal is explicitly scheduled after the compatibility release.",
-      "reviewedAt": "2026-08-29T07:46:26.896Z",
+      "reviewedAt": "2026-08-31T02:24:39.662Z",
       "fingerprintVersion": 2,
-      "detectorRevision": 4
+      "detectorRevision": 5,
+      "removalMilestone": "Remove after the one-release backend-state and split-decisions migration window."
     },
     {
       "fingerprint": "bc1f3b4c6f403a70586fa19102660bc87ba6c9a61027bf1d2df0727985978f1d",
@@ -357,9 +18,10 @@
       "identity": "compat:name:src/config.ts:LEGACY_BACKEND_DIR",
       "decision": "dismissed",
       "reason": "Supported one-release migration path: existing backend-named state, aliases, and split decision files are live consumers; removal is explicitly scheduled after the compatibility release.",
-      "reviewedAt": "2026-08-29T07:46:26.896Z",
+      "reviewedAt": "2026-08-31T02:24:39.662Z",
       "fingerprintVersion": 2,
-      "detectorRevision": 4
+      "detectorRevision": 5,
+      "removalMilestone": "Remove after the one-release backend-state and split-decisions migration window."
     },
     {
       "fingerprint": "013df5acfd5b3f871e7cb8e12e67f8c90832423907b4458cf93870b748aa461d",
@@ -367,9 +29,10 @@
       "identity": "compat:comment:src/config.ts:deprecated",
       "decision": "dismissed",
       "reason": "Supported one-release migration path: existing backend-named state, aliases, and split decision files are live consumers; removal is explicitly scheduled after the compatibility release.",
-      "reviewedAt": "2026-08-29T07:46:26.896Z",
+      "reviewedAt": "2026-08-31T02:24:39.662Z",
       "fingerprintVersion": 2,
-      "detectorRevision": 4
+      "detectorRevision": 5,
+      "removalMilestone": "Remove after the one-release backend-state and split-decisions migration window."
     },
     {
       "fingerprint": "528345e360c565fffe3e50e3380c1d3e441aabd3255ff621ad3d7beaec2dbb89",
@@ -377,9 +40,10 @@
       "identity": "compat:name:src/state-dir.ts:legacy",
       "decision": "dismissed",
       "reason": "Supported one-release migration path: existing backend-named state, aliases, and split decision files are live consumers; removal is explicitly scheduled after the compatibility release.",
-      "reviewedAt": "2026-08-29T07:46:26.896Z",
+      "reviewedAt": "2026-08-31T02:24:39.662Z",
       "fingerprintVersion": 2,
-      "detectorRevision": 4
+      "detectorRevision": 5,
+      "removalMilestone": "Remove after the one-release backend-state and split-decisions migration window."
     },
     {
       "fingerprint": "9a9c02f0992965fb43e975fb063d68ac579ae944898cd08b247487b3cb5d7d51",
@@ -387,9 +51,10 @@
       "identity": "compat:branch:src/state-dir.ts:hasLegacy",
       "decision": "dismissed",
       "reason": "Supported one-release migration path: existing backend-named state, aliases, and split decision files are live consumers; removal is explicitly scheduled after the compatibility release.",
-      "reviewedAt": "2026-08-29T07:46:26.896Z",
+      "reviewedAt": "2026-08-31T02:24:39.662Z",
       "fingerprintVersion": 2,
-      "detectorRevision": 4
+      "detectorRevision": 5,
+      "removalMilestone": "Remove after the one-release backend-state and split-decisions migration window."
     },
     {
       "fingerprint": "3fbfc0cba4121ad8fdd0a33b34adc71a59bf9ac122163da58dc6c562006b7c67",
@@ -397,9 +62,10 @@
       "identity": "compat:name:src/state-dir.ts:legacyStateDirWarning",
       "decision": "dismissed",
       "reason": "Supported one-release migration path: existing backend-named state, aliases, and split decision files are live consumers; removal is explicitly scheduled after the compatibility release.",
-      "reviewedAt": "2026-08-29T07:46:26.896Z",
+      "reviewedAt": "2026-08-31T02:24:39.662Z",
       "fingerprintVersion": 2,
-      "detectorRevision": 4
+      "detectorRevision": 5,
+      "removalMilestone": "Remove after the one-release backend-state and split-decisions migration window."
     },
     {
       "fingerprint": "0e8455bd9ea4cd81e0e631e7bb323733e8b95bd86c51235933346d29fdc62499",
@@ -407,9 +73,10 @@
       "identity": "compat:branch:src/state-dir.ts:resolved.name === LEGACY_BACKEND_DIR",
       "decision": "dismissed",
       "reason": "Supported one-release migration path: existing backend-named state, aliases, and split decision files are live consumers; removal is explicitly scheduled after the compatibility release.",
-      "reviewedAt": "2026-08-29T07:46:26.896Z",
+      "reviewedAt": "2026-08-31T02:24:39.662Z",
       "fingerprintVersion": 2,
-      "detectorRevision": 4
+      "detectorRevision": 5,
+      "removalMilestone": "Remove after the one-release backend-state and split-decisions migration window."
     },
     {
       "fingerprint": "0a181a259ae6901e130531eceeb205c37a3d31910ec82da8a9f6b6dd634f660d",
@@ -417,9 +84,10 @@
       "identity": "compat:branch:src/state-dir.ts:resolved.leftoverLegacy",
       "decision": "dismissed",
       "reason": "Supported one-release migration path: existing backend-named state, aliases, and split decision files are live consumers; removal is explicitly scheduled after the compatibility release.",
-      "reviewedAt": "2026-08-29T07:46:26.896Z",
+      "reviewedAt": "2026-08-31T02:24:39.662Z",
       "fingerprintVersion": 2,
-      "detectorRevision": 4
+      "detectorRevision": 5,
+      "removalMilestone": "Remove after the one-release backend-state and split-decisions migration window."
     },
     {
       "fingerprint": "91d8afda88fbdbbd6f6078d6b3c2e37df03cc9076cb513d303ba68a85cccba9f",
@@ -427,9 +95,10 @@
       "identity": "compat:name:src/review/store.ts:legacyReviewsPath",
       "decision": "dismissed",
       "reason": "Supported one-release migration path: existing backend-named state, aliases, and split decision files are live consumers; removal is explicitly scheduled after the compatibility release.",
-      "reviewedAt": "2026-08-29T07:46:26.896Z",
+      "reviewedAt": "2026-08-31T02:24:39.662Z",
       "fingerprintVersion": 2,
-      "detectorRevision": 4
+      "detectorRevision": 5,
+      "removalMilestone": "Remove after the one-release backend-state and split-decisions migration window."
     },
     {
       "fingerprint": "41c16a568710d8be67fa67dec5d84a2303fb5c8fd6259f4c04f774548554595f",
@@ -437,9 +106,330 @@
       "identity": "compat:name:src/review/store.ts:legacySemanticFindingsPath",
       "decision": "dismissed",
       "reason": "Supported one-release migration path: existing backend-named state, aliases, and split decision files are live consumers; removal is explicitly scheduled after the compatibility release.",
-      "reviewedAt": "2026-08-29T07:46:26.896Z",
+      "reviewedAt": "2026-08-31T02:24:39.662Z",
       "fingerprintVersion": 2,
-      "detectorRevision": 4
+      "detectorRevision": 5,
+      "removalMilestone": "Remove after the one-release backend-state and split-decisions migration window."
+    },
+    {
+      "fingerprint": "4cbd3cafffc89e74b67ae36787e3ff6751c9f0acd4706b5c54d022169f56ca64",
+      "ruleId": "E05",
+      "identity": "await-in-loop:src/inventory-scan.ts:readPackages",
+      "decision": "dismissed",
+      "reason": "Semantic review found correctness-ordered effects or deliberate bounded filesystem/process concurrency; no independent surviving hot-path I/O remains at the observed scale.",
+      "reviewedAt": "2026-08-31T02:24:39.662Z",
+      "fingerprintVersion": 2,
+      "detectorRevision": 5
+    },
+    {
+      "fingerprint": "b62cf40ffbc75d2b54785a0db38598d6c868b15df63a0f4e45033fb82b6f35fa",
+      "ruleId": "E05",
+      "identity": "await-in-loop:src/inventory-walk.ts:walkFiles",
+      "decision": "dismissed",
+      "reason": "Semantic review found correctness-ordered effects or deliberate bounded filesystem/process concurrency; no independent surviving hot-path I/O remains at the observed scale.",
+      "reviewedAt": "2026-08-31T02:24:39.662Z",
+      "fingerprintVersion": 2,
+      "detectorRevision": 5
+    },
+    {
+      "fingerprint": "cc30837d1742ed6de51b9d18ddf98e7d902a4b98e539447a7838dbf7ab140399",
+      "ruleId": "E05",
+      "identity": "await-in-loop:src/inventory.ts:collectInventory",
+      "decision": "dismissed",
+      "reason": "Semantic review found correctness-ordered effects or deliberate bounded filesystem/process concurrency; no independent surviving hot-path I/O remains at the observed scale.",
+      "reviewedAt": "2026-08-31T02:24:39.662Z",
+      "fingerprintVersion": 2,
+      "detectorRevision": 5
+    },
+    {
+      "fingerprint": "b719addca1b24de1dcf0ad9015bd2b837b84c46f9307571b42046ba575d791d2",
+      "ruleId": "E05",
+      "identity": "seq-await:src/review/store.ts:writeDecisions",
+      "decision": "dismissed",
+      "reason": "Semantic review found correctness-ordered effects or deliberate bounded filesystem/process concurrency; no independent surviving hot-path I/O remains at the observed scale.",
+      "reviewedAt": "2026-08-31T02:24:39.662Z",
+      "fingerprintVersion": 2,
+      "detectorRevision": 5
+    },
+    {
+      "fingerprint": "9faab7f82c2571955710975fb9acd7006db30a505e4565dd212b27550635c244",
+      "ruleId": "E05",
+      "identity": "await-in-loop:src/install/run.ts:runInstall",
+      "decision": "dismissed",
+      "reason": "Semantic review found correctness-ordered effects or deliberate bounded filesystem/process concurrency; no independent surviving hot-path I/O remains at the observed scale.",
+      "reviewedAt": "2026-08-31T02:24:39.662Z",
+      "fingerprintVersion": 2,
+      "detectorRevision": 5
+    },
+    {
+      "fingerprint": "651cba12b3e3612216a062cc35feb6b1b4ca798d19bc0d99dd36e1042a973f09",
+      "ruleId": "E05",
+      "identity": "seq-await:src/doctor/run.ts:runDoctor",
+      "decision": "dismissed",
+      "reason": "Semantic review found correctness-ordered effects or deliberate bounded filesystem/process concurrency; no independent surviving hot-path I/O remains at the observed scale.",
+      "reviewedAt": "2026-08-31T02:24:39.662Z",
+      "fingerprintVersion": 2,
+      "detectorRevision": 5
+    },
+    {
+      "fingerprint": "034df4528bc50a04bafbc1b4362034754569b1b51d372c517f33471758710fae",
+      "ruleId": "E05",
+      "identity": "await-in-loop:src/check/changed-files.ts:listChangedSourceFiles",
+      "decision": "dismissed",
+      "reason": "Semantic review found correctness-ordered effects or deliberate bounded filesystem/process concurrency; no independent surviving hot-path I/O remains at the observed scale.",
+      "reviewedAt": "2026-08-31T02:24:39.662Z",
+      "fingerprintVersion": 2,
+      "detectorRevision": 5
+    },
+    {
+      "fingerprint": "1a3de982157806a46c1ee7bf69a27b90b777a1ce18897d0b825af4b0bd88fd7a",
+      "ruleId": "E05",
+      "identity": "seq-await:src/check/changed-files.ts:listChangedSourceFiles",
+      "decision": "dismissed",
+      "reason": "Semantic review found correctness-ordered effects or deliberate bounded filesystem/process concurrency; no independent surviving hot-path I/O remains at the observed scale.",
+      "reviewedAt": "2026-08-31T02:24:39.662Z",
+      "fingerprintVersion": 2,
+      "detectorRevision": 5
+    },
+    {
+      "fingerprint": "3bad6c90fbb69f05e3e27cba3dee5aad9374a8bd3d43672d245629d7fdbe25c4",
+      "ruleId": "E05",
+      "identity": "await-in-loop:src/check/importers.ts:expandWithImporters",
+      "decision": "dismissed",
+      "reason": "Semantic review found correctness-ordered effects or deliberate bounded filesystem/process concurrency; no independent surviving hot-path I/O remains at the observed scale.",
+      "reviewedAt": "2026-08-31T02:24:39.662Z",
+      "fingerprintVersion": 2,
+      "detectorRevision": 5
+    },
+    {
+      "fingerprint": "2ae8fce8d55a51a764c8cd34d3eeae649cc8746acd814e6802ef3954cf18a0e1",
+      "ruleId": "E05",
+      "identity": "seq-await:src/baseline/run.ts:runBaseline",
+      "decision": "dismissed",
+      "reason": "Semantic review found correctness-ordered effects or deliberate bounded filesystem/process concurrency; no independent surviving hot-path I/O remains at the observed scale.",
+      "reviewedAt": "2026-08-31T02:24:39.662Z",
+      "fingerprintVersion": 2,
+      "detectorRevision": 5
+    },
+    {
+      "fingerprint": "336faf7272b8f7ab90c5affdff9b8c0c8ae229e6ec5ee080d2065995fe288603",
+      "ruleId": "E06",
+      "identity": "nested-loop:src/plan/build.ts:prerequisiteMap",
+      "decision": "dismissed",
+      "reason": "Semantic review found fixed-size catalog/render work or required pairwise static-analysis/DAG comparisons; there is no hot-path or input-scale evidence for replacement on this repository.",
+      "reviewedAt": "2026-08-31T02:24:39.662Z",
+      "fingerprintVersion": 2,
+      "detectorRevision": 5
+    },
+    {
+      "fingerprint": "bafd9961af0d4f44a35d51fa64e73bce7c0746e208c7b3937b8a7516ec84c311",
+      "ruleId": "E06",
+      "identity": "loop-some:src/plan/build.ts:prerequisiteMap",
+      "decision": "dismissed",
+      "reason": "Semantic review found fixed-size catalog/render work or required pairwise static-analysis/DAG comparisons; there is no hot-path or input-scale evidence for replacement on this repository.",
+      "reviewedAt": "2026-08-31T02:24:39.662Z",
+      "fingerprintVersion": 2,
+      "detectorRevision": 5
+    },
+    {
+      "fingerprint": "d74c201954358b322f297a95d50d3a1bf34a4cc07f4fb4b0a5733718207c7a56",
+      "ruleId": "E06",
+      "identity": "nested-loop:src/plan/build.ts:indirectMap",
+      "decision": "dismissed",
+      "reason": "Semantic review found fixed-size catalog/render work or required pairwise static-analysis/DAG comparisons; there is no hot-path or input-scale evidence for replacement on this repository.",
+      "reviewedAt": "2026-08-31T02:24:39.662Z",
+      "fingerprintVersion": 2,
+      "detectorRevision": 5
+    },
+    {
+      "fingerprint": "0a99af09174370d6537e1af360acba3264825cab825431fcd5ac062e44f24128",
+      "ruleId": "E06",
+      "identity": "loop-some:src/plan/build.ts:indirectMap",
+      "decision": "dismissed",
+      "reason": "Semantic review found fixed-size catalog/render work or required pairwise static-analysis/DAG comparisons; there is no hot-path or input-scale evidence for replacement on this repository.",
+      "reviewedAt": "2026-08-31T02:24:39.662Z",
+      "fingerprintVersion": 2,
+      "detectorRevision": 5
+    },
+    {
+      "fingerprint": "cf92ab953260a1c62bec2c401d19eedf7ccf7614202ee31effa3d12425281d6c",
+      "ruleId": "E06",
+      "identity": "loop-sort:src/detectors/boolean-explosion.ts:detectBooleanExplosion",
+      "decision": "dismissed",
+      "reason": "Semantic review found fixed-size catalog/render work or required pairwise static-analysis/DAG comparisons; there is no hot-path or input-scale evidence for replacement on this repository.",
+      "reviewedAt": "2026-08-31T02:24:39.662Z",
+      "fingerprintVersion": 2,
+      "detectorRevision": 5
+    },
+    {
+      "fingerprint": "f2422be14802a85b034d5f41a3accfb97680fba9b5ecca24e5f1adb954dfcab4",
+      "ruleId": "E06",
+      "identity": "loop-filter:src/detectors/context-explosion.ts:detectContextExplosion",
+      "decision": "dismissed",
+      "reason": "Semantic review found fixed-size catalog/render work or required pairwise static-analysis/DAG comparisons; there is no hot-path or input-scale evidence for replacement on this repository.",
+      "reviewedAt": "2026-08-31T02:24:39.662Z",
+      "fingerprintVersion": 2,
+      "detectorRevision": 5
+    },
+    {
+      "fingerprint": "4ebf01cee3eea6de9fc66984050291386b506e63b1ac234d186591247e61056a",
+      "ruleId": "E06",
+      "identity": "loop-includes:src/detectors/context-explosion.ts:findConsumers",
+      "decision": "dismissed",
+      "reason": "Semantic review found fixed-size catalog/render work or required pairwise static-analysis/DAG comparisons; there is no hot-path or input-scale evidence for replacement on this repository.",
+      "reviewedAt": "2026-08-31T02:24:39.662Z",
+      "fingerprintVersion": 2,
+      "detectorRevision": 5
+    },
+    {
+      "fingerprint": "e8b86680901f951b2ce39ce2c72f0e654c3ad9181ae733e4c970833186ebbc8b",
+      "ruleId": "E06",
+      "identity": "loop-filter:src/detectors/dependency-creep.ts:detectDependencyCreep",
+      "decision": "dismissed",
+      "reason": "Semantic review found fixed-size catalog/render work or required pairwise static-analysis/DAG comparisons; there is no hot-path or input-scale evidence for replacement on this repository.",
+      "reviewedAt": "2026-08-31T02:24:39.662Z",
+      "fingerprintVersion": 2,
+      "detectorRevision": 5
+    },
+    {
+      "fingerprint": "4a2e83dcbeee84e747f154775f3ce429b9d5b42f3107fc35613d959eeddaeae8",
+      "ruleId": "E06",
+      "identity": "loop-sort:src/detectors/dependency-creep.ts:detectDependencyCreep",
+      "decision": "dismissed",
+      "reason": "Semantic review found fixed-size catalog/render work or required pairwise static-analysis/DAG comparisons; there is no hot-path or input-scale evidence for replacement on this repository.",
+      "reviewedAt": "2026-08-31T02:24:39.662Z",
+      "fingerprintVersion": 2,
+      "detectorRevision": 5
+    },
+    {
+      "fingerprint": "5f6fb9398b86f63121a8a992f6a1db71527d7fd3356a3fad08585cbddd80f27b",
+      "ruleId": "E06",
+      "identity": "loop-filter:src/detectors/duplicate-reps.ts:detectDuplicateRepresentations",
+      "decision": "dismissed",
+      "reason": "Semantic review found fixed-size catalog/render work or required pairwise static-analysis/DAG comparisons; there is no hot-path or input-scale evidence for replacement on this repository.",
+      "reviewedAt": "2026-08-31T02:24:39.662Z",
+      "fingerprintVersion": 2,
+      "detectorRevision": 5
+    },
+    {
+      "fingerprint": "889f0299e44ae5fda71a381819aeca1aae0e29cfd453b302719fe9fdc554a843",
+      "ruleId": "E06",
+      "identity": "loop-includes:src/detectors/duplicate-reps.ts:detectDuplicateRepresentations",
+      "decision": "dismissed",
+      "reason": "Semantic review found fixed-size catalog/render work or required pairwise static-analysis/DAG comparisons; there is no hot-path or input-scale evidence for replacement on this repository.",
+      "reviewedAt": "2026-08-31T02:24:39.662Z",
+      "fingerprintVersion": 2,
+      "detectorRevision": 5
+    },
+    {
+      "fingerprint": "89b2f78e99e6c9201f67a21a695f4e39850fbe00ed9aeab59188fed85c1438a6",
+      "ruleId": "E06",
+      "identity": "loop-sort:src/detectors/duplicate-reps.ts:detectDuplicateRepresentations",
+      "decision": "dismissed",
+      "reason": "Semantic review found fixed-size catalog/render work or required pairwise static-analysis/DAG comparisons; there is no hot-path or input-scale evidence for replacement on this repository.",
+      "reviewedAt": "2026-08-31T02:24:39.662Z",
+      "fingerprintVersion": 2,
+      "detectorRevision": 5
+    },
+    {
+      "fingerprint": "f8dbb95acbffc055beac0415637fd04a82f2043fba950c89438127e083c60c0e",
+      "ruleId": "E06",
+      "identity": "loop-some:src/detectors/duplicate-reps.ts:detectDuplicateRepresentations",
+      "decision": "dismissed",
+      "reason": "Semantic review found fixed-size catalog/render work or required pairwise static-analysis/DAG comparisons; there is no hot-path or input-scale evidence for replacement on this repository.",
+      "reviewedAt": "2026-08-31T02:24:39.662Z",
+      "fingerprintVersion": 2,
+      "detectorRevision": 5
+    },
+    {
+      "fingerprint": "5fb39b9d4360f90928dff5c2aa02b312e45c558239ecd333ea765a70e4221579",
+      "ruleId": "E06",
+      "identity": "nested-loop:src/detectors/duplicate-reps.ts:overlappingPairs",
+      "decision": "dismissed",
+      "reason": "The duplicate-representation detector now indexes properties and uses Set membership before exact overlap checks. A target-sized in-memory benchmark completed 3,000 sparse shaped types in 0.90s; a deliberately dense 1,000-type overlap case took 1.87s. Exact pair evidence is required, and no operational target currently approaches the pathological case.",
+      "reviewedAt": "2026-08-31T02:24:39.662Z",
+      "fingerprintVersion": 2,
+      "detectorRevision": 5
+    },
+    {
+      "fingerprint": "d705b7dcd7ab928906e0a098d6d412ba5952ccb1920d4e671e7ea840b01e7dec",
+      "ruleId": "E06",
+      "identity": "loop-filter:src/detectors/duplicate-reps.ts:overlappingPairs",
+      "decision": "dismissed",
+      "reason": "The duplicate-representation detector now indexes properties and uses Set membership before exact overlap checks. A target-sized in-memory benchmark completed 3,000 sparse shaped types in 0.90s; a deliberately dense 1,000-type overlap case took 1.87s. Exact pair evidence is required, and no operational target currently approaches the pathological case.",
+      "reviewedAt": "2026-08-31T02:24:39.662Z",
+      "fingerprintVersion": 2,
+      "detectorRevision": 5
+    },
+    {
+      "fingerprint": "8a64d875358e15a14bfb379305d6db9904db54660fd76a96575827c7dade6fc8",
+      "ruleId": "E06",
+      "identity": "loop-filter:src/detectors/premature-abstraction.ts:detectPrematureAbstraction",
+      "decision": "dismissed",
+      "reason": "Semantic review found fixed-size catalog/render work or required pairwise static-analysis/DAG comparisons; there is no hot-path or input-scale evidence for replacement on this repository.",
+      "reviewedAt": "2026-08-31T02:24:39.662Z",
+      "fingerprintVersion": 2,
+      "detectorRevision": 5
+    },
+    {
+      "fingerprint": "c07a6231664c5f6d26ba2c5755044620b0b1cc365a08c1e4135d3cca0e7b0766",
+      "ruleId": "E06",
+      "identity": "nested-loop:src/detectors/redundant-db.ts:detectRedundantDbAccess",
+      "decision": "dismissed",
+      "reason": "Semantic review found fixed-size catalog/render work or required pairwise static-analysis/DAG comparisons; there is no hot-path or input-scale evidence for replacement on this repository.",
+      "reviewedAt": "2026-08-31T02:24:39.662Z",
+      "fingerprintVersion": 2,
+      "detectorRevision": 5
+    },
+    {
+      "fingerprint": "da445b691a33be48b5211ee7a497d2092d5072acd965fe9abe9cf8d3832c0376",
+      "ruleId": "E06",
+      "identity": "loop-some:src/detectors/sequential-io.ts:flush",
+      "decision": "dismissed",
+      "reason": "Semantic review found fixed-size catalog/render work or required pairwise static-analysis/DAG comparisons; there is no hot-path or input-scale evidence for replacement on this repository.",
+      "reviewedAt": "2026-08-31T02:24:39.662Z",
+      "fingerprintVersion": 2,
+      "detectorRevision": 5
+    },
+    {
+      "fingerprint": "7d591aad50bac4db6d2686e54fa696c6bccba643a8cfeb20b635ab44040216ca",
+      "ruleId": "E06",
+      "identity": "loop-filter:src/detectors/stale-compat.ts:detectStaleCompatibility",
+      "decision": "dismissed",
+      "reason": "Semantic review found fixed-size catalog/render work or required pairwise static-analysis/DAG comparisons; there is no hot-path or input-scale evidence for replacement on this repository.",
+      "reviewedAt": "2026-08-31T02:24:39.662Z",
+      "fingerprintVersion": 2,
+      "detectorRevision": 5
+    },
+    {
+      "fingerprint": "260571651f62f56dacc6cf8232b7e992690dc8c01484cf45945565261524d29c",
+      "ruleId": "E06",
+      "identity": "nested-loop:src/check/importers.ts:expandWithImporters",
+      "decision": "dismissed",
+      "reason": "Semantic review found fixed-size catalog/render work or required pairwise static-analysis/DAG comparisons; there is no hot-path or input-scale evidence for replacement on this repository.",
+      "reviewedAt": "2026-08-31T02:24:39.662Z",
+      "fingerprintVersion": 2,
+      "detectorRevision": 5
+    },
+    {
+      "fingerprint": "e27e5ea14f0dd87d98771322973b9f9b65ef7e9bdc27e158ce029a9e4023b7a8",
+      "ruleId": "E06",
+      "identity": "loop-sort:src/audit/metrics.ts:competingConcepts",
+      "decision": "dismissed",
+      "reason": "Semantic review found fixed-size catalog/render work or required pairwise static-analysis/DAG comparisons; there is no hot-path or input-scale evidence for replacement on this repository.",
+      "reviewedAt": "2026-08-31T02:24:39.662Z",
+      "fingerprintVersion": 2,
+      "detectorRevision": 5
+    },
+    {
+      "fingerprint": "a122541d1267b5e19c981d011ab27e73ebd6f052d84e65ba0ce201cec698f777",
+      "ruleId": "E06",
+      "identity": "loop-filter:src/audit/render.ts:renderAudit",
+      "decision": "dismissed",
+      "reason": "Semantic review found fixed-size catalog/render work or required pairwise static-analysis/DAG comparisons; there is no hot-path or input-scale evidence for replacement on this repository.",
+      "reviewedAt": "2026-08-31T02:24:39.662Z",
+      "fingerprintVersion": 2,
+      "detectorRevision": 5
     }
   ],
   "findings": []

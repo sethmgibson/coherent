@@ -136,6 +136,92 @@ describe("cleanup DAG", () => {
     expect(a08[0]?.findingFingerprints).toHaveLength(2);
   });
 
+  it("honors explicit finding prerequisites and unlocks across nodes", () => {
+    const prerequisite = finding({
+      ruleId: "A08",
+      identity: "unused:src/old.ts:gone",
+      status: "confirmed",
+      detectionMode: "deterministic",
+      locations: [{ file: "src/old.ts", symbol: "gone" }],
+      affectedSymbols: ["gone"],
+    });
+    const dependent = finding({
+      ruleId: "D03",
+      identity: "swallowed:src/live.ts:load",
+      status: "confirmed",
+      detectionMode: "semantic",
+      locations: [{ file: "src/live.ts", symbol: "load" }],
+      affectedSymbols: ["load"],
+      prerequisiteFindingIds: [prerequisite.fingerprint],
+      unlocks: "Makes error-boundary cleanup safe.",
+    });
+
+    const plan = buildPlan("/tmp/repo", [prerequisite, dependent], {
+      needsReview: new Set(),
+    });
+    const prerequisiteNode = plan.nodes.find((node) =>
+      node.findingFingerprints.includes(prerequisite.fingerprint),
+    );
+    const dependentNode = plan.nodes.find((node) =>
+      node.findingFingerprints.includes(dependent.fingerprint),
+    );
+
+    expect(prerequisiteNode?.state).toBe("ready");
+    expect(dependentNode?.state).toBe("blocked");
+    expect(dependentNode?.prerequisiteNodeIds).toEqual([prerequisiteNode?.id]);
+    expect(dependentNode?.unlocks).toContain("Makes error-boundary cleanup safe.");
+    expect(plan.edges).toContainEqual({
+      from: prerequisiteNode?.id,
+      to: dependentNode?.id,
+      reason: "Prerequisite cleanup should land first.",
+    });
+  });
+
+  it("does not create a self-dependency when grouped findings reference each other", () => {
+    const first = finding({
+      ruleId: "A08",
+      identity: "unused:src/x.ts:first",
+      status: "confirmed",
+      detectionMode: "deterministic",
+      locations: [{ file: "src/x.ts", symbol: "first" }],
+      affectedSymbols: ["first"],
+    });
+    const second = finding({
+      ruleId: "A08",
+      identity: "unused:src/x.ts:second",
+      status: "confirmed",
+      detectionMode: "deterministic",
+      locations: [{ file: "src/x.ts", symbol: "second" }],
+      affectedSymbols: ["second"],
+      prerequisiteFindingIds: [first.fingerprint],
+    });
+
+    const plan = buildPlan("/tmp/repo", [first, second]);
+
+    expect(plan.nodes).toHaveLength(1);
+    expect(plan.nodes[0]?.prerequisiteNodeIds).toEqual([]);
+    expect(plan.nodes[0]?.state).toBe("ready");
+    expect(plan.edges).toEqual([]);
+  });
+
+  it("treats prerequisite fingerprints absent from the current plan as satisfied", () => {
+    const dependent = finding({
+      ruleId: "D03",
+      identity: "swallowed:src/live.ts:load",
+      status: "confirmed",
+      detectionMode: "semantic",
+      prerequisiteFindingIds: ["resolved-fingerprint"],
+    });
+
+    const plan = buildPlan("/tmp/repo", [dependent], {
+      needsReview: new Set(),
+    });
+
+    expect(plan.nodes[0]?.prerequisiteNodeIds).toEqual([]);
+    expect(plan.nodes[0]?.state).toBe("ready");
+    expect(plan.edges).toEqual([]);
+  });
+
   it("builds a plan from the scanner fixture", async () => {
     const root = await mkdtemp(join(tmpdir(), "coherent-plan-fx-"));
     try {

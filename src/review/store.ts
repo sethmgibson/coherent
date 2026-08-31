@@ -20,6 +20,7 @@ import {
   type ReviewsFile,
   type SemanticFindingsFile,
 } from "./types.js";
+import { isReviewExpiry } from "./lifecycle.js";
 
 export function decisionsPath(root: string): string {
   return join(resolveStateDir(root).path, DECISIONS_FILE);
@@ -164,6 +165,27 @@ function parseReview(raw: unknown): FindingReview {
   }
   const fingerprintVersion = optionalVersion(raw.fingerprintVersion, "fingerprintVersion");
   const detectorRevision = optionalVersion(raw.detectorRevision, "detectorRevision");
+  const expiresAt = optionalReviewText(raw.expiresAt, "expiresAt");
+  if (expiresAt !== undefined && !isReviewExpiry(expiresAt)) {
+    throw new Error("Invalid review: expiresAt must be an ISO date or timestamp");
+  }
+  const removalMilestone = optionalReviewText(
+    raw.removalMilestone,
+    "removalMilestone",
+  );
+  if (raw.notCompatibility !== undefined && raw.notCompatibility !== true) {
+    throw new Error("Invalid review: notCompatibility must be true when present");
+  }
+  const notCompatibility = raw.notCompatibility === true;
+  if (
+    notCompatibility &&
+    (raw.ruleId !== "A07" || raw.decision !== "dismissed")
+  ) {
+    throw new Error("Invalid review: notCompatibility requires a dismissed A07 review");
+  }
+  if (notCompatibility && (expiresAt || removalMilestone)) {
+    throw new Error("Invalid review: notCompatibility cannot include lifecycle metadata");
+  }
   return {
     fingerprint: raw.fingerprint,
     ruleId: raw.ruleId as RuleId,
@@ -173,6 +195,9 @@ function parseReview(raw: unknown): FindingReview {
     reviewedAt: raw.reviewedAt,
     ...(fingerprintVersion !== undefined ? { fingerprintVersion } : {}),
     ...(detectorRevision !== undefined ? { detectorRevision } : {}),
+    ...(expiresAt !== undefined ? { expiresAt } : {}),
+    ...(removalMilestone !== undefined ? { removalMilestone } : {}),
+    ...(notCompatibility ? { notCompatibility: true as const } : {}),
     ...(typeof raw.semanticEquivalence === "string"
       ? { semanticEquivalence: raw.semanticEquivalence }
       : {}),
@@ -180,6 +205,14 @@ function parseReview(raw: unknown): FindingReview {
       ? { authoritativeConcept: raw.authoritativeConcept }
       : {}),
   };
+}
+
+function optionalReviewText(value: unknown, field: string): string | undefined {
+  if (value === undefined) return undefined;
+  if (typeof value !== "string" || !value.trim()) {
+    throw new Error(`Invalid review: ${field} must be a non-empty string`);
+  }
+  return value.trim();
 }
 
 function optionalVersion(value: unknown, field: string): number | undefined {
