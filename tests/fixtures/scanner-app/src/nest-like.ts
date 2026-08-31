@@ -21,3 +21,15 @@ export class UsersController {
     return [String(this.billing.total())];
   }
 }
+
+interface LeasePort { release(): void }
+
+class LocalLeaseStore {
+  release(): void { console.log("release"); }
+  private unusedPrivate(): void { console.log("unused"); }
+}
+
+export function runLease(): void {
+  const lease: LeasePort = new LocalLeaseStore();
+  lease.release();
+}

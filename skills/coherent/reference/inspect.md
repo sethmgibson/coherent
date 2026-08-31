@@ -11,6 +11,10 @@ The command runs one audit, reads durable decisions in parallel, applies those
 reviews to the exact audit findings, builds the cleanup DAG, and selects the
 next ready node. It does not write Coherent metadata.
 
+Text includes exact finding locations and evidence for the selected node.
+JSON also includes `nextFindings`, the selected findings after review, so
+their status matches `nextNode` while `audit` preserves raw detector status.
+
 Plain output contains a compact raw-signal summary, the reviewed plan, and the
 same bounded work brief as `fix next`. JSON output contains the compact audit
 shape, full plan, and `nextNode`; each audit finding appears only once.

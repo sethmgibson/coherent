@@ -10,13 +10,15 @@ import {
 import type { AnalysisContext } from "../analysis/context.js";
 import { dynamicallyImportedFiles, hasFrameworkDecorator } from "../analysis/inspect.js";
 import { externalReferences } from "../analysis/references.js";
+import { nestReachableMethods } from "../analysis/nest-reachability.js";
 import type { Finding } from "../domain/finding.js";
-import { classifyUnused, unusedFinding } from "./dead-code-unused.js";
+import { classifyUnused, testOnlyFinding, unusedFinding } from "./dead-code-unused.js";
 import { collectUnreachable } from "./dead-code-unreachable.js";
 
 export function detectDeadCode(ctx: AnalysisContext): Finding[] {
   const findings: Finding[] = [];
   const dynamicFiles = dynamicallyImportedFiles(ctx);
+  const nestMethods = nestReachableMethods(ctx);
 
   for (const file of ctx.sourceFiles) {
     const relative = ctx.relativePath(file);
@@ -27,6 +29,7 @@ export function detectDeadCode(ctx: AnalysisContext): Finding[] {
       for (const cls of file.getClasses()) {
         considerDeclaration(ctx, findings, cls, relative, dynamicFiles, "class");
         for (const method of cls.getMethods()) {
+          if (nestMethods.has(method)) continue;
           considerMethod(ctx, findings, cls, method, relative, dynamicFiles);
         }
       }
@@ -57,8 +60,7 @@ function considerDeclaration(
 ): void {
   const name = node.getName();
   if (!name || name === "default") return;
-  const refs = externalReferences(node);
-  if (refs.length > 0) return;
+  if (hasConsumers(ctx, findings, node, name)) return;
   findings.push(
     classifyUnused(ctx, node, name, relative, dynamicFiles, kind, node.isExported()),
   );
@@ -84,8 +86,7 @@ function considerVariable(
   const name = node.getName();
   if (!name || name.startsWith("_") || name.includes("{") || name.includes("[")) return;
   if (node.getFirstAncestorByKind(SyntaxKind.ImportDeclaration)) return;
-  const refs = externalReferences(node);
-  if (refs.length > 0) return;
+  if (hasConsumers(ctx, findings, node, name)) return;
   findings.push(
     classifyUnused(ctx, node, name, relative, dynamicFiles, "constant", isExportedVariable(node)),
   );
@@ -100,8 +101,7 @@ function considerBinding(
 ): void {
   const name = element.getName();
   if (!name || name.startsWith("_") || name.includes("{") || name.includes("[")) return;
-  const refs = externalReferences(element);
-  if (refs.length > 0) return;
+  if (hasConsumers(ctx, findings, element, name)) return;
   const variable = element.getFirstAncestorByKind(SyntaxKind.VariableDeclaration);
   const exported = variable ? isExportedVariable(variable) : false;
   findings.push(
@@ -120,8 +120,7 @@ function considerMethod(
   const name = method.getName();
   if (!name || name === "constructor" || name.startsWith("_")) return;
   if (isInterfaceOrOverride(cls, method)) return;
-  const refs = externalReferences(method);
-  if (refs.length > 0) return;
+  if (hasConsumers(ctx, findings, method, name)) return;
   const isPrivate = method.hasModifier(SyntaxKind.PrivateKeyword);
   const exportedClass = cls.isExported();
   const decorated =
@@ -160,6 +159,19 @@ function isInterfaceOrOverride(cls: ClassDeclaration, method: MethodDeclaration)
     base.getInstanceMethod(method.getName()) !== undefined ||
     base.getStaticMethod(method.getName()) !== undefined
   );
+}
+
+function hasConsumers(ctx: AnalysisContext, findings: Finding[], node: Node, name: string): boolean {
+  const refs = externalReferences(node);
+  if (refs.length === 0) return false;
+  const consumers = refs.filter((ref) =>
+    ref.getSourceFile() !== node.getSourceFile() ||
+    ref.getStart() < node.getStart() || ref.getEnd() > node.getEnd(),
+  );
+  if (consumers.length > 0 && consumers.every((ref) => ctx.isTestFile(ctx.relativePath(ref.getSourceFile())))) {
+    findings.push(testOnlyFinding(ctx, node, name, consumers));
+  }
+  return true;
 }
 
 function isExportedVariable(node: VariableDeclaration): boolean {

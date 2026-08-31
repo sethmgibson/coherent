@@ -5,6 +5,25 @@ import { describe, expect, it } from "vitest";
 import { auditFixture, byRule, findingFor } from "./helpers/audit-fixture.js";
 
 describe("A08 dead-code", () => {
+  it("preserves hoisted functions, var bindings, and erased types after return", async () => {
+    const { findings } = await auditFixture();
+    const unreachable = byRule(findings, "A08").filter((finding) =>
+      finding.identity.startsWith("unreachable:"),
+    );
+    expect(unreachable.some((finding) => finding.identity.includes("actually unreachable"))).toBe(true);
+    expect(unreachable.some((finding) => /function visit|type Count|interface Later|var binding/.test(finding.identity))).toBe(false);
+  });
+
+  it("keeps implicitly public methods behind review even in a non-exported structural adapter", async () => {
+    const { findings } = await auditFixture();
+    const dead = byRule(findings, "A08");
+    const release = findingFor(dead, "release");
+    expect(release?.status).toBe("candidate");
+    expect(release?.evidence.details?.join(" ")).toContain("structural type or injected port");
+    expect(findingFor(dead, "unusedPrivate")?.status).toBe("confirmed");
+    expect(findingFor(dead, "list")?.status).toBe("candidate");
+  });
+
   it("confirms unused internals and unreachable code", async () => {
     const { findings } = await auditFixture();
     const dead = byRule(findings, "A08");

@@ -6,6 +6,25 @@ installer or a repo-scoped `.agents/skills/coherent` adapter, so it does not
 need a generated editor integration here. Provider-specific generation beyond
 Cursor is out of scope.
 
+## Adoption preflight
+
+Skill discovery and CLI installation are separate. Inspect existing personal,
+shared, and project skill locations and symlink targets before adding copies.
+A successful installer registration does not justify another manual copy.
+Use the project-installed package's canonical playbook when it differs from
+a global skill, and record the package version and lockfile Git revision when
+diagnosing a run; a version string alone may identify several Git builds.
+
+Before adding a Git dependency to a shared manifest/lockfile, check whether
+the source is private and whether CI, deployment builds, and containers can
+fetch it. Local credentials are not evidence of remote access. Explain any
+missing access before the change, never put credentials in a manifest or
+lockfile, and do not claim shared adoption is complete without that check.
+If access is unavailable, keep the shared dependency unchanged and use an
+existing separate Coherent checkout with an explicit target root for the
+local audit (`node /absolute/path/to/coherent/dist/cli.js inspect /target/repo`).
+Optional hooks still need a CLI available in their execution environment.
+
 ```bash
 coherent install
 coherent install --adapter

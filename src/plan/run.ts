@@ -10,6 +10,7 @@ import type { CleanupPlan, PlanReviewSummary } from "./types.js";
 export interface PlanResult {
   plan: CleanupPlan;
   findingCount: number;
+  findings: Finding[];
 }
 
 export async function runPlan(root: string): Promise<PlanResult> {
@@ -33,7 +34,7 @@ export function planFromAudit(
     merged.deferred,
     plan.nodes.length,
   );
-  return { plan, findingCount: merged.findings.length };
+  return { plan, findingCount: merged.findings.length, findings: merged.findings };
 }
 
 function reviewSummary(

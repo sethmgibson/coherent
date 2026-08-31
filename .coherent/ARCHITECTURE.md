@@ -37,7 +37,7 @@ Detected frameworks:
 
 Languages: JavaScript, TypeScript
 
-Approximate size: 157 files, 11902 source lines.
+Approximate size: 160 files, 12750 source lines.
 
 Dependencies: 2 runtime, 9 development.
 <!-- /coherent:discovered -->
@@ -60,6 +60,7 @@ generic tiers:
 - `src/domain` — Finding
 - `src/analysis` — one in-memory ts-morph project per scan; helpers current detectors need. `createModuleResolver` shares parsed repository tsconfigs, inherited compiler options, path aliases, and owning child configs between full analysis and scoped importer discovery without generating files or caches.
 - `src/detectors` — one function per implemented rule, called explicitly
+- `src/analysis/nest-reachability.ts` — bounded static Nest module/provider resolution and evidence for exact port calls, HTTP handlers, and lifecycle methods. It uses the current analysis context, respects module visibility, and leaves opaque or ambiguous bindings unresolved; it does not execute Nest or infer bindings from type shapes.
 - `src/audit`, `src/baseline`, `src/check` — CLI workflows and on-disk snapshots
 - `src/review` — durable review decisions and semantic-only findings
 - `src/plan` — cleanup DAG from merged findings; default phases are tie-breaks only
@@ -159,7 +160,8 @@ Observed top-level modules:
 - Semantic questions must not be reported as deterministic conclusions.
 - `init` must not invent architecture. Unknown sections stay incomplete.
 - `init --force` and `refresh` replace only fenced discovered interiors. Semantic prose stays. Unfenced migration (one-release `.backend/` / pre-fence files) keeps unknown human-authored `##` sections verbatim.
-- Hybrid and semantic findings are not `fix next` targets until `coherent review confirm`.
+- Candidates (including deterministic unused exports), hybrid findings, and semantic findings are not `fix next` targets until `coherent review confirm`. Plan building and review application share the same review predicate. Public/protected methods may be reached through structural ports even in non-exported classes; absent direct references remain candidates.
+- Dead-code `test-only` findings preserve test caller locations and stay candidates. Public APIs and intentional test support require review; production-file references are not recursively classified as test-only. Proven static Nest registrations and port bindings count as use before classifying direct references.
 - Dismissed findings are absent from the cleanup DAG. Architecture prose alone does not dismiss them. Mechanical and hybrid reviews require a matching `detectorRevision`, including exact fingerprints; exact pure-semantic reviews may survive detector bumps.
 - A review whose exact fingerprint remains in the current baseline but is absent from the current audit is resolved history, not an orphan. Deep doctor still rejects reviews absent from both.
 - `check` fails only on new confirmed high/critical deterministic findings. Version-skewed baselines are stale and must be regenerated.
@@ -234,7 +236,7 @@ None. The CLI is synchronous process work. No queues, cron, or subscriptions.
 - `coherent review dismiss|confirm|defer <fingerprint>` writes one decision to `.coherent/decisions.json`; dismissed or deferred live A07 reviews require a future expiry or named removal milestone, expiry reopens the finding, and reviewed false signals are explicitly marked `notCompatibility`. `review apply` validates a JSON batch against one audit before one write and accepts one or several fingerprints per evidence-backed batch item. `review prune` previews stale, expired, and orphaned records and writes only with `--write`, retaining baseline-backed resolved history only while its lifecycle is current.
 - `coherent baseline [root]` snapshots finding fingerprints with portable schema versions and leaves an equivalent existing file byte-for-byte unchanged.
 - `coherent plan [root]` builds a cleanup DAG from a fresh audit merged with reviews and semantic findings.
-- `coherent fix next [root]` selects one unlocked `ready` node and prints a work brief. An empty reviewed plan is a successful clean terminal; remaining blocked or review-only nodes are not.
+- `coherent fix next [root]` selects one unlocked `ready` node and prints a work brief with reviewed finding fingerprints, exact locations, and evidence from the same scan. JSON exposes selected `findings`; `inspect` exposes them as `nextFindings`, keeping raw audit status separate. An empty reviewed plan is a successful clean terminal; remaining blocked or review-only nodes are not.
 - `coherent check [root]` compares a fresh audit to the baseline and classifies new debt. `--changed` uses lossless target-relative Git paths (including both rename sides) and TypeScript-resolved transitive importers, respects inventory ignores, and does not treat unscoped baseline findings as resolved. Full `check` remains necessary for repository-wide conclusions and config-only changes.
 - JSON output stays parseable on stdout when combined with explicit `--output`; write acknowledgements go to stderr.
 - `coherent install [root]` and `update` write nothing without explicit adapter, rule, Cursor hook, or Git hook flags.

@@ -1,4 +1,4 @@
-import { Node, type Statement } from "ts-morph";
+import { Node, VariableDeclarationKind, type Statement } from "ts-morph";
 import type { AnalysisContext } from "../analysis/context.js";
 import { isFalseLiteral, locationOf, statementTerminates } from "../analysis/inspect.js";
 import { makeFinding } from "../audit/finding-factory.js";
@@ -12,6 +12,15 @@ export function collectUnreachable(
   let unreachable = false;
   for (const statement of statements) {
     if (unreachable) {
+      // Hoisted bindings and erased types can still be used above the terminator.
+      // Deleting a var statement can remove a live binding even if its initializer never runs.
+      if (
+        Node.isFunctionDeclaration(statement) ||
+        Node.isInterfaceDeclaration(statement) ||
+        Node.isTypeAliasDeclaration(statement) ||
+        (Node.isVariableStatement(statement) &&
+          statement.getDeclarationKind() === VariableDeclarationKind.Var)
+      ) continue;
       const file = ctx.relativePath(statement.getSourceFile());
       findings.push(
         makeFinding({

@@ -62,6 +62,13 @@ You may also conclude that a hybrid signal is a candidate only, or that evidence
 6. Identify prerequisite relationships from the catalog and from actual callers.
 7. Mark findings that would disappear if a higher-value deletion landed first (for example an E06 on a function that is already A08-dead).
 8. Write confirmed vs candidate conclusions. For one finding, persist it with `coherent review confirm|dismiss|defer`. For several findings, send a JSON array to `coherent review apply`; each item may use `"fingerprint"` or `"fingerprints"` with one shared decision and reason. A dismissed or deferred live Stale compatibility item also needs `"expiresAt"` or `"removalMilestone"`; a dismissed false signal uses `"notCompatibility": true`. It runs one audit and writes nothing if any item is invalid. Group only findings supported by the same evidence; do not mass-dismiss heterogeneous candidates to make the plan empty. Update architecture notes when you establish an authoritative concept.
-9. Hybrid and semantic findings stay `needs_review` until `coherent review confirm`. Deterministic A08 candidates remain selectable without a review.
+9. All candidates, including deterministic A08 unused exports, stay `needs_review` until `coherent review confirm`. Hybrid and semantic findings also require confirmation. A deterministic detection mode does not make a candidate safe to delete.
+
+For reachability dismissals, name the actual caller, decorator/registration,
+port-to-provider binding, or documented external consumer. A shared method
+name, a barrel export, an allowlist string, or the word "service" is not proof
+of use. Group only symbols whose individual reachability you checked; split
+different mechanisms into separate reasons. Missing evidence means defer,
+not dismiss. Successful tests alone do not establish production reachability.
 
 See [taxonomy.md](taxonomy.md) for rule meanings. See [plan.md](plan.md) and [cleanup-planning.md](cleanup-planning.md) before turning conclusions into work.

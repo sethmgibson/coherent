@@ -196,6 +196,62 @@ describe("CLI", () => {
     }
   });
 
+  it("requires candidate review and returns exact evidence without another audit", async () => {
+    const root = await mkdtemp(join(tmpdir(), "coherent-fix-review-"));
+    try {
+      await writeFile(join(root, "package.json"), '{"name":"candidate"}\n');
+      await writeFile(join(root, "helper.ts"), "export function orphan(): number { return 1; }\n");
+      const before = await runCli(["fix", "next", root]);
+      expect(before.code).toBe(1);
+      expect(before.stdout).toContain("inspect --json");
+      expect(before.stdout).toContain("not clean");
+      await expect(readdir(join(root, ".coherent"))).rejects.toMatchObject({ code: "ENOENT" });
+
+      const initial = await runCli(["inspect", root, "--json"]);
+      const snapshot = JSON.parse(initial.stdout) as {
+        audit: { findings: Array<{ fingerprint: string; status: string }> };
+        nextNode: unknown;
+        nextFindings: unknown[];
+      };
+      expect(snapshot.nextNode).toBeNull();
+      expect(snapshot.nextFindings).toEqual([]);
+      const target = snapshot.audit.findings[0]!;
+      expect(target.status).toBe("candidate");
+      const confirmed = await runCliWithInput(["review", "apply", root], JSON.stringify([{
+        fingerprint: target.fingerprint,
+        decision: "confirmed",
+        reason: "Internal app helper; checked all imports, package exports, and runtime registration.",
+      }]));
+      expect(confirmed.code).toBe(0);
+
+      const selected = await runCli(["fix", "next", root, "--json"]);
+      expect(selected.code).toBe(0);
+      const brief = JSON.parse(selected.stdout) as {
+        node: { findingFingerprints: string[]; status: string };
+        findings: Array<{ fingerprint: string; status: string; locations: unknown[]; evidence: { summary: string } }>;
+      };
+      expect(brief.node.status).toBe("confirmed");
+      expect(brief.findings.map((finding) => finding.fingerprint)).toEqual(brief.node.findingFingerprints);
+      expect(brief.findings[0]).toMatchObject({
+        fingerprint: target.fingerprint,
+        status: "confirmed",
+        locations: [{ file: "helper.ts", line: 1, column: 1, symbol: "orphan" }],
+        evidence: { summary: "No static references to function 'orphan' were found." },
+      });
+      const plain = await runCli(["fix", "next", root]);
+      expect(plain.stdout).toContain("helper.ts:1:1 (orphan)");
+      expect(plain.stdout).toContain(target.fingerprint);
+      expect(plain.stdout).toContain(brief.findings[0]!.evidence.summary);
+
+      const inspected = await runCli(["inspect", root, "--json"]);
+      const reviewed = JSON.parse(inspected.stdout) as typeof snapshot;
+      expect(reviewed.audit.findings[0]?.status).toBe("candidate");
+      expect(reviewed.nextFindings).toEqual(brief.findings);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
   it("reviews, refreshes, and doctors a fixture", async () => {
     const root = await mkdtemp(join(tmpdir(), "coherent-review-cli-"));
     await cp(scannerFixture, root, { recursive: true });

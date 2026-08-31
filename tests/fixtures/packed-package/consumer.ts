@@ -1,12 +1,15 @@
-import { RULES, type Rule } from "coherent/catalog/rules";
+import { CATEGORIES_BY_ID, RULES, type Rule } from "coherent/catalog/rules";
 import { PHASES, type CleanupPhase } from "coherent/catalog/phases";
 import { DETECTION_MODES, type RuleId } from "coherent/catalog/types";
-import { createFinding, parseFinding, type Finding, type FindingInput } from "coherent/finding";
+import { createFinding, parseFinding, serializeFinding, type Finding, type FindingInput } from "coherent/finding";
 
 const rule: Rule | undefined = RULES[0];
 const phase: CleanupPhase | undefined = PHASES[0];
 if (!rule || !phase || !DETECTION_MODES.includes(rule.detectionMode)) {
   throw new Error("Installed catalogs are empty or inconsistent");
+}
+if (CATEGORIES_BY_ID[rule.category].id !== rule.category) {
+  throw new Error("Installed category lookup is inconsistent");
 }
 
 const ruleId: RuleId = rule.id;
@@ -27,7 +30,7 @@ const input: FindingInput = {
   prerequisiteFindingIds: [],
 };
 const finding: Finding = createFinding(input);
-const parsed: Finding = parseFinding(JSON.stringify(finding));
+const parsed: Finding = parseFinding(serializeFinding(finding));
 if (!/^[a-f0-9]{64}$/.test(finding.fingerprint) || parsed.fingerprint !== finding.fingerprint) {
   throw new Error("Installed Finding API failed its serialization round trip");
 }

@@ -1,4 +1,4 @@
-import { Node } from "ts-morph";
+import { Node, SyntaxKind } from "ts-morph";
 import type { AnalysisContext } from "../analysis/context.js";
 import {
   hasFrameworkDecorator,
@@ -22,6 +22,9 @@ export function classifyUnused(
 ): Finding {
   const reasons: string[] = [`No static references to ${kind} '${name}' were found.`];
   const indirect = indirectReachability(name, relative, exported, decorated, dynamicFiles, ctx);
+  if (Node.isMethodDeclaration(node) && !node.hasModifier(SyntaxKind.PrivateKeyword)) {
+    indirect.push("Public or protected method; callers may use a structural type or injected port.");
+  }
   if (indirect.length > 0) {
     reasons.push(...indirect);
     return unusedFinding(ctx, node, name, relative, "candidate", "medium", reasons, kind);
@@ -58,6 +61,37 @@ export function unusedFinding(
       status === "confirmed"
         ? "Low if no reflection or generated callers exist."
         : "Do not delete without confirming public, DI, CLI, or dynamic reachability.",
+  });
+}
+
+export function testOnlyFinding(
+  ctx: AnalysisContext,
+  node: Node,
+  name: string,
+  references: Node[],
+): Finding {
+  const callers = [...new Set(references.map((ref) => {
+    const location = locationOf(ctx, ref);
+    return `${location.file}:${location.line}`;
+  }))].sort();
+  return makeFinding({
+    ruleId: "A08",
+    identity: `test-only:${ctx.relativePath(node.getSourceFile())}:${name}`,
+    title: "Only referenced by tests",
+    severity: "medium",
+    confidence: "high",
+    status: "candidate",
+    explanation: `'${name}' has static consumers only in test files. Tests may be preserving an obsolete production surface.`,
+    evidence: {
+      summary: `All ${references.length} static reference(s) outside '${name}' are in test files.`,
+      details: [
+        ...callers.map((caller) => `Test reference: ${caller}`),
+        "No production static consumer was found; this does not disprove public or dynamic use.",
+      ],
+    },
+    locations: [locationOf(ctx, node, name)],
+    affectedSymbols: [name],
+    changeRisk: "Review production entrypoints, package exports, registration, and the purpose of these tests before retiring code or tests.",
   });
 }
 

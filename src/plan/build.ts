@@ -2,6 +2,7 @@ import { RULES_BY_ID } from "../catalog/rules.js";
 import { rescanReason, rescanRulesFor } from "../catalog/rescan.js";
 import type { RuleId } from "../catalog/types.js";
 import type { Finding } from "../domain/finding.js";
+import { requiresAgentReview } from "../review/apply.js";
 import { groupFindings } from "./group.js";
 import { scoreNode } from "./score.js";
 import type { CleanupNode, CleanupPlan, FindingGroup, PlanEdge } from "./types.js";
@@ -17,7 +18,7 @@ export function buildPlan(
     reviewState?.needsReview ??
     new Set(
       findings
-        .filter((finding) => finding.detectionMode !== "deterministic")
+        .filter(requiresAgentReview)
         .map((finding) => finding.fingerprint),
     );
   const prereq = prerequisiteMap(groups, byFingerprint);
@@ -41,7 +42,9 @@ export function buildPlan(
       ruleIds,
       prerequisiteNodeIds,
       defaultPhase: phase as CleanupNode["defaultPhase"],
-      reasonForOrdering: orderingReason(group, prerequisiteNodeIds.length, rescanAfter),
+      reasonForOrdering: group.fingerprints.some((fingerprint) => needsReview.has(fingerprint))
+        ? "Review required before cleanup. Static signals alone do not establish safe deletion."
+        : orderingReason(group, prerequisiteNodeIds.length, rescanAfter),
       concepts: conceptsOf(groupFindings),
       likelyFiles: group.files,
       confidence,
@@ -252,6 +255,9 @@ function riskOf(findings: Finding[]): string {
 
 function simplificationOf(group: FindingGroup, findings: Finding[]): string {
   if (group.ruleIds.includes("A08")) {
+    if (findings.some((finding) => finding.status === "candidate")) {
+      return "Verify reachability; remove only declarations proven unused after review.";
+    }
     return `Remove ${findings.length} unused declaration(s) and shrink later analysis.`;
   }
   if (group.ruleIds.includes("A07")) {
@@ -263,7 +269,7 @@ function simplificationOf(group: FindingGroup, findings: Finding[]): string {
 function deletionOf(findings: Finding[]): string {
   const confirmed = findings.filter((finding) => finding.status === "confirmed").length;
   if (confirmed === findings.length && findings.some((finding) => finding.ruleId === "A08")) {
-    return "High — unused internals with no static references.";
+    return "High — confirmed dead-code findings; verify runtime and public reachability before deletion.";
   }
   if (findings.some((finding) => finding.deletionOpportunity)) {
     return findings.find((finding) => finding.deletionOpportunity)?.deletionOpportunity ?? "";

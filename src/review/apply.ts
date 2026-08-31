@@ -83,7 +83,7 @@ function sameIdentity(review: FindingReview, finding: Finding): boolean {
 }
 
 export function requiresAgentReview(finding: Finding): boolean {
-  return finding.detectionMode !== "deterministic";
+  return finding.status === "candidate" || finding.detectionMode !== "deterministic";
 }
 
 function applyConfirm(finding: Finding, review: FindingReview): Finding {

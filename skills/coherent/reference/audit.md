@@ -15,6 +15,13 @@ The CLI inventories the target, reads architecture context if present, builds on
 
 Implemented detectors cover dead code, stale compatibility, implicit string protocols, duplicate representations, premature abstraction, excessive indirection, boolean and context-object explosion, swallowed errors, dependency creep, redundant database access, unnecessary sequential I/O, and algorithmic complexity. Other catalog entries remain semantic.
 
+Dead-code analysis separates test-only references from production static use.
+Test-only findings remain candidates, including public APIs. Nest registration
+analysis follows exact provider tokens and constructor bindings within visible
+module scopes; proven registered consumers are not reported as unused. Opaque
+or ambiguous bindings remain conservative. See [Dead code](rules/A08.md) for
+supported patterns and limits.
+
 Mechanical findings are regenerated on demand. Record agent decisions with `coherent review`. Author semantic-only findings in the `findings` array of `.coherent/decisions.json`. `coherent plan` merges current mechanical findings with those durable decisions.
 
 `audit` deliberately shows raw detector status, not review disposition. A

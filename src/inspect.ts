@@ -7,23 +7,23 @@ import {
 import { formatDuration } from "./audit/render.js";
 import { RULES_BY_ID } from "./catalog/rules.js";
 import type { RuleId } from "./catalog/types.js";
+import type { Finding } from "./domain/finding.js";
 import type { CleanupNode, CleanupPlan } from "./plan/types.js";
 import { planFromAudit } from "./plan/run.js";
 import { renderPlan } from "./plan/render.js";
 import { readDecisions } from "./review/store.js";
-import { renderFixNext } from "./fix/run.js";
+import { findingsForNode, renderFixNext, type FixNextResult } from "./fix/run.js";
 import { selectNextNode } from "./fix/select.js";
 
-export interface InspectResult {
+export interface InspectResult extends FixNextResult {
   audit: AuditResult;
-  plan: CleanupPlan;
-  node: CleanupNode | undefined;
 }
 
 export interface InspectJson {
   audit: CompactFindingsFile;
   plan: CleanupPlan;
   nextNode: CleanupNode | null;
+  nextFindings: Finding[];
 }
 
 export async function runInspect(root: string): Promise<InspectResult> {
@@ -31,8 +31,9 @@ export async function runInspect(root: string): Promise<InspectResult> {
     runAudit(root),
     readDecisions(root),
   ]);
-  const { plan } = planFromAudit(audit, decisions);
-  return { audit, plan, node: selectNextNode(plan) };
+  const { plan, findings } = planFromAudit(audit, decisions);
+  const node = selectNextNode(plan);
+  return { audit, plan, node, findings: findingsForNode(node, findings) };
 }
 
 export function inspectJson(result: InspectResult): InspectJson {
@@ -40,11 +41,12 @@ export function inspectJson(result: InspectResult): InspectJson {
     audit: compactFindingsFile(result.audit.file),
     plan: result.plan,
     nextNode: result.node ?? null,
+    nextFindings: result.findings,
   };
 }
 
 export function renderInspect(result: InspectResult): string {
-  const { audit, plan, node } = result;
+  const { audit, plan } = result;
   const counts = new Map<RuleId, number>();
   for (const finding of audit.findings) {
     counts.set(finding.ruleId, (counts.get(finding.ruleId) ?? 0) + 1);
@@ -63,7 +65,7 @@ export function renderInspect(result: InspectResult): string {
     "",
     renderPlan(plan).trimEnd(),
     "",
-    renderFixNext({ plan, node }).trimEnd(),
+    renderFixNext(result).trimEnd(),
   ];
   return `${lines.join("\n")}\n`;
 }

@@ -7,7 +7,7 @@ import { createFinding, type FindingInput } from "../src/domain/finding.js";
 import { applyReviews, classifyReview } from "../src/review/apply.js";
 import { validateReviewLifecycle } from "../src/review/lifecycle.js";
 import type { FindingReview } from "../src/review/types.js";
-import { readDecisions, upsertReview } from "../src/review/store.js";
+import { readDecisions } from "../src/review/store.js";
 import { parseReviewRequests, runReviewBatch, runReviewPrune } from "../src/review/run.js";
 import { buildPlan } from "../src/plan/build.js";
 import { selectNextNode } from "../src/fix/select.js";
@@ -75,7 +75,20 @@ describe("review merge into plan", () => {
     const pending = applyReviews([leftover, unused], [], []);
     const plan = buildPlan(".", pending.findings, pending);
     expect(plan.nodes.find((node) => node.ruleIds.includes("A06"))?.state).toBe("needs_review");
-    expect(selectNextNode(plan)?.ruleIds).toContain("A08");
+    expect(plan.nodes.find((node) => node.ruleIds.includes("A08"))?.state).toBe("needs_review");
+    expect(selectNextNode(plan)).toBeUndefined();
+  });
+
+  it("requires a current confirmation for deterministic candidates and respects deferrals", () => {
+    const target = finding({ ruleId: "A08", identity: "unused-candidate:src/a.ts:foo", detectionMode: "deterministic" });
+    const confirmed = review(target, "confirmed");
+    for (const reviews of [[], [review(target, "deferred")], [{ ...confirmed, detectorRevision: DETECTOR_REVISION - 1 }]]) {
+      const merged = applyReviews([target], reviews, []);
+      expect(selectNextNode(buildPlan(".", merged.findings, merged))).toBeUndefined();
+    }
+    const merged = applyReviews([target], [confirmed], []);
+    expect(selectNextNode(buildPlan(".", merged.findings, merged))?.status).toBe("confirmed");
+    expect(merged.findings[0]?.fingerprint).toBe(target.fingerprint);
   });
 
   it("promotes a confirmed hybrid and a confirmed semantic-only finding to plan nodes", () => {
@@ -294,10 +307,13 @@ describe("review merge into plan", () => {
         `${JSON.stringify({ schemaVersion: 1, findings: [semantic] }, null, 2)}\n`,
       );
 
-      const replacement = review(semantic, "confirmed");
-      await upsertReview(root, replacement);
+      const result = await runReviewBatch(root, [{
+        fingerprint: semantic.fingerprint,
+        decision: "confirmed",
+        reason: "Legacy semantic finding confirmed through the production review path.",
+      }]);
       const decisions = await readDecisions(root);
-      expect(decisions.reviews).toEqual([replacement]);
+      expect(decisions.reviews).toEqual(result.reviews);
       expect(decisions.findings).toHaveLength(1);
       expect(decisions.findings[0]?.fingerprint).toBe(semantic.fingerprint);
       expect(JSON.parse(await readFile(join(state, "decisions.json"), "utf8"))).toMatchObject({

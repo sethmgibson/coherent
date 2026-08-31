@@ -1,5 +1,6 @@
 import { PHASES_BY_ID } from "../catalog/phases.js";
 import { RULES_BY_ID } from "../catalog/rules.js";
+import type { Finding } from "../domain/finding.js";
 import { runPlan } from "../plan/run.js";
 import type { CleanupNode, CleanupPlan } from "../plan/types.js";
 import { selectNextNode } from "./select.js";
@@ -7,12 +8,18 @@ import { selectNextNode } from "./select.js";
 export interface FixNextResult {
   plan: CleanupPlan;
   node: CleanupNode | undefined;
+  findings: Finding[];
 }
 
 export async function runFixNext(root: string): Promise<FixNextResult> {
-  const { plan } = await runPlan(root);
+  const { plan, findings } = await runPlan(root);
   const node = selectNextNode(plan);
-  return { plan, node };
+  return { plan, node, findings: findingsForNode(node, findings) };
+}
+
+export function findingsForNode(node: CleanupNode | undefined, findings: Finding[]): Finding[] {
+  const fingerprints = new Set(node?.findingFingerprints ?? []);
+  return findings.filter((finding) => fingerprints.has(finding.fingerprint));
 }
 
 export function renderFixNext(result: FixNextResult): string {
@@ -20,12 +27,12 @@ export function renderFixNext(result: FixNextResult): string {
     if (result.plan.nodes.length === 0) {
       return "Coherent fix next\n\nNo cleanup nodes. Reviewed plan is clean.\n";
     }
-    return "Coherent fix next\n\nNo unlocked cleanup node. Remaining nodes need review or are blocked.\n";
+    return "Coherent fix next\n\nNo unlocked cleanup node. Remaining nodes need review or are blocked.\nUse `coherent inspect --json` to review evidence, then confirm, dismiss, or defer. The repository is not clean.\n";
   }
-  return `${workBrief(result.node)}\n`;
+  return `${workBrief(result.node, result.findings)}\n`;
 }
 
-function workBrief(node: CleanupNode): string {
+function workBrief(node: CleanupNode, findings: Finding[]): string {
   const findingNames = node.ruleIds.map((id) => RULES_BY_ID[id].title);
   const rescanNames = node.rescanAfter.map((id) => RULES_BY_ID[id].title);
   const phase = PHASES_BY_ID[node.defaultPhase];
@@ -37,6 +44,16 @@ function workBrief(node: CleanupNode): string {
     `Cleanup stage: ${phase.title} (tie-break only)  ${node.status} ${node.confidence}`,
     `Files: ${node.likelyFiles.join(", ") || "(none)"}`,
     `Symbols: ${node.concepts.join(", ") || "(none)"}`,
+    "",
+    "Finding evidence (from this scan):",
+    ...findings.flatMap((finding) => [
+      `  ${finding.title} — ${finding.fingerprint}`,
+      ...finding.locations.map((location) =>
+        `    ${location.file}${location.line === undefined ? "" : `:${location.line}`}${location.column === undefined ? "" : `:${location.column}`}${location.symbol ? ` (${location.symbol})` : ""}`,
+      ),
+      `    ${finding.evidence.summary}`,
+      ...(finding.evidence.details ?? []).map((detail) => `    ${detail}`),
+    ]),
     "",
     `Why this node: ${node.reasonForOrdering}`,
     `Simplification: ${node.expectedSimplification}`,

@@ -56,19 +56,6 @@ export async function writeDecisions(root: string, file: DecisionsFile): Promise
   return path;
 }
 
-export async function upsertReview(root: string, review: FindingReview): Promise<DecisionsFile> {
-  const file = await readDecisions(root);
-  const next = file.reviews.filter(
-    (existing) =>
-      existing.fingerprint !== review.fingerprint &&
-      !(existing.ruleId === review.ruleId && existing.identity === review.identity),
-  );
-  next.push(review);
-  const written: DecisionsFile = { ...file, reviews: next };
-  await writeDecisions(root, written);
-  return written;
-}
-
 export function parseDecisionsFile(raw: unknown): DecisionsFile {
   if (
     !isRecord(raw) ||

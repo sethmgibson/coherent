@@ -226,11 +226,15 @@ program
   .command("next")
   .description("Select one unlocked cleanup node and print a work brief")
   .argument("[root]", "repository root", ".")
-  .option("--json", "print the selected node as JSON", false)
+  .option("--json", "print the selected node and its finding evidence as JSON", false)
   .action(async (root: string, options: { json: boolean }) => {
     const result = await runFixNext(resolve(root));
     if (options.json) {
-      console.log(JSON.stringify({ node: result.node ?? null, planReady: result.plan.readyNodeIds }, null, 2));
+      console.log(JSON.stringify({
+        node: result.node ?? null,
+        findings: result.findings,
+        planReady: result.plan.readyNodeIds,
+      }, null, 2));
     } else {
       process.stdout.write(renderFixNext(result));
     }

@@ -2,9 +2,54 @@
   "schemaVersion": 1,
   "coherentVersion": "0.1.0",
   "fingerprintVersion": 2,
-  "detectorRevision": 5,
-  "createdAt": "2026-08-31T02:24:52.935Z",
+  "detectorRevision": 7,
+  "createdAt": "2026-08-31T19:24:14.445Z",
   "findings": [
+    {
+      "fingerprint": "b6470bbd7ec32af41b1c00d6ced9effa3300a5ad0e542dc5eaae2bc43de8ff2c",
+      "ruleId": "A08",
+      "identity": "test-only:src/domain/finding.ts:serializeFinding",
+      "title": "Only referenced by tests",
+      "detectionMode": "deterministic",
+      "status": "candidate",
+      "severity": "medium",
+      "files": [
+        "src/domain/finding.ts"
+      ],
+      "symbols": [
+        "serializeFinding"
+      ]
+    },
+    {
+      "fingerprint": "af80668ee019691516e0e821ef068e97ee870ee3ddced08a53619af7507269e9",
+      "ruleId": "A08",
+      "identity": "test-only:src/domain/finding.ts:parseFinding",
+      "title": "Only referenced by tests",
+      "detectionMode": "deterministic",
+      "status": "candidate",
+      "severity": "medium",
+      "files": [
+        "src/domain/finding.ts"
+      ],
+      "symbols": [
+        "parseFinding"
+      ]
+    },
+    {
+      "fingerprint": "0de916e3dae35f4d466447e98364a73d27e2fc4ca52b02bbd0f7ca29138b8e30",
+      "ruleId": "A08",
+      "identity": "test-only:src/catalog/rules.ts:CATEGORIES_BY_ID",
+      "title": "Only referenced by tests",
+      "detectionMode": "deterministic",
+      "status": "candidate",
+      "severity": "medium",
+      "files": [
+        "src/catalog/rules.ts"
+      ],
+      "symbols": [
+        "CATEGORIES_BY_ID"
+      ]
+    },
     {
       "fingerprint": "20ff585611cc01ae46baddc5585ed07a0543d116aa738d659793b21d1b90acea",
       "ruleId": "A07",
@@ -153,6 +198,21 @@
       ],
       "symbols": [
         "legacySemanticFindingsPath"
+      ]
+    },
+    {
+      "fingerprint": "2ef3134954857d5882756fa6716778ba9ebc44edec5426812b89ebcfebce96af",
+      "ruleId": "A07",
+      "identity": "compat:name:scripts/check-package.ts:temporaryRoot",
+      "title": "Likely compatibility path",
+      "detectionMode": "hybrid",
+      "status": "candidate",
+      "severity": "medium",
+      "files": [
+        "scripts/check-package.ts"
+      ],
+      "symbols": [
+        "temporaryRoot"
       ]
     },
     {
@@ -650,6 +710,22 @@
       "symbols": [
         "filter",
         "renderAudit"
+      ]
+    },
+    {
+      "fingerprint": "587ce5fda4c1469b424793f2d888bbe1ed8e3f0902f1878209739ef3635cce15",
+      "ruleId": "E06",
+      "identity": "loop-some:src/analysis/nest-reachability.ts:collectReachable",
+      "title": "Collection .some() inside a loop",
+      "detectionMode": "hybrid",
+      "status": "candidate",
+      "severity": "medium",
+      "files": [
+        "src/analysis/nest-reachability.ts"
+      ],
+      "symbols": [
+        "collectReachable",
+        "some"
       ]
     }
   ]

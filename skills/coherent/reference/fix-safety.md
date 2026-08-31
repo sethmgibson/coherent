@@ -15,6 +15,12 @@ or needs review.
 
 The CLI picks the highest-scoring ready node: prerequisites satisfied, then confidence, surface reduction, unlock value, simplification, risk, tests, and default phase. Early in a legacy repository this is often high-confidence dead code or a stale path.
 
+Candidates never enter the ready queue without `review confirm`, including
+unused-export and indirect-registration findings. The brief includes each
+selected finding's fingerprint, exact locations, symbols, and detector
+evidence from the same scan. `--json` includes these reviewed findings in
+`findings`; do not run another audit just to recover their line numbers.
+
 If the node is analysis-only, the successful outcome may be an architecture note rather than a code edit.
 
 ## Before editing

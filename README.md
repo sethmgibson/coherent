@@ -11,6 +11,12 @@ Coherent helps a coding agent understand the architecture that is actually in us
 
 Requires Node.js 20+ and pnpm.
 
+Before adding the CLI to a shared project, verify that CI and deployment
+builds can fetch its Git repository. A private repository needs access outside
+your local machine. Without that access, run an existing separate Coherent
+checkout against your project instead of changing its lockfile; see the
+[adoption preflight](skills/coherent/reference/install.md#adoption-preflight).
+
 ```bash
 npx skills add sethmgibson/coherent
 pnpm add --save-dev github:sethmgibson/coherent
@@ -44,6 +50,14 @@ $coherent fix next
 For a whole-repository cleanup, ask `$coherent` to run the full cleanup. It
 will review and fix one DAG node at a time until no safe work remains; it does
 not literally run optional integration commands.
+
+Unused-export candidates require review before `fix next` can select them.
+If no node is ready, the full workflow continues investigating candidates;
+zero ready nodes does not mean the repository is clean.
+
+Dead-code checks also surface helpers used only by tests, and recognize
+explicit Nest provider bindings and registered handlers. Unknown dynamic
+reachability remains a review question, never automatic deletion evidence.
 
 The cleanup loop uses one combined inspection command so audit, planning, and
 next-node selection share the same scan:

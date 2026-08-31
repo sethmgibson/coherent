@@ -19,7 +19,7 @@ Merge rules:
 - Dismissed findings are absent from the DAG. Mechanical and hybrid dismissals require the current `detectorRevision`, including exact fingerprint matches. Pure-semantic exact reviews may survive detector bumps. Identity fallback requires `ruleId` + `identity` and the current revision.
 - Deferred findings stay visible as `needs_review` and are not `fix next` targets.
 - Hybrid and semantic findings without a `confirmed` review are `needs_review`.
-- Deterministic candidates (A08 unused-export) stay selectable, as before.
+- All candidates, including deterministic A08 unused exports and registrations, stay `needs_review` until confirmed. Only confirmed deterministic findings are ready without an explicit review.
 - An allowed conclusion such as “intentionally different” must be a review, not only architecture prose.
 
 Follow [cleanup-planning.md](cleanup-planning.md) and [semantic-audits.md](semantic-audits.md). Next command is usually `coherent fix next`.

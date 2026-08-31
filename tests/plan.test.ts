@@ -89,7 +89,7 @@ describe("cleanup DAG", () => {
     expect(a08?.priorityScore ?? 0).toBeGreaterThan(a01?.priorityScore ?? 0);
   });
 
-  it("prefers unused-export A08 candidates over unconfirmed A06 pairs", () => {
+  it("keeps unused-export candidates out of fix next alongside unconfirmed hybrid findings", () => {
     const findings = [
       finding({
         ruleId: "A06",
@@ -110,8 +110,10 @@ describe("cleanup DAG", () => {
         changeRisk: "Do not delete without confirming public, DI, CLI, or dynamic reachability.",
       }),
     ];
-    const next = selectNextNode(buildPlan("/tmp/repo", findings));
-    expect(next?.ruleIds).toContain("A08");
+    const plan = buildPlan("/tmp/repo", findings);
+    expect(selectNextNode(plan)).toBeUndefined();
+    expect(plan.nodes.every((node) => node.state === "needs_review")).toBe(true);
+    expect(plan.nodes.find((node) => node.ruleIds.includes("A08"))?.expectedSimplification).toMatch(/Verify reachability/);
   });
 
   it("records A07 → A08 re-scan and does not treat phases as a rigid list", () => {

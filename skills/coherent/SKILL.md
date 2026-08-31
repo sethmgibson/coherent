@@ -38,6 +38,7 @@ A high-confidence dead-code deletion can outrank a higher-severity semantic issu
 1. If `.coherent/ARCHITECTURE.md` exists, read it before changing structure. If only `.backend/` exists, rename it to `.coherent/`.
 2. Load only the playbook that owns this request. The Commands table is the index.
 3. Prefer `coherent <command>` for mechanical work. When the CLI is installed as a project dependency, use `pnpm coherent <command>`. `backend` remains a compatibility alias.
+4. When adopting Coherent, read [reference/install.md](reference/install.md) before adding the CLI dependency. Check private-repository access in CI and containers first. Prefer the installed package's canonical skill when a global copy differs; do not mix workflow versions or create redundant editor copies.
 
 ## Before adding anything
 

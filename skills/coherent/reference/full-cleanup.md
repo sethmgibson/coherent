@@ -28,12 +28,23 @@ after build use `node dist/cli.js <command>`.
    incomplete.
 3. `review apply` accepts either `fingerprint` or `fingerprints` on each batch
    item so one evidence-backed conclusion can cover a genuine finding group.
-4. Perform only the next node from `inspect`, then typecheck, run targeted
-   tests, `coherent check`, and `coherent inspect` again.
-5. Repeat while a ready node exists. A plan with zero nodes is clean even when
-   raw audit signals remain after reviewed dismissals. `fix next` exits
-   successfully for that terminal state; it fails only when nodes remain but
-   are blocked or need review.
+4. All candidates, including unused exports, require an evidence-backed
+   `review confirm` before `fix next` can select them. Confirming a finding is
+   an agent review decision, not a request for another user approval. When no
+   node is ready, investigate the highest-value unreviewed group, confirm,
+   dismiss, or defer it, and rebuild the plan. A full-cleanup request already
+   authorizes this review loop; do not stop merely because ready is zero.
+5. Perform only the next ready node, then typecheck, run targeted tests,
+   `coherent check`, and `coherent inspect` again. Use evidence from the same
+   inspection rather than rerunning audit, plan, and fix next for each view.
+   Serialize review writes and code edits so decisions apply to the snapshot
+   actually inspected. Do not delete many unrelated nodes in one batch.
+6. Stop when the reviewed plan is empty, or every remaining group has a
+   concrete deferral/blocker that cannot be resolved within the request. Do
+   not repeatedly reconsider deferred groups without new evidence. Report
+   ready, unreviewed, deferred, and blocked work separately. Zero ready nodes
+   with outstanding reviews is not a clean repository. `fix next` exits
+   successfully only for an empty plan or a selected ready node.
 
 Mechanical findings disappear on rescan. Semantic-only findings do not:
 after tests and source inspection prove one fixed, remove that exact entry
@@ -61,6 +72,10 @@ coherent doctor --deep
 Run the repository's normal tests, typecheck, and build. Coherent's own
 repository can run the complete validation set with `pnpm validate` (tests,
 typecheck, build, skill-doc consistency, and fingerprint uniqueness).
+
+`check: NEW 0` reports drift against the baseline, not correct behavior or
+completed semantic review. `doctor` verifies Coherent state, not application
+health. Report which normal validation gates passed, failed, or were not run.
 
 Do not run `install` or `update` during cleanup unless the user explicitly
 selected an optional Cursor or Git integration.
