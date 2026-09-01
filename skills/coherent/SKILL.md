@@ -55,6 +55,10 @@ After implementing: search for code the new implementation made obsolete.
 Never preserve architecture simply because many files already use it.
 Never consolidate two concepts solely because they have similar shapes.
 A successful audit result may be: "Superficially similar but intentionally different; do not merge."
+Citing “the architecture document requires this layer” is context, not proof.
+Name the actual boundary, invariant, consumer, or behavioral distinction.
+Cleanup phases are tie-breakers, not blockers. A deferral must record the
+missing evidence or prerequisite and when to reconsider.
 
 ## Commands
 
@@ -64,7 +68,7 @@ A successful audit result may be: "Superficially similar but intentionally diffe
 | `refresh` | Update fenced discovered architecture facts only | [reference/init.md](reference/init.md) |
 | `audit` | Read-only deterministic scan plus agent semantic investigation | [reference/audit.md](reference/audit.md), [reference/semantic-audits.md](reference/semantic-audits.md) |
 | `inspect` | Audit once, build the reviewed plan, and show the next cleanup node | [reference/inspect.md](reference/inspect.md) |
-| `review` | Persist decisions, batch grouped fingerprints, or preview/prune obsolete reviews | [reference/semantic-audits.md](reference/semantic-audits.md), [reference/plan.md](reference/plan.md) |
+| `review` | Persist decisions, preview with `--dry-run`, inspect the read-only queue, or prune obsolete reviews | [reference/semantic-audits.md](reference/semantic-audits.md), [reference/plan.md](reference/plan.md) |
 | `baseline` | Snapshot current findings to `.coherent/baseline.json` | [reference/baseline.md](reference/baseline.md) |
 | `plan` | Build the cleanup DAG in memory from findings and decisions | [reference/cleanup-planning.md](reference/cleanup-planning.md), [reference/plan.md](reference/plan.md) |
 | `fix next` | Select one unlocked cleanup node and print its work brief | [reference/fix-safety.md](reference/fix-safety.md), [reference/fix.md](reference/fix.md) |
@@ -84,6 +88,23 @@ Routing:
 - **Ordinary feature work:** load [reference/prevention.md](reference/prevention.md). Do not run a full legacy cleanup for a small feature.
 
 The CLI binary is `coherent`. `backend` is an alias for the same binary.
+
+## Parallel review protocol
+
+Investigators return proposals only. They do not write `.coherent/decisions.json`
+or architecture notes.
+
+One coordinator then:
+
+1. Collects the proposals.
+2. Writes every accepted decision through one `coherent review apply` (use
+   `--dry-run` first when the batch is large).
+3. Writes the matching architecture notes in the same turn.
+4. Verifies the final state with `coherent review queue` and `coherent doctor`.
+
+Do not launch separate “apply agents.” Concurrent writers can lose decisions
+even when each process reports success. Serialize all review and architecture
+writes through the coordinator.
 
 ## Principles
 

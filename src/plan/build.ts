@@ -3,14 +3,20 @@ import { rescanReason, rescanRulesFor } from "../catalog/rescan.js";
 import type { RuleId } from "../catalog/types.js";
 import type { Finding } from "../domain/finding.js";
 import { requiresAgentReview } from "../review/apply.js";
+import type { FindingReview } from "../review/types.js";
 import { groupFindings } from "./group.js";
 import { scoreNode } from "./score.js";
+import { deferralFields, nodeState } from "./state.js";
 import type { CleanupNode, CleanupPlan, FindingGroup, PlanEdge } from "./types.js";
 
 export function buildPlan(
   root: string,
   findings: Finding[],
-  reviewState?: { needsReview?: ReadonlySet<string> },
+  reviewState?: {
+    needsReview?: ReadonlySet<string>;
+    deferred?: ReadonlySet<string>;
+    reviews?: readonly FindingReview[];
+  },
 ): CleanupPlan {
   const groups = groupFindings(findings);
   const byFingerprint = new Map(findings.map((finding) => [finding.fingerprint, finding]));
@@ -21,6 +27,10 @@ export function buildPlan(
         .filter(requiresAgentReview)
         .map((finding) => finding.fingerprint),
     );
+  const deferred = reviewState?.deferred ?? new Set<string>();
+  const reviewsByFingerprint = new Map(
+    (reviewState?.reviews ?? []).map((review) => [review.fingerprint, review]),
+  );
   const prereq = prerequisiteMap(groups, byFingerprint);
   const dependents = invert(prereq);
   const indirect = indirectMap(groups);
@@ -44,7 +54,10 @@ export function buildPlan(
       defaultPhase: phase as CleanupNode["defaultPhase"],
       reasonForOrdering: group.fingerprints.some((fingerprint) => needsReview.has(fingerprint))
         ? "Review required before cleanup. Static signals alone do not establish safe deletion."
-        : orderingReason(group, prerequisiteNodeIds.length, rescanAfter),
+        : group.fingerprints.every((fingerprint) => deferred.has(fingerprint))
+          ? deferralFields(group.fingerprints, reviewsByFingerprint).deferralReason
+            ?? "Deferred. Not selected by fix next until reconsidered."
+          : orderingReason(group, prerequisiteNodeIds.length, rescanAfter),
       concepts: conceptsOf(groupFindings),
       likelyFiles: group.files,
       confidence,
@@ -53,11 +66,12 @@ export function buildPlan(
       expectedSimplification: simplificationOf(group, groupFindings),
       deletionPotential: deletionOf(groupFindings),
       unlocks: unlocksOf(groupFindings, group, rescanAfter, indirect.get(group.id) ?? []),
+      ...deferralFields(group.fingerprints, reviewsByFingerprint),
       testSafetyEvidence: testEvidence(groupFindings),
       rescanAfter,
       mayResolveIndirectly: indirect.get(group.id) ?? [],
       priorityScore: 0,
-      state: nodeState(group.fingerprints, prerequisiteNodeIds.length, needsReview),
+      state: nodeState(group.fingerprints, prerequisiteNodeIds.length, needsReview, deferred),
     };
   });
 
@@ -94,18 +108,8 @@ export function buildPlan(
     readyNodeIds: nodes.filter((node) => node.state === "ready").map((node) => node.id),
     blockedNodeIds: nodes.filter((node) => node.state === "blocked").map((node) => node.id),
     needsReviewNodeIds: nodes.filter((node) => node.state === "needs_review").map((node) => node.id),
+    deferredNodeIds: nodes.filter((node) => node.state === "deferred").map((node) => node.id),
   };
-}
-
-function nodeState(
-  fingerprints: string[],
-  prerequisiteCount: number,
-  needsReview: ReadonlySet<string>,
-): CleanupNode["state"] {
-  if (fingerprints.some((fingerprint) => needsReview.has(fingerprint))) {
-    return "needs_review";
-  }
-  return prerequisiteCount === 0 ? "ready" : "blocked";
 }
 
 function prerequisiteMap(

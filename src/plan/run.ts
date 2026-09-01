@@ -26,7 +26,10 @@ export function planFromAudit(
   decisions: DecisionsFile,
 ): PlanResult {
   const merged = applyReviews(audit.findings, decisions.reviews, decisions.findings);
-  const plan = buildPlan(PORTABLE_ROOT, merged.findings, merged);
+  const plan = buildPlan(PORTABLE_ROOT, merged.findings, {
+    ...merged,
+    reviews: decisions.reviews,
+  });
   plan.reviewSummary = reviewSummary(
     [...audit.findings, ...decisions.findings],
     decisions.reviews,
@@ -49,7 +52,7 @@ function reviewSummary(
   let confirmed = 0;
   let deferredCount = 0;
   for (const finding of findings) {
-    const decision = matchReview(finding, reviews)?.decision;
+    const decision = matchReview(finding, reviews, findings)?.decision;
     if (decision === "dismissed") dismissed += 1;
     if (decision === "confirmed") confirmed += 1;
     if (decision === "deferred") deferredCount += 1;

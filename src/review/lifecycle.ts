@@ -9,6 +9,9 @@ export type ReviewLifecycleState = "current" | "missing" | "expired";
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 const ISO_TIMESTAMP = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:\d{2})$/;
+const PHASE_ONLY = /\bphase\s*\d+\b/i;
+const ARCHITECTURE_ONLY = /architecture (document|doc|md|file) requires|the architecture (document|requires this layer)/i;
+const SUBSTANCE = /\b(consumer|caller|invariant|boundary|behavior|behaviour|import|port|adapter)\b/i;
 
 export function isReviewExpiry(value: string): boolean {
   if (!ISO_DATE.test(value) && !ISO_TIMESTAMP.test(value)) return false;
@@ -63,6 +66,41 @@ export function validateReviewLifecycle(
   ) {
     throw new Error(
       "Dismissed or deferred A07 reviews require expiresAt or removalMilestone; use notCompatibility only for a reviewed false positive.",
+    );
+  }
+  if (decision === "deferred") {
+    validateDeferralConditions(lifecycle);
+  }
+}
+
+export function validateDeferralConditions(lifecycle: ReviewLifecycle): void {
+  if (
+    lifecycle.missingEvidence?.trim() ||
+    lifecycle.reconsiderWhen?.trim() ||
+    lifecycle.expiresAt ||
+    lifecycle.removalMilestone
+  ) {
+    return;
+  }
+  throw new Error(
+    "Deferred reviews require missingEvidence or reconsiderWhen (or an A07 lifecycle). Cleanup phases are tie-breakers, not blockers.",
+  );
+}
+
+export function validateReviewReason(decision: ReviewDecision, reason: string): void {
+  const text = reason.trim();
+  if (decision === "deferred" && PHASE_ONLY.test(text) && !SUBSTANCE.test(text)) {
+    throw new Error(
+      "A phase number is not a deferral condition. Record missing evidence or a prerequisite and when to reconsider.",
+    );
+  }
+  if (
+    (decision === "confirmed" || decision === "dismissed") &&
+    ARCHITECTURE_ONLY.test(text) &&
+    !SUBSTANCE.test(text)
+  ) {
+    throw new Error(
+      "Citing the architecture document is context, not proof. Name the boundary, invariant, consumer, or behavioral distinction.",
     );
   }
 }

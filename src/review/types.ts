@@ -11,6 +11,10 @@ export interface ReviewLifecycle {
   removalMilestone?: string;
   /** The A07 signal was reviewed and is not compatibility behavior. */
   notCompatibility?: true;
+  /** Evidence that is still missing; required for most deferrals. */
+  missingEvidence?: string;
+  /** When or under what condition this deferral should be reconsidered. */
+  reconsiderWhen?: string;
 }
 
 export interface FindingReview extends ReviewLifecycle {
@@ -48,4 +52,27 @@ export interface MergedFindings {
   findings: Finding[];
   deferred: Set<string>;
   needsReview: Set<string>;
+}
+
+export interface ReviewTarget {
+  fingerprint: string;
+  identity: string;
+  ruleId: RuleId;
+  title: string;
+}
+
+export interface ReviewReplacement {
+  fingerprint: string;
+  previousDecision?: FindingReview["decision"];
+  nextDecision: FindingReview["decision"];
+}
+
+export interface ReviewApplyReceipt {
+  dryRun: boolean;
+  decisionsPath: string;
+  wrote: boolean;
+  targets: ReviewTarget[];
+  replacements: ReviewReplacement[];
+  conflicts: string[];
+  reviews: FindingReview[];
 }

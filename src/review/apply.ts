@@ -14,10 +14,11 @@ export function applyReviews(
   const deferred = new Set<string>();
   const needsReview = new Set<string>();
   const seen = new Set<string>();
+  const peers = [...mechanical, ...semantic];
 
-  for (const finding of [...mechanical, ...semantic]) {
+  for (const finding of peers) {
     if (seen.has(finding.fingerprint)) continue;
-    const review = matchReview(finding, reviews);
+    const review = matchReview(finding, reviews, peers);
     if (review?.decision === "dismissed") {
       seen.add(finding.fingerprint);
       continue;
@@ -27,7 +28,6 @@ export function applyReviews(
     findings.push(next);
     if (review?.decision === "deferred") {
       deferred.add(next.fingerprint);
-      needsReview.add(next.fingerprint);
     } else if (requiresAgentReview(next) && review?.decision !== "confirmed") {
       needsReview.add(next.fingerprint);
     }
@@ -39,17 +39,21 @@ export function applyReviews(
 export function matchReview(
   finding: Finding,
   reviews: FindingReview[],
+  peers: readonly Finding[] = [],
 ): FindingReview | undefined {
   const exact = reviews.find((review) => review.fingerprint === finding.fingerprint);
   if (exact) {
     return reviewApplies(finding, exact) ? exact : undefined;
   }
-  return reviews.find(
+  const fallback = reviews.filter(
     (review) =>
       sameIdentity(review, finding) &&
       hasCurrentDetectorRevision(review) &&
       reviewLifecycleState(review) === "current",
   );
+  if (fallback.length !== 1) return undefined;
+  if (ambiguousIdentity(finding, peers)) return undefined;
+  return fallback[0];
 }
 
 export function hasCurrentDetectorRevision(review: FindingReview): boolean {
@@ -58,17 +62,23 @@ export function hasCurrentDetectorRevision(review: FindingReview): boolean {
 
 export function classifyReview(review: FindingReview, findings: Finding[]): ReviewMatch {
   let staleIdentity = false;
+  let identityHits = 0;
   for (const finding of findings) {
     if (review.fingerprint === finding.fingerprint) {
       return reviewApplies(finding, review) ? "applied" : "stale";
     }
     if (sameIdentity(review, finding)) {
-      if (
-        hasCurrentDetectorRevision(review) &&
-        reviewLifecycleState(review) === "current"
-      ) return "applied";
+      identityHits += 1;
       staleIdentity = true;
     }
+  }
+  if (identityHits > 1) return "stale";
+  if (
+    identityHits === 1 &&
+    hasCurrentDetectorRevision(review) &&
+    reviewLifecycleState(review) === "current"
+  ) {
+    return "applied";
   }
   return staleIdentity ? "stale" : "orphan";
 }
@@ -80,6 +90,12 @@ function reviewApplies(finding: Finding, review: FindingReview): boolean {
 
 function sameIdentity(review: FindingReview, finding: Finding): boolean {
   return review.ruleId === finding.ruleId && review.identity === finding.identity;
+}
+
+function ambiguousIdentity(finding: Finding, peers: readonly Finding[]): boolean {
+  return peers.filter(
+    (peer) => peer.ruleId === finding.ruleId && peer.identity === finding.identity,
+  ).length > 1;
 }
 
 export function requiresAgentReview(finding: Finding): boolean {

@@ -1,7 +1,7 @@
 import type { PhaseId, RuleId } from "../catalog/types.js";
 import type { Confidence, FindingStatus } from "../domain/finding.js";
 
-export const NODE_STATES = ["ready", "blocked", "done", "needs_review"] as const;
+export const NODE_STATES = ["ready", "blocked", "done", "needs_review", "deferred"] as const;
 export type NodeState = (typeof NODE_STATES)[number];
 
 export interface CleanupNode {
@@ -20,6 +20,9 @@ export interface CleanupNode {
   expectedSimplification: string;
   deletionPotential: string;
   unlocks: string;
+  deferralReason?: string;
+  reconsiderWhen?: string;
+  missingEvidence?: string;
   testSafetyEvidence: string;
   rescanAfter: RuleId[];
   mayResolveIndirectly: string[];
@@ -41,6 +44,7 @@ export interface CleanupPlan {
   readyNodeIds: string[];
   blockedNodeIds: string[];
   needsReviewNodeIds: string[];
+  deferredNodeIds: string[];
   reviewSummary?: PlanReviewSummary;
 }
 

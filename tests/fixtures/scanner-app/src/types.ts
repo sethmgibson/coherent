@@ -41,3 +41,17 @@ export interface WidgetCopy {
   color: string;
   weight: number;
 }
+
+export interface AmountView {
+  id: string;
+  amount: string;
+  currency: string;
+  customerId: string;
+}
+
+export interface AmountRow {
+  id: string;
+  amount: number;
+  currency: string;
+  customerId: string;
+}

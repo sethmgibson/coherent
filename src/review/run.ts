@@ -4,33 +4,30 @@ import { isBaselineStale, readBaseline } from "../baseline/run.js";
 import { DETECTOR_REVISION, FINGERPRINT_VERSION } from "../config.js";
 import type { Finding } from "../domain/finding.js";
 import { classifyReview } from "./apply.js";
-import {
-  isReviewExpiry,
-  reviewLifecycleState,
-  validateReviewLifecycle,
-} from "./lifecycle.js";
-import { decisionsPath, readDecisions, writeDecisions } from "./store.js";
-import {
-  REVIEW_DECISIONS,
-  type FindingReview,
-  type ReviewDecision,
-  type ReviewLifecycle,
+import { reviewLifecycleState, validateReviewLifecycle, validateReviewReason } from "./lifecycle.js";
+import type { ReviewRequest } from "./parse.js";
+import { decisionsPath, readDecisions, updateDecisions } from "./store.js";
+import type {
+  FindingReview,
+  ReviewApplyReceipt,
+  ReviewDecision,
+  ReviewLifecycle,
+  ReviewReplacement,
 } from "./types.js";
 
-export interface ReviewRequest extends ReviewLifecycle {
-  fingerprint: string;
-  decision: ReviewDecision;
-  reason: string;
-}
+export type { ReviewRequest } from "./parse.js";
+export { parseReviewRequests } from "./parse.js";
 
 export interface ReviewResult {
   review: FindingReview;
   decisionsPath: string;
+  receipt: ReviewApplyReceipt;
 }
 
 export interface ReviewBatchResult {
   reviews: FindingReview[];
   decisionsPath: string;
+  receipt: ReviewApplyReceipt;
 }
 
 export interface ReviewPruneResult {
@@ -40,30 +37,121 @@ export interface ReviewPruneResult {
   wrote: boolean;
 }
 
+export interface ReviewWriteOptions {
+  dryRun?: boolean;
+}
+
 export async function runReview(
   root: string,
   decision: ReviewDecision,
   fingerprint: string,
   reason: string,
   lifecycle: ReviewLifecycle = {},
+  options: ReviewWriteOptions = {},
 ): Promise<ReviewResult> {
-  const result = await runReviewBatch(root, [
-    { fingerprint, decision, reason, ...lifecycle },
-  ]);
-  return { review: result.reviews[0]!, decisionsPath: result.decisionsPath };
+  const result = await runReviewBatch(
+    root,
+    [{ fingerprint, decision, reason, ...lifecycle }],
+    options,
+  );
+  return {
+    review: result.reviews[0]!,
+    decisionsPath: result.decisionsPath,
+    receipt: result.receipt,
+  };
 }
 
 export async function runReviewBatch(
   root: string,
   requests: ReviewRequest[],
+  options: ReviewWriteOptions = {},
 ): Promise<ReviewBatchResult> {
   if (requests.length === 0) throw new Error("Review batch must contain at least one decision.");
   const resolved = resolve(root);
-  const [audit, decisions] = await Promise.all([runAudit(resolved), readDecisions(resolved)]);
-  const findings = [...audit.findings, ...decisions.findings];
+  const audit = await runAudit(resolved);
+  const path = decisionsPath(resolved);
+  if (options.dryRun) {
+    const decisions = await readDecisions(resolved);
+    const prepared = prepareReviews(requests, [...audit.findings, ...decisions.findings], decisions.reviews);
+    return {
+      reviews: prepared.reviews,
+      decisionsPath: path,
+      receipt: toReceipt(prepared, path, true, false),
+    };
+  }
+  let prepared!: PreparedReviews;
+  const written = await updateDecisions(resolved, (decisions) => {
+    prepared = prepareReviews(
+      requests,
+      [...audit.findings, ...decisions.findings],
+      decisions.reviews,
+    );
+    return { ...decisions, reviews: [...prepared.retained, ...prepared.reviews] };
+  });
+  return {
+    reviews: prepared.reviews,
+    decisionsPath: written.path,
+    receipt: toReceipt(prepared, written.path, false, true),
+  };
+}
+
+export async function runReviewPrune(
+  root: string,
+  write = false,
+): Promise<ReviewPruneResult> {
+  const resolved = resolve(root);
+  const [audit, baselineFingerprints] = await Promise.all([
+    runAudit(resolved),
+    currentBaselineFingerprints(resolved),
+  ]);
+  const preview = await readDecisions(resolved);
+  const classified = classifyPrune(preview.reviews, [...audit.findings, ...preview.findings], baselineFingerprints);
+  if (write && classified.removable.length > 0) {
+    const written = await updateDecisions(resolved, (decisions) => {
+      const next = classifyPrune(
+        decisions.reviews,
+        [...audit.findings, ...decisions.findings],
+        baselineFingerprints,
+      );
+      return { ...decisions, reviews: next.retained };
+    });
+    const after = classifyPrune(
+      written.file.reviews,
+      [...audit.findings, ...written.file.findings],
+      baselineFingerprints,
+    );
+    return {
+      removable: classified.removable,
+      retained: after.retained,
+      decisionsPath: written.path,
+      wrote: true,
+    };
+  }
+  return {
+    removable: classified.removable,
+    retained: classified.retained,
+    decisionsPath: decisionsPath(resolved),
+    wrote: false,
+  };
+}
+
+interface PreparedReviews {
+  reviews: FindingReview[];
+  retained: FindingReview[];
+  replacements: ReviewReplacement[];
+  targets: ReviewApplyReceipt["targets"];
+}
+
+function prepareReviews(
+  requests: ReviewRequest[],
+  findings: Finding[],
+  existing: FindingReview[],
+): PreparedReviews {
   const reviews: FindingReview[] = [];
   const seenFingerprints = new Set<string>();
   const seenIdentities = new Set<string>();
+  const targets: ReviewApplyReceipt["targets"] = [];
+  const replacements: ReviewReplacement[] = [];
 
   for (const request of requests) {
     const finding = resolveFinding(findings, request.fingerprint);
@@ -79,39 +167,62 @@ export async function runReviewBatch(
     seenFingerprints.add(finding.fingerprint);
     seenIdentities.add(identityKey);
     validateReviewLifecycle(finding.ruleId, request.decision, request);
-    reviews.push(toReview(finding, request));
+    validateReviewReason(request.decision, request.reason);
+    const review = toReview(finding, request);
+    const previous = existing.find((item) => item.fingerprint === finding.fingerprint);
+    if (previous && previous.decision !== review.decision) {
+      replacements.push({
+        fingerprint: finding.fingerprint,
+        previousDecision: previous.decision,
+        nextDecision: review.decision,
+      });
+    }
+    targets.push({
+      fingerprint: finding.fingerprint,
+      identity: finding.identity,
+      ruleId: finding.ruleId,
+      title: finding.title,
+    });
+    reviews.push(review);
   }
 
   const replacedFingerprints = new Set(reviews.map((review) => review.fingerprint));
   const replacedIdentities = new Set(
     reviews.map((review) => `${review.ruleId}\u0000${review.identity}`),
   );
-  const retained = decisions.reviews.filter(
+  const retained = existing.filter(
     (review) =>
       !replacedFingerprints.has(review.fingerprint) &&
       !replacedIdentities.has(`${review.ruleId}\u0000${review.identity}`),
   );
-  await writeDecisions(resolved, {
-    ...decisions,
-    reviews: [...retained, ...reviews],
-  });
-  return { reviews, decisionsPath: decisionsPath(resolved) };
+  return { reviews, retained, replacements, targets };
 }
 
-export async function runReviewPrune(
-  root: string,
-  write = false,
-): Promise<ReviewPruneResult> {
-  const resolved = resolve(root);
-  const [audit, decisions, baselineFingerprints] = await Promise.all([
-    runAudit(resolved),
-    readDecisions(resolved),
-    currentBaselineFingerprints(resolved),
-  ]);
-  const known = [...audit.findings, ...decisions.findings];
+function toReceipt(
+  prepared: PreparedReviews,
+  decisionsPathValue: string,
+  dryRun: boolean,
+  wrote: boolean,
+): ReviewApplyReceipt {
+  return {
+    dryRun,
+    decisionsPath: decisionsPathValue,
+    wrote,
+    targets: prepared.targets,
+    replacements: prepared.replacements,
+    conflicts: [],
+    reviews: prepared.reviews,
+  };
+}
+
+function classifyPrune(
+  reviews: FindingReview[],
+  known: Finding[],
+  baselineFingerprints: ReadonlySet<string>,
+): { removable: FindingReview[]; retained: FindingReview[] } {
   const removable: FindingReview[] = [];
   const retained: FindingReview[] = [];
-  for (const review of decisions.reviews) {
+  for (const review of reviews) {
     const match = classifyReview(review, known);
     const resolvedHistory =
       match === "orphan" &&
@@ -120,92 +231,7 @@ export async function runReviewPrune(
     if (match === "applied" || resolvedHistory) retained.push(review);
     else removable.push(review);
   }
-  if (write && removable.length > 0) {
-    await writeDecisions(resolved, { ...decisions, reviews: retained });
-  }
-  return {
-    removable,
-    retained,
-    decisionsPath: decisionsPath(resolved),
-    wrote: write && removable.length > 0,
-  };
-}
-
-export function parseReviewRequests(raw: unknown): ReviewRequest[] {
-  if (!Array.isArray(raw)) throw new Error("Review batch input must be a JSON array.");
-  return raw.flatMap((item, index) => {
-    if (!item || typeof item !== "object" || Array.isArray(item)) {
-      throw new Error(`Review batch item ${index + 1} must be an object.`);
-    }
-    const record = item as Record<string, unknown>;
-    const fingerprints = reviewFingerprints(record, index);
-    if (
-      typeof record.decision !== "string" ||
-      !(REVIEW_DECISIONS as readonly string[]).includes(record.decision)
-    ) {
-      throw new Error(
-        `Review batch item ${index + 1} decision must be ${REVIEW_DECISIONS.join(", ")}.`,
-      );
-    }
-    if (typeof record.reason !== "string" || !record.reason.trim()) {
-      throw new Error(`Review batch item ${index + 1} is missing reason.`);
-    }
-    const reason = record.reason.trim();
-    const expiresAt = reviewText(record.expiresAt, "expiresAt", index);
-    if (expiresAt && !isReviewExpiry(expiresAt)) {
-      throw new Error(
-        `Review batch item ${index + 1} expiresAt must be an ISO date or timestamp.`,
-      );
-    }
-    const removalMilestone = reviewText(
-      record.removalMilestone,
-      "removalMilestone",
-      index,
-    );
-    if (record.notCompatibility !== undefined && record.notCompatibility !== true) {
-      throw new Error(
-        `Review batch item ${index + 1} notCompatibility must be true when present.`,
-      );
-    }
-    const notCompatibility = record.notCompatibility === true;
-    return fingerprints.map((fingerprint) => ({
-      fingerprint,
-      decision: record.decision as ReviewDecision,
-      reason,
-      ...(expiresAt ? { expiresAt } : {}),
-      ...(removalMilestone ? { removalMilestone } : {}),
-      ...(notCompatibility ? { notCompatibility: true as const } : {}),
-    }));
-  });
-}
-
-function reviewText(
-  value: unknown,
-  field: string,
-  index: number,
-): string | undefined {
-  if (value === undefined) return undefined;
-  if (typeof value !== "string" || !value.trim()) {
-    throw new Error(`Review batch item ${index + 1} ${field} must be a non-empty string.`);
-  }
-  return value.trim();
-}
-
-function reviewFingerprints(record: Record<string, unknown>, index: number): string[] {
-  const single = typeof record.fingerprint === "string" && record.fingerprint.trim()
-    ? [record.fingerprint.trim()]
-    : [];
-  const grouped = Array.isArray(record.fingerprints)
-    ? record.fingerprints.map((value) => typeof value === "string" ? value.trim() : "")
-    : [];
-  if (single.length > 0 && grouped.length > 0) {
-    throw new Error(`Review batch item ${index + 1} must use fingerprint or fingerprints, not both.`);
-  }
-  const fingerprints = single.length > 0 ? single : grouped;
-  if (fingerprints.length === 0 || fingerprints.some((value) => !value)) {
-    throw new Error(`Review batch item ${index + 1} is missing fingerprint or fingerprints.`);
-  }
-  return fingerprints;
+  return { removable, retained };
 }
 
 function resolveFinding(findings: Finding[], fingerprint: string): Finding | undefined {
@@ -220,6 +246,8 @@ function resolveFinding(findings: Finding[], fingerprint: string): Finding | und
 }
 
 function toReview(finding: Finding, request: ReviewRequest): FindingReview {
+  const semanticEquivalence = request.semanticEquivalence ?? finding.semanticEquivalence;
+  const authoritativeConcept = request.authoritativeConcept ?? finding.authoritativeConcept;
   return {
     fingerprint: finding.fingerprint,
     ruleId: finding.ruleId,
@@ -230,16 +258,12 @@ function toReview(finding: Finding, request: ReviewRequest): FindingReview {
     fingerprintVersion: FINGERPRINT_VERSION,
     detectorRevision: DETECTOR_REVISION,
     ...(request.expiresAt ? { expiresAt: request.expiresAt } : {}),
-    ...(request.removalMilestone
-      ? { removalMilestone: request.removalMilestone }
-      : {}),
+    ...(request.removalMilestone ? { removalMilestone: request.removalMilestone } : {}),
     ...(request.notCompatibility ? { notCompatibility: true as const } : {}),
-    ...(finding.semanticEquivalence
-      ? { semanticEquivalence: finding.semanticEquivalence }
-      : {}),
-    ...(finding.authoritativeConcept
-      ? { authoritativeConcept: finding.authoritativeConcept }
-      : {}),
+    ...(request.missingEvidence ? { missingEvidence: request.missingEvidence } : {}),
+    ...(request.reconsiderWhen ? { reconsiderWhen: request.reconsiderWhen } : {}),
+    ...(semanticEquivalence ? { semanticEquivalence } : {}),
+    ...(authoritativeConcept ? { authoritativeConcept } : {}),
   };
 }
 

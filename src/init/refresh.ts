@@ -23,6 +23,11 @@ export function extractDiscoveredInteriors(markdown: string): string[] {
   return [...markdown.matchAll(new RegExp(FENCE_RE.source, "g"))].map((match) => match[1] ?? "");
 }
 
+/** Compare inventory facts, ignoring formatter wrapping and extra blank lines. */
+export function normalizeDiscoveredFacts(text: string): string {
+  return text.replace(/\s+/g, " ").trim();
+}
+
 export function refreshArchitectureMarkdown(existing: string, inventory: Inventory): string {
   const generated = generateArchitectureMarkdown(inventory);
   if (!existing.trim()) return generated;

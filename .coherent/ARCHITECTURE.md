@@ -37,7 +37,7 @@ Detected frameworks:
 
 Languages: JavaScript, TypeScript
 
-Approximate size: 160 files, 12750 source lines.
+Approximate size: 168 files, 13965 source lines.
 
 Dependencies: 2 runtime, 9 development.
 <!-- /coherent:discovered -->
@@ -233,7 +233,7 @@ None. The CLI is synchronous process work. No queues, cron, or subscriptions.
 - `coherent refresh [root]` updates fenced discovered facts only.
 - `coherent audit [root]` parses TypeScript once and runs implemented detectors without writing metadata; `--output` is explicit.
 - `coherent inspect [root]` uses one audit snapshot for compact findings, the reviewed cleanup DAG, and next-node selection without writing metadata.
-- `coherent review dismiss|confirm|defer <fingerprint>` writes one decision to `.coherent/decisions.json`; dismissed or deferred live A07 reviews require a future expiry or named removal milestone, expiry reopens the finding, and reviewed false signals are explicitly marked `notCompatibility`. `review apply` validates a JSON batch against one audit before one write and accepts one or several fingerprints per evidence-backed batch item. `review prune` previews stale, expired, and orphaned records and writes only with `--write`, retaining baseline-backed resolved history only while its lifecycle is current.
+- `coherent review dismiss|confirm|defer <fingerprint>` writes one decision to `.coherent/decisions.json`; dismissed or deferred live A07 reviews require a future expiry or named removal milestone, expiry reopens the finding, and reviewed false signals are explicitly marked `notCompatibility`. Deferred reviews require `missingEvidence` or `reconsiderWhen`. `review apply` validates a JSON batch against one audit before one locked write, persists supported judgment fields, rejects unknown fields, and accepts `--dry-run` plus a JSON receipt. `review queue` is a read-only item-level view of unreviewed, deferred, and ready findings. `review prune` previews stale, expired, and orphaned records and writes only with `--write`, retaining baseline-backed resolved history only while its lifecycle is current. Review writes use a cross-process lock and atomic replacement. Identity fallback is refused when more than one current finding shares the identity.
 - `coherent baseline [root]` snapshots finding fingerprints with portable schema versions and leaves an equivalent existing file byte-for-byte unchanged.
 - `coherent plan [root]` builds a cleanup DAG from a fresh audit merged with reviews and semantic findings.
 - `coherent fix next [root]` selects one unlocked `ready` node and prints a work brief with reviewed finding fingerprints, exact locations, and evidence from the same scan. JSON exposes selected `findings`; `inspect` exposes them as `nextFindings`, keeping raw audit status separate. An empty reviewed plan is a successful clean terminal; remaining blocked or review-only nodes are not.

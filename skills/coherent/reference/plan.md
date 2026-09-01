@@ -17,7 +17,9 @@ dismissals; zero plan nodes means the reviewed repository is clean.
 Merge rules:
 
 - Dismissed findings are absent from the DAG. Mechanical and hybrid dismissals require the current `detectorRevision`, including exact fingerprint matches. Pure-semantic exact reviews may survive detector bumps. Identity fallback requires `ruleId` + `identity` and the current revision.
-- Deferred findings stay visible as `needs_review` and are not `fix next` targets.
+- Deferred findings stay visible as `deferred` and are not `fix next` targets.
+  Their reason, missing evidence, and reconsider condition appear on the plan.
+  Use `coherent review queue` for item-level unreviewed / deferred / ready groups.
 - Hybrid and semantic findings without a `confirmed` review are `needs_review`.
 - All candidates, including deterministic A08 unused exports and registrations, stay `needs_review` until confirmed. Only confirmed deterministic findings are ready without an explicit review.
 - An allowed conclusion such as “intentionally different” must be a review, not only architecture prose.

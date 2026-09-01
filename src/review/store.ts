@@ -1,5 +1,6 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
+import { lockSibling, withFileLock, writeFileAtomic } from "./lock.js";
 import { RULE_IDS, type RuleId } from "../catalog/types.js";
 import {
   DECISIONS_FILE,
@@ -52,8 +53,21 @@ export async function readDecisions(root: string): Promise<DecisionsFile> {
 export async function writeDecisions(root: string, file: DecisionsFile): Promise<string> {
   const path = decisionsPath(root);
   await mkdir(resolveStateDir(root).path, { recursive: true });
-  await writeFile(path, `${JSON.stringify(file, null, 2)}\n`, "utf8");
+  await writeFileAtomic(path, `${JSON.stringify(file, null, 2)}\n`);
   return path;
+}
+
+export async function updateDecisions(
+  root: string,
+  mutate: (current: DecisionsFile) => DecisionsFile | Promise<DecisionsFile>,
+): Promise<{ file: DecisionsFile; path: string }> {
+  const path = decisionsPath(root);
+  await mkdir(resolveStateDir(root).path, { recursive: true });
+  return withFileLock(lockSibling(path), async () => {
+    const current = await readDecisions(root);
+    const next = await mutate(current);
+    return { file: next, path: await writeDecisions(root, next) };
+  });
 }
 
 export function parseDecisionsFile(raw: unknown): DecisionsFile {
@@ -173,6 +187,8 @@ function parseReview(raw: unknown): FindingReview {
   if (notCompatibility && (expiresAt || removalMilestone)) {
     throw new Error("Invalid review: notCompatibility cannot include lifecycle metadata");
   }
+  const missingEvidence = optionalReviewText(raw.missingEvidence, "missingEvidence");
+  const reconsiderWhen = optionalReviewText(raw.reconsiderWhen, "reconsiderWhen");
   return {
     fingerprint: raw.fingerprint,
     ruleId: raw.ruleId as RuleId,
@@ -185,6 +201,8 @@ function parseReview(raw: unknown): FindingReview {
     ...(expiresAt !== undefined ? { expiresAt } : {}),
     ...(removalMilestone !== undefined ? { removalMilestone } : {}),
     ...(notCompatibility ? { notCompatibility: true as const } : {}),
+    ...(missingEvidence !== undefined ? { missingEvidence } : {}),
+    ...(reconsiderWhen !== undefined ? { reconsiderWhen } : {}),
     ...(typeof raw.semanticEquivalence === "string"
       ? { semanticEquivalence: raw.semanticEquivalence }
       : {}),

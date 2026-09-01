@@ -5,10 +5,11 @@ export function renderPlan(plan: CleanupPlan): string {
   const ready = plan.nodes.filter((node) => node.state === "ready");
   const blocked = plan.nodes.filter((node) => node.state === "blocked");
   const needsReview = plan.nodes.filter((node) => node.state === "needs_review");
+  const deferred = plan.nodes.filter((node) => node.state === "deferred");
   const lines = [
     "Coherent cleanup plan",
     `Root: ${plan.root}`,
-    `Nodes: ${plan.nodes.length}  Ready: ${ready.length}  Needs review: ${needsReview.length}  Blocked: ${blocked.length}`,
+    `Nodes: ${plan.nodes.length}  Ready: ${ready.length}  Needs review: ${needsReview.length}  Deferred: ${deferred.length}  Blocked: ${blocked.length}`,
     ...(plan.reviewSummary ? [renderReviewSummary(plan.reviewSummary)] : []),
     "",
     "The DAG is authoritative. Default phases break ties when dependencies are equal.",
@@ -26,11 +27,20 @@ export function renderPlan(plan: CleanupPlan): string {
   }
 
   if (needsReview.length > 0) {
-    lines.push("NEEDS REVIEW (not selected by fix next)");
+    lines.push("NEEDS REVIEW (unreviewed; not selected by fix next)");
     for (const node of needsReview.slice(0, 8)) {
       lines.push(...renderNode(node));
     }
     if (needsReview.length > 8) lines.push(`  … ${needsReview.length - 8} more nodes awaiting review`);
+    lines.push("");
+  }
+
+  if (deferred.length > 0) {
+    lines.push("DEFERRED (not selected by fix next)");
+    for (const node of deferred.slice(0, 8)) {
+      lines.push(...renderNode(node));
+    }
+    if (deferred.length > 8) lines.push(`  … ${deferred.length - 8} more deferred nodes`);
     lines.push("");
   }
 
@@ -67,5 +77,8 @@ function renderNode(node: CleanupNode): string[] {
     `    ${node.reasonForOrdering}`,
     `    unlocks: ${node.unlocks}`,
     `    risk: ${node.behavioralRisk}`,
+    ...(node.deferralReason ? [`    deferred: ${node.deferralReason}`] : []),
+    ...(node.missingEvidence ? [`    missing evidence: ${node.missingEvidence}`] : []),
+    ...(node.reconsiderWhen ? [`    reconsider when: ${node.reconsiderWhen}`] : []),
   ];
 }

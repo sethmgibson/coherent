@@ -37,8 +37,11 @@ after build use `node dist/cli.js <command>`.
 5. Perform only the next ready node, then typecheck, run targeted tests,
    `coherent check`, and `coherent inspect` again. Use evidence from the same
    inspection rather than rerunning audit, plan, and fix next for each view.
-   Serialize review writes and code edits so decisions apply to the snapshot
-   actually inspected. Do not delete many unrelated nodes in one batch.
+   Investigators return proposals only. One coordinator writes decisions and
+   architecture notes, then verifies with `review queue` and `doctor`. Do not
+   run concurrent `review apply` agents. Serialize review writes and code
+   edits so decisions apply to the snapshot actually inspected. Do not delete
+   many unrelated nodes in one batch.
 6. Stop when the reviewed plan is empty, or every remaining group has a
    concrete deferral/blocker that cannot be resolved within the request. Do
    not repeatedly reconsider deferred groups without new evidence. Report

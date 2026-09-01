@@ -15,14 +15,7 @@ import { renderFixNext, runFixNext } from "./fix/run.js";
 import { inspectJson, renderInspect, runInspect } from "./inspect.js";
 import { runDoctor } from "./doctor/run.js";
 import { renderDoctor } from "./doctor/render.js";
-import {
-  parseReviewRequests,
-  runReview,
-  runReviewBatch,
-  runReviewPrune,
-} from "./review/run.js";
-import type { ReviewDecision, ReviewLifecycle } from "./review/types.js";
-import { RULES_BY_ID } from "./catalog/rules.js";
+import { registerReviewCommands } from "./review/cli.js";
 import { COHERENT_VERSION } from "./version.js";
 
 const program = new Command();
@@ -262,128 +255,7 @@ program
     }
   });
 
-const review = program
-  .command("review")
-  .description("Record a durable confirmed, dismissed, or deferred decision");
-
-review
-  .command("apply")
-  .description("Atomically apply a JSON array of review decisions from stdin")
-  .argument("[root]", "repository root", ".")
-  .action(async (root: string) => {
-    try {
-      if (process.stdin.isTTY) {
-        throw new Error("Review batch JSON is required on stdin.");
-      }
-      const raw = await readStdin();
-      const requests = parseReviewRequests(JSON.parse(raw) as unknown);
-      const result = await runReviewBatch(resolve(root), requests);
-      console.log(`Applied ${result.reviews.length} review decision(s).\nWrote ${result.decisionsPath}`);
-    } catch (error) {
-      console.error(error instanceof Error ? error.message : error);
-      process.exitCode = 1;
-    }
-  });
-
-review
-  .command("dismiss")
-  .description("Drop a finding from later plans")
-  .argument("<fingerprint>", "finding fingerprint")
-  .argument("[root]", "repository root", ".")
-  .requiredOption("--reason <reason>", "why this decision")
-  .option("--expires-at <iso>", "ISO date or timestamp when compatibility must be re-reviewed")
-  .option("--removal-milestone <text>", "release, consumer migration, or condition permitting removal")
-  .option("--not-compatibility", "classify an A07 signal as a reviewed false positive")
-  .action(async (
-    fingerprint: string,
-    root: string,
-    options: {
-      reason: string;
-      expiresAt?: string;
-      removalMilestone?: string;
-      notCompatibility?: true;
-    },
-  ) => {
-    await printReview(root, "dismissed", fingerprint, options.reason, options);
-  });
-
-review
-  .command("confirm")
-  .description("Mark a hybrid or semantic finding as ready work")
-  .argument("<fingerprint>", "finding fingerprint")
-  .argument("[root]", "repository root", ".")
-  .option("--reason <reason>", "why this decision")
-  .action(async (fingerprint: string, root: string, options: { reason?: string }) => {
-    await printReview(
-      root,
-      "confirmed",
-      fingerprint,
-      options.reason ?? "Confirmed during semantic review.",
-    );
-  });
-
-review
-  .command("defer")
-  .description("Keep a finding visible but not ready")
-  .argument("<fingerprint>", "finding fingerprint")
-  .argument("[root]", "repository root", ".")
-  .requiredOption("--reason <reason>", "why this decision")
-  .option("--expires-at <iso>", "ISO date or timestamp when compatibility must be re-reviewed")
-  .option("--removal-milestone <text>", "release, consumer migration, or condition permitting removal")
-  .action(async (
-    fingerprint: string,
-    root: string,
-    options: { reason: string; expiresAt?: string; removalMilestone?: string },
-  ) => {
-    await printReview(root, "deferred", fingerprint, options.reason, options);
-  });
-
-review
-  .command("prune")
-  .description("Preview stale, expired, and orphaned reviews; remove them only with --write")
-  .argument("[root]", "repository root", ".")
-  .option("--write", "remove the reported stale, expired, and orphaned reviews", false)
-  .action(async (root: string, options: { write: boolean }) => {
-    try {
-      const result = await runReviewPrune(resolve(root), options.write);
-      const action = result.wrote ? "Removed" : "Would remove";
-      console.log(`${action} ${result.removable.length} stale, expired, or orphaned review(s).`);
-      for (const item of result.removable.slice(0, 12)) {
-        console.log(`  ${item.ruleId} ${item.identity}`);
-      }
-      if (result.removable.length > 12) {
-        console.log(`  … ${result.removable.length - 12} more`);
-      }
-      if (result.wrote) console.log(`Wrote ${result.decisionsPath}`);
-    } catch (error) {
-      console.error(error instanceof Error ? error.message : error);
-      process.exitCode = 1;
-    }
-  });
-
-async function printReview(
-  root: string,
-  decision: ReviewDecision,
-  fingerprint: string,
-  reason: string,
-  lifecycle: ReviewLifecycle = {},
-): Promise<void> {
-  try {
-    const result = await runReview(
-      resolve(root),
-      decision,
-      fingerprint,
-      reason,
-      lifecycle,
-    );
-    console.log(
-      `${decision} ${RULES_BY_ID[result.review.ruleId].title}: ${result.review.identity}\nWrote ${result.decisionsPath}`,
-    );
-  } catch (error) {
-    console.error(error instanceof Error ? error.message : error);
-    process.exitCode = 1;
-  }
-}
+registerReviewCommands(program, readStdin);
 
 async function writeJsonOutput(path: string, value: unknown, space = 2): Promise<void> {
   await mkdir(dirname(path), { recursive: true });

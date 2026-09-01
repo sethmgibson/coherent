@@ -20,7 +20,7 @@ export const ARTIFACT_SCHEMA_VERSION = 1;
 /** Bump when the fingerprint hash payload changes. Identity match still applies if detectorRevision matches. */
 export const FINGERPRINT_VERSION = 2;
 /** Bump when detector meaning or evidence changes. Identity match requires this to match. */
-export const DETECTOR_REVISION = 7;
+export const DETECTOR_REVISION = 8;
 export const PORTABLE_ROOT = ".";
 
 export function artifactVersions() {

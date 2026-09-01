@@ -41,18 +41,21 @@ function consider(
   const call = singleCall(stmt);
   if (!call) return;
   if (!sameArguments(params.map((param) => param.getName()), call)) return;
-  const callee = call.getExpression().getText();
+  if (isBuilderChain(call)) return;
+  const calleeExpr = call.getExpression();
+  const callee = calleeExpr.getText();
 
   if (MEANINGFUL.test(callee) || MEANINGFUL.test(fn.getText()) || STDLIB.test(callee)) return;
   const relative = ctx.relativePath(fn.getSourceFile());
+  const mechanical = Node.isIdentifier(calleeExpr);
   findings.push(
     makeFinding({
       ruleId: "B04",
       identity: `forwarding:${relative}:${name}`,
       title: "Forwarding wrapper",
       severity: "medium",
-      confidence: "high",
-      status: "confirmed",
+      confidence: mechanical ? "high" : "medium",
+      status: mechanical ? "confirmed" : "candidate",
       explanation: `'${name}' accepts arguments, calls one downstream operation with the same values, and adds no visible domain behavior.`,
       evidence: {
         summary: `${name} forwards to ${callee}.`,
@@ -66,6 +69,16 @@ function consider(
       affectedSymbols: [name, callee],
     }),
   );
+}
+
+function isBuilderChain(call: CallExpression): boolean {
+  let expr: Node = call.getExpression();
+  while (Node.isPropertyAccessExpression(expr)) {
+    expr = expr.getExpression();
+    if (Node.isCallExpression(expr)) return true;
+    if (Node.isAwaitExpression(expr) && Node.isCallExpression(expr.getExpression())) return true;
+  }
+  return false;
 }
 
 function singleCall(statement: Node): CallExpression | undefined {

@@ -13,10 +13,18 @@ import {
 import type { SourceLocation } from "../domain/finding.js";
 import type { AnalysisContext } from "./context.js";
 
+export interface ShapeField {
+  name: string;
+  typeText: string;
+  optional: boolean;
+  nullable: boolean;
+}
+
 export interface ShapedType {
   name: string;
   file: string;
   properties: string[];
+  fields: ShapeField[];
   node: InterfaceDeclaration | ClassDeclaration | TypeAliasDeclaration;
 }
 

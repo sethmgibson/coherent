@@ -8,6 +8,7 @@ import { generateArchitectureMarkdown } from "../init/architecture.js";
 import {
   extractDiscoveredInteriors,
   hasDiscoveredFences,
+  normalizeDiscoveredFacts,
 } from "../init/refresh.js";
 import { collectInventory } from "../inventory.js";
 import { classifyReview, hasCurrentDetectorRevision } from "../review/apply.js";
@@ -64,7 +65,10 @@ async function checkArchitecture(root: string, issues: DoctorIssue[]): Promise<v
   const inventory = await collectInventory(root, config);
   const expected = extractDiscoveredInteriors(generateArchitectureMarkdown(inventory));
   const actual = extractDiscoveredInteriors(markdown);
-  if (expected.some((block, index) => block !== actual[index]) || actual.length !== expected.length) {
+  if (
+    expected.length !== actual.length ||
+    expected.some((block, index) => normalizeDiscoveredFacts(block) !== normalizeDiscoveredFacts(actual[index] ?? ""))
+  ) {
     issues.push({
       code: "stale-discovery",
       message: "Fenced discovered facts do not match current inventory. Run `coherent refresh`.",

@@ -2,8 +2,8 @@
   "schemaVersion": 1,
   "coherentVersion": "0.1.0",
   "fingerprintVersion": 2,
-  "detectorRevision": 7,
-  "createdAt": "2026-08-31T19:24:14.445Z",
+  "detectorRevision": 8,
+  "createdAt": "2026-09-01T02:31:35.719Z",
   "findings": [
     {
       "fingerprint": "b6470bbd7ec32af41b1c00d6ced9effa3300a5ad0e542dc5eaae2bc43de8ff2c",
@@ -261,6 +261,51 @@
       ]
     },
     {
+      "fingerprint": "cc28b882224055b4755f43130d7920e69d8e7c52b8b440d388cb6b439cb4c366",
+      "ruleId": "E05",
+      "identity": "seq-await:src/review/cli.ts:registerReviewCommands",
+      "title": "Sequential awaits",
+      "detectionMode": "hybrid",
+      "status": "candidate",
+      "severity": "medium",
+      "files": [
+        "src/review/cli.ts"
+      ],
+      "symbols": [
+        "registerReviewCommands"
+      ]
+    },
+    {
+      "fingerprint": "accb574f41c909cdcd353dcc7c44d5346384e202b17eaa473283f67daa4f09af",
+      "ruleId": "E05",
+      "identity": "await-in-loop:src/review/lock.ts:withFileLock",
+      "title": "Await inside a loop",
+      "detectionMode": "hybrid",
+      "status": "candidate",
+      "severity": "medium",
+      "files": [
+        "src/review/lock.ts"
+      ],
+      "symbols": [
+        "withFileLock"
+      ]
+    },
+    {
+      "fingerprint": "7b4248815faf6391f8c8f80c1a3ddca8f6ff57a6627272171311731d5d45d7f2",
+      "ruleId": "E05",
+      "identity": "seq-await:src/review/run.ts:runReviewPrune",
+      "title": "Sequential awaits",
+      "detectionMode": "hybrid",
+      "status": "candidate",
+      "severity": "medium",
+      "files": [
+        "src/review/run.ts"
+      ],
+      "symbols": [
+        "runReviewPrune"
+      ]
+    },
+    {
       "fingerprint": "b719addca1b24de1dcf0ad9015bd2b837b84c46f9307571b42046ba575d791d2",
       "ruleId": "E05",
       "identity": "seq-await:src/review/store.ts:writeDecisions",
@@ -273,6 +318,21 @@
       ],
       "symbols": [
         "writeDecisions"
+      ]
+    },
+    {
+      "fingerprint": "ba8c70d72717f948d6ff9cab4369bd4e39d111799612ba8d10e1612eafbaa51a",
+      "ruleId": "E05",
+      "identity": "seq-await:src/review/store.ts:updateDecisions",
+      "title": "Sequential awaits",
+      "detectionMode": "hybrid",
+      "status": "candidate",
+      "severity": "medium",
+      "files": [
+        "src/review/store.ts"
+      ],
+      "symbols": [
+        "updateDecisions"
       ]
     },
     {
@@ -363,6 +423,22 @@
       ],
       "symbols": [
         "runBaseline"
+      ]
+    },
+    {
+      "fingerprint": "98624c09d4d219efb05d16603a9ae51c4f88f7cb56473371f55a310d25416a2e",
+      "ruleId": "E06",
+      "identity": "loop-find:src/review/run.ts:prepareReviews",
+      "title": "Collection .find() inside a loop",
+      "detectionMode": "hybrid",
+      "status": "candidate",
+      "severity": "medium",
+      "files": [
+        "src/review/run.ts"
+      ],
+      "symbols": [
+        "find",
+        "prepareReviews"
       ]
     },
     {

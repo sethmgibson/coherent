@@ -1,6 +1,7 @@
 import { Node, SyntaxKind } from "ts-morph";
 import type { AnalysisContext } from "../analysis/context.js";
 import { locationOf, type ShapedType } from "../analysis/inspect.js";
+import { describeFields } from "../analysis/shape-fields.js";
 import { makeFinding } from "../audit/finding-factory.js";
 import type { Finding } from "../domain/finding.js";
 
@@ -14,18 +15,15 @@ export function detectContextExplosion(ctx: AnalysisContext): Finding[] {
     if (ctx.isTestFile(ctx.relativePath(file))) continue;
     const relative = ctx.relativePath(file);
     for (const iface of file.getInterfaces()) {
-      maybeBag(bags, iface.getName(), relative, iface.getProperties().map((prop) => prop.getName()), iface);
+      maybeBag(bags, iface.getName(), relative, describeFields(iface.getProperties()), iface);
     }
     for (const cls of file.getClasses()) {
-      maybeBag(bags, cls.getName(), relative, cls.getProperties().map((prop) => prop.getName()), cls);
+      maybeBag(bags, cls.getName(), relative, describeFields(cls.getProperties()), cls);
     }
     for (const alias of file.getTypeAliases()) {
       const typeNode = alias.getTypeNode();
       if (!typeNode || !Node.isTypeLiteral(typeNode)) continue;
-      const props = typeNode.getMembers().flatMap((member) =>
-        Node.isPropertySignature(member) ? [member.getName()] : [],
-      );
-      maybeBag(bags, alias.getName(), relative, props, alias);
+      maybeBag(bags, alias.getName(), relative, describeFields(typeNode.getMembers()), alias);
     }
   }
 
@@ -42,7 +40,7 @@ export function detectContextExplosion(ctx: AnalysisContext): Finding[] {
         severity: bag.properties.length >= 12 ? "high" : "medium",
         confidence: "medium",
         status: "candidate",
-        explanation: `'${bag.name}' has ${bag.properties.length} properties and is passed broadly. Hybrid signal — not every large object is a problem.`,
+        explanation: contextExplanation(bag.name, bag.properties.length, consumers.length),
         evidence: {
           summary: `${bag.properties.length} properties; ${consumers.length} consumer(s).`,
           details: [
@@ -67,16 +65,29 @@ export function detectContextExplosion(ctx: AnalysisContext): Finding[] {
   return findings;
 }
 
+function contextExplanation(name: string, propertyCount: number, consumerCount: number): string {
+  if (consumerCount === 0) {
+    return `'${name}' has ${propertyCount} properties. No typed consumers were observed. Hybrid signal — not every large object is a problem.`;
+  }
+  return `'${name}' has ${propertyCount} properties and is used by ${consumerCount} observed consumer(s). Hybrid signal — not every large object is a problem.`;
+}
+
 function maybeBag(
   bags: Bag[],
   name: string | undefined,
   file: string,
-  properties: string[],
+  fields: Bag["fields"],
   node: Bag["node"],
 ): void {
   if (!name) return;
-  if (CONTEXT_NAME.test(name) && properties.length >= 8) {
-    bags.push({ name, file, properties, node });
+  if (CONTEXT_NAME.test(name) && fields.length >= 8) {
+    bags.push({
+      name,
+      file,
+      properties: fields.map((field) => field.name),
+      fields,
+      node,
+    });
   }
 }
 
@@ -104,8 +115,7 @@ function findConsumers(ctx: AnalysisContext, bag: Bag) {
           if (access.getExpression().getText() !== paramName) continue;
           const prop = access.getName();
           if (bag.properties.includes(prop)) used.add(prop);
-          const parent = access.getParent();
-          if (parent && Node.isBinaryExpression(parent) && parent.getLeft() === access) mutates = true;
+          if (isWriteAccess(access)) mutates = true;
         }
       }
       consumers.push({
@@ -117,4 +127,19 @@ function findConsumers(ctx: AnalysisContext, bag: Bag) {
     }
   }
   return consumers;
+}
+
+const ASSIGNMENTS = new Set(["=", "+=", "-=", "*=", "/=", "%=", "&&=", "||=", "??="]);
+
+function isWriteAccess(access: Node): boolean {
+  const parent = access.getParent();
+  if (!parent) return false;
+  if (Node.isBinaryExpression(parent) && parent.getLeft() === access) {
+    return ASSIGNMENTS.has(parent.getOperatorToken().getText());
+  }
+  if (Node.isPrefixUnaryExpression(parent) || Node.isPostfixUnaryExpression(parent)) {
+    const op = parent.getOperatorToken();
+    return op === SyntaxKind.PlusPlusToken || op === SyntaxKind.MinusMinusToken;
+  }
+  return Node.isDeleteExpression(parent);
 }

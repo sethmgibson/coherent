@@ -23,6 +23,7 @@ interface LiteralUse {
   file: string;
   node: Node;
   via: string;
+  owner: string;
 }
 
 export function detectStringProtocols(ctx: AnalysisContext): Finding[] {
@@ -36,27 +37,31 @@ export function detectStringProtocols(ctx: AnalysisContext): Finding[] {
       if (looksLikeProse(value) || looksLikePath(value)) continue;
       const via = discriminantContext(literal);
       if (!via) continue;
-      uses.push({ value, file: relative, node: literal, via });
+      uses.push({ value, file: relative, node: literal, via, owner: protocolOwner(via) });
     }
   }
 
-  const byExact = groupBy(uses, (use) => use.value);
+  const byExact = groupBy(uses, (use) => `${use.owner}\0${use.value}`);
   const findings: Finding[] = [];
   const reported = new Set<string>();
 
-  for (const [value, group] of byExact) {
+  for (const [key, group] of byExact) {
     if (group.length < 2) continue;
-    const identity = `string-protocol:${normalize(value)}`;
-    reported.add(identity);
+    const value = group[0]!.value;
+    const owner = group[0]!.owner;
+    const identity = `string-protocol:${owner}:${value}`;
+    reported.add(`${owner}\0${normalize(value)}`);
     findings.push(protocolFinding(ctx, identity, value, group, []));
+    void key;
   }
 
-  const byNorm = groupBy(uses, (use) => normalize(use.value));
+  const byNorm = groupBy(uses, (use) => `${use.owner}\0${normalize(use.value)}`);
   for (const [key, group] of byNorm) {
     const variants = [...new Set(group.map((use) => use.value))];
     if (variants.length < 2) continue;
-    const identity = `string-protocol-variants:${key}`;
-    if (reported.has(identity)) continue;
+    if (reported.has(key)) continue;
+    const owner = group[0]!.owner;
+    const identity = `string-protocol-variants:${owner}:${normalize(variants[0]!)}`;
     findings.push(protocolFinding(ctx, identity, variants.join(" | "), group, variants));
   }
 
@@ -71,6 +76,7 @@ function protocolFinding(
   variants: string[],
 ): Finding {
   const files = [...new Set(group.map((use) => use.file))];
+  const owners = [...new Set(group.map((use) => use.owner))];
   return makeFinding({
     ruleId: "A03",
     identity,
@@ -80,10 +86,10 @@ function protocolFinding(
     status: "candidate",
     explanation:
       variants.length > 0
-        ? `Likely spelling or case variants of the same protocol value: ${label}.`
-        : `The literal '${label}' is used as a status/type/mode/event discriminant in multiple places.`,
+        ? `Likely spelling or case variants of the same ${owners.join("/")} protocol value: ${label}.`
+        : `The literal '${label}' is used as a ${owners.join("/")} discriminant in multiple places.`,
     evidence: {
-      summary: `${group.length} discriminant uses of '${label}'.`,
+      summary: `${group.length} ${owners.join("/")} discriminant uses of '${label}'.`,
       details: [
         ...files.map((file) => `Seen in ${file}`),
         ...group.slice(0, 6).map((use) => `${use.via} in ${use.file}`),
@@ -113,7 +119,9 @@ function isTypedStringUnion(node: Node, value: string): boolean {
 function discriminantContext(literal: Node): string | undefined {
   const parent = literal.getParent();
   if (!parent) return undefined;
-  if (Node.isCaseClause(parent) || Node.isSwitchStatement(parent)) return "switch-case";
+  if (Node.isCaseClause(parent) || Node.isSwitchStatement(parent)) {
+    return switchContext(literal, parent);
+  }
   if (
     Node.isBinaryExpression(parent) &&
     ["===", "!==", "==", "!="].includes(parent.getOperatorToken().getText())
@@ -121,12 +129,27 @@ function discriminantContext(literal: Node): string | undefined {
     const other = parent.getLeft() === literal ? parent.getRight() : parent.getLeft();
     const text = other.getText();
     if (isTypedStringUnion(other, valueOf(literal))) return undefined;
-    if (PROTOCOL_PROPS.has(propertyName(other)) || PROTOCOL_PROPS.has(bareName(text))) {
-      return `compare-${propertyName(other) || bareName(text)}`;
-    }
+    const owner = propertyName(other) || bareName(text);
+    if (PROTOCOL_PROPS.has(owner)) return `compare-${owner}`;
     return undefined;
   }
   return undefined;
+}
+
+function switchContext(literal: Node, parent: Node): string | undefined {
+  const sw = Node.isSwitchStatement(parent)
+    ? parent
+    : literal.getFirstAncestorByKind(SyntaxKind.SwitchStatement);
+  if (!sw || !Node.isSwitchStatement(sw)) return undefined;
+  const discriminant = sw.getExpression();
+  if (isTypedStringUnion(discriminant, valueOf(literal))) return undefined;
+  const owner = propertyName(discriminant) || bareName(discriminant.getText());
+  if (PROTOCOL_PROPS.has(owner)) return `switch-${owner}`;
+  return undefined;
+}
+
+function protocolOwner(via: string): string {
+  return via.replace(/^(compare-|switch-)/, "") || via;
 }
 
 function propertyName(node: Node): string {

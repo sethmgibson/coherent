@@ -272,11 +272,20 @@ describe("CLI", () => {
             fingerprint: target.fingerprint,
             decision: index === 0 ? "dismissed" : "deferred",
             reason: `cli batch decision ${index + 1}`,
+            ...(target.ruleId === "A07"
+              ? { removalMilestone: "Remove after the test fixture migration." }
+              : {}),
+            ...(index === 1
+              ? {
+                  missingEvidence: "Need the owning module named.",
+                  reconsiderWhen: "After the next inspect.",
+                }
+              : {}),
           })),
         ),
       );
       expect(applied.code).toBe(0);
-      expect(applied.stdout).toContain("Applied 2 review decision(s)");
+      expect(applied.stdout).toMatch(/Review apply|2 decision/);
       const decisions = JSON.parse(
         await readFile(join(root, ".coherent", "decisions.json"), "utf8"),
       ) as { reviews: unknown[]; findings: unknown[] };

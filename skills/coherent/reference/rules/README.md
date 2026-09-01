@@ -50,13 +50,16 @@ does not match; the review is kept and not applied.
 
 - `confirmed` — real issue; eligible for plan work after review
 - `dismissed` — not an issue, or intentionally different; dropped from the DAG
-- `deferred` — keep visible; not ready
+- `deferred` — keep visible; not ready. Record `missingEvidence` or
+  `reconsiderWhen`. A cleanup phase is not a blocker.
 
 Prefer `coherent review confirm|dismiss|defer <fingerprint>` for one decision.
-For several decisions, send a JSON array to `coherent review apply`. Each item
-may use `{ "fingerprint", "decision", "reason" }` or
-`{ "fingerprints": ["...", "..."], "decision", "reason" }`; the batch is
-validated before one decisions write. Dismissed or deferred A07 items also
+For several decisions, send a JSON array to `coherent review apply` (use
+`--dry-run` to preview). Each item may use `{ "fingerprint", "decision", "reason" }`
+or `{ "fingerprints": ["...", "..."], "decision", "reason" }` plus supported
+judgment fields; unknown fields are rejected. The batch is
+validated before one decisions write. Investigators propose; one coordinator
+writes decisions and architecture notes. Dismissed or deferred A07 items also
 require `"expiresAt"` or `"removalMilestone"`; a dismissed false signal uses
 `"notCompatibility": true`. Use a grouped item only when the same
 evidence supports every fingerprint. Do not invent a parallel review schema.

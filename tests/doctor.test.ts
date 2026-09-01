@@ -22,6 +22,23 @@ async function seededRoot(): Promise<string> {
 }
 
 describe("doctor", () => {
+  it("does not treat formatter wrapping as stale discovery", async () => {
+    const root = await seededRoot();
+    try {
+      const path = join(root, ".coherent", "ARCHITECTURE.md");
+      const markdown = await readFile(path, "utf8");
+      const wrapped = markdown
+        .replace(/<!-- coherent:discovered -->\n/g, "<!-- coherent:discovered -->\n\n")
+        .replace(/\n<!-- \/coherent:discovered -->/g, "\n\n<!-- /coherent:discovered -->")
+        .replace(/Approximate size: ([^\n]+)/g, "Approximate size:\n$1");
+      await writeFile(path, wrapped, "utf8");
+      const result = await runDoctor(root);
+      expect(result.issues.some((issue) => issue.code === "stale-discovery")).toBe(false);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
   it("treats the baseline as optional", async () => {
     const root = await seededRoot();
     try {

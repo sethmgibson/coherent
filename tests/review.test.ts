@@ -356,6 +356,8 @@ describe("review merge into plan", () => {
           fingerprint: second.fingerprint.slice(0, 12),
           decision: "deferred",
           reason: "Needs owner input.",
+          missingEvidence: "Owner has not named the remaining consumer.",
+          reconsiderWhen: "After the owner review meeting.",
         },
       ]);
       const applied = await runReviewBatch(root, requests);

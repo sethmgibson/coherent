@@ -22,3 +22,19 @@ export type ChargeId = (typeof CHARGE_IDS)[number];
 export function isChargeId(value: string): value is ChargeId {
   return (CHARGE_IDS as readonly string[]).includes(value);
 }
+
+function query() {
+  return {
+    from(_table: string) {
+      return {
+        limit(count: number) {
+          return count;
+        },
+      };
+    },
+  };
+}
+
+export function pageCharges(limit: number): number {
+  return query().from("charges").limit(limit);
+}
