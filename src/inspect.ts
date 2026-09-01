@@ -14,12 +14,15 @@ import { renderPlan } from "./plan/render.js";
 import { readDecisions } from "./review/store.js";
 import { findingsForNode, renderFixNext, type FixNextResult } from "./fix/run.js";
 import { selectNextNode } from "./fix/select.js";
+import { renderRuntimeIdentity, type PortableRuntimeIdentity } from "./runtime.js";
 
 export interface InspectResult extends FixNextResult {
   audit: AuditResult;
 }
 
 export interface InspectJson {
+  runtime: PortableRuntimeIdentity;
+  terminalState: CleanupPlan["terminalState"];
   audit: CompactFindingsFile;
   plan: CleanupPlan;
   nextNode: CleanupNode | null;
@@ -38,6 +41,8 @@ export async function runInspect(root: string): Promise<InspectResult> {
 
 export function inspectJson(result: InspectResult): InspectJson {
   return {
+    runtime: result.plan.runtime,
+    terminalState: result.plan.terminalState,
     audit: compactFindingsFile(result.audit.file),
     plan: result.plan,
     nextNode: result.node ?? null,
@@ -56,16 +61,18 @@ export function renderInspect(result: InspectResult): string {
     .join("; ");
   const lines = [
     "Coherent inspect",
+    renderRuntimeIdentity(plan.runtime),
     `Root: ${audit.inventory.root}`,
+    `Terminal state: ${plan.terminalState}`,
     `Files: ${audit.inventory.fileCount}  Raw signals: ${audit.findings.length}  Scan: ${formatDuration(audit.durationMs)}`,
     audit.file.architecturePath
       ? `Architecture: ${audit.file.architecturePath}`
       : "Architecture: missing — run `coherent init` before treating this as a full inspection.",
     `Detected: ${detected || "none"}`,
     "",
-    renderPlan(plan).trimEnd(),
+    renderPlan(plan, { includeRuntime: false }).trimEnd(),
     "",
-    renderFixNext(result).trimEnd(),
+    renderFixNext(result, { includeRuntime: false }).trimEnd(),
   ];
   return `${lines.join("\n")}\n`;
 }

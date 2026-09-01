@@ -63,6 +63,9 @@ export const runUpdate = runInstall;
 
 export function renderInstall(title: string, result: InstallResult): string {
   const lines = [title];
+  if (title === "Coherent update") {
+    lines.push("  integration refresh only; this does not update the Coherent CLI package");
+  }
   if (result.actions.length === 0) {
     lines.push("  no integrations selected; use an explicit install flag");
   }

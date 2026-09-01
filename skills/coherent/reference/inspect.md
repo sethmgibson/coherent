@@ -19,5 +19,11 @@ Plain output contains a compact raw-signal summary, the reviewed plan, and the
 same bounded work brief as `fix next`. JSON output contains the compact audit
 shape, full plan, and `nextNode`; each audit finding appears only once.
 
+The plan and top-level inspection expose `terminalState`: `ready`,
+`awaiting_review`, `blocked`, `deferred_only`, or `clean`. `deferred_only` is a
+valid bounded stopping state only when every deferral includes concrete
+missing evidence or a reconsideration condition; it is distinct from a clean
+empty plan.
+
 Use `inspect` for the normal full-cleanup loop. Run standalone `audit`, `plan`,
 or `fix next` when only that individual view is needed.

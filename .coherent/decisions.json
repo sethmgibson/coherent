@@ -162,16 +162,6 @@
       "detectorRevision": 8
     },
     {
-      "fingerprint": "651cba12b3e3612216a062cc35feb6b1b4ca798d19bc0d99dd36e1042a973f09",
-      "ruleId": "E05",
-      "identity": "seq-await:src/doctor/run.ts:runDoctor",
-      "decision": "dismissed",
-      "reason": "Semantic review found correctness-ordered effects or deliberate bounded filesystem/process concurrency; no independent surviving hot-path I/O remains at the observed scale.",
-      "reviewedAt": "2026-09-01T02:31:32.186Z",
-      "fingerprintVersion": 2,
-      "detectorRevision": 8
-    },
-    {
       "fingerprint": "034df4528bc50a04bafbc1b4362034754569b1b51d372c517f33471758710fae",
       "ruleId": "E05",
       "identity": "await-in-loop:src/check/changed-files.ts:listChangedSourceFiles",
@@ -529,6 +519,16 @@
       "decision": "dismissed",
       "reason": "Linear lookup of a batch fingerprint against the current finding list. Input is one audit snapshot, not a growing target-sized collection.",
       "reviewedAt": "2026-09-01T02:31:32.187Z",
+      "fingerprintVersion": 2,
+      "detectorRevision": 8
+    },
+    {
+      "fingerprint": "5cb8dec76ba24db2470e6a334a4f9ec0284b42c509938a844d073abf2741c624",
+      "ruleId": "A06",
+      "identity": "duplicate-rep:CompactFindingsFile+FindingsFile",
+      "decision": "dismissed",
+      "reason": "Intentional wire-format projection: FindingsFile is the complete internal and persisted audit artifact used by planning and metrics, while CompactFindingsFile is a deliberately smaller stdout/API representation produced from it. The compact type omits mutable derived collections and cannot replace the full artifact without expanding the public payload.",
+      "reviewedAt": "2026-09-01T06:12:16.542Z",
       "fingerprintVersion": 2,
       "detectorRevision": 8
     }

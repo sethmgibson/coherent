@@ -33,7 +33,9 @@ coherent install --git-hook
 coherent update --rule
 ```
 
-With no flags, `install` and `update` write nothing. They share the same safe copy rules when an integration is explicitly selected: missing files are written, known adapter stubs and managed fence interiors are refreshed, and user edits outside those fences are left alone.
+With no flags, `install` and `update` write nothing. `coherent update` refreshes
+selected integration files only; it does **not** update the CLI dependency or
+lockfile. They share the same safe copy rules when an integration is explicitly selected: missing files are written, known adapter stubs and managed fence interiors are refreshed, and user edits outside those fences are left alone.
 
 ## What is written
 

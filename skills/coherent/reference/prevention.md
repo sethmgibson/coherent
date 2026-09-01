@@ -13,6 +13,10 @@ coherent check
 
 `check --changed` compares a scoped audit (git-diff files plus importers) to the committed baseline. Use unscoped `check` when you want a full-repo comparison. Existing debt does not fail. New confirmed high or critical **deterministic** findings fail. Hybrid and candidate findings are printed and do not fail by default. Resolved findings are reported only when they fall inside the scoped files.
 
+Read `Gate` and `Drift` separately. Review-state counts distinguish ready,
+unreviewed, deferred, dismissed, and identity matches that require a full scan.
+Do not translate exit code 0 into “no drift” or “clean.”
+
 Then inspect the **diff**, not the whole legacy tree, for new architecture debt:
 
 - Parallel implementation of an existing concept

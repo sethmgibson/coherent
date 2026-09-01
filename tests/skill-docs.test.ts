@@ -7,6 +7,7 @@ import {
   renderTaxonomyMarkdown,
 } from "../src/catalog/render-docs.js";
 import { RULES } from "../src/catalog/rules.js";
+import { renderRuntimeRequirementMarkdown } from "../src/runtime.js";
 
 const reference = join(
   dirname(fileURLToPath(import.meta.url)),
@@ -34,6 +35,13 @@ describe("generated skill docs", () => {
     expect(onDisk).toContain("cleanup DAG is authoritative");
   });
 
+  it("keeps runtime.md in sync with the executable compatibility contract", async () => {
+    const onDisk = await readFile(join(reference, "runtime.md"), "utf8");
+    expect(onDisk).toBe(renderRuntimeRequirementMarkdown());
+    expect(onDisk).toContain("coherent version");
+    expect(onDisk).toContain("--expect-detector");
+  });
+
   it("ships the provider-neutral reference set", async () => {
     const files = [
       "semantic-audits.md",
@@ -46,6 +54,7 @@ describe("generated skill docs", () => {
       "install.md",
       "full-cleanup.md",
       "inspect.md",
+      "runtime.md",
     ];
     for (const file of files) {
       const text = await readFile(join(reference, file), "utf8");

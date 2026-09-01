@@ -5,6 +5,7 @@ import {
   renderCleanupPhasesMarkdown,
   renderTaxonomyMarkdown,
 } from "../src/catalog/render-docs.ts";
+import { renderRuntimeRequirementMarkdown } from "../src/runtime.ts";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const referenceDir = join(root, "skills", "coherent", "reference");
@@ -16,5 +17,11 @@ await writeFile(
   renderCleanupPhasesMarkdown(),
   "utf8",
 );
+await writeFile(
+  join(referenceDir, "runtime.md"),
+  renderRuntimeRequirementMarkdown(),
+  "utf8",
+);
 console.log("Wrote skills/coherent/reference/taxonomy.md");
 console.log("Wrote skills/coherent/reference/cleanup-phases.md");
+console.log("Wrote skills/coherent/reference/runtime.md");

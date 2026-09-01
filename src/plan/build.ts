@@ -8,6 +8,7 @@ import { groupFindings } from "./group.js";
 import { scoreNode } from "./score.js";
 import { deferralFields, nodeState } from "./state.js";
 import type { CleanupNode, CleanupPlan, FindingGroup, PlanEdge } from "./types.js";
+import { portableRuntimeIdentity } from "../runtime.js";
 
 export function buildPlan(
   root: string,
@@ -100,16 +101,43 @@ export function buildPlan(
     }
   }
 
+  const readyNodeIds = nodes.filter((node) => node.state === "ready").map((node) => node.id);
+  const blockedNodeIds = nodes.filter((node) => node.state === "blocked").map((node) => node.id);
+  const needsReviewNodeIds = nodes.filter((node) => node.state === "needs_review").map((node) => node.id);
+  const deferredNodeIds = nodes.filter((node) => node.state === "deferred").map((node) => node.id);
+
   return {
+    runtime: portableRuntimeIdentity(),
     generatedAt: new Date().toISOString(),
     root,
+    terminalState: terminalState(
+      nodes.length,
+      readyNodeIds.length,
+      needsReviewNodeIds.length,
+      blockedNodeIds.length,
+      deferredNodeIds.length,
+    ),
     nodes,
     edges,
-    readyNodeIds: nodes.filter((node) => node.state === "ready").map((node) => node.id),
-    blockedNodeIds: nodes.filter((node) => node.state === "blocked").map((node) => node.id),
-    needsReviewNodeIds: nodes.filter((node) => node.state === "needs_review").map((node) => node.id),
-    deferredNodeIds: nodes.filter((node) => node.state === "deferred").map((node) => node.id),
+    readyNodeIds,
+    blockedNodeIds,
+    needsReviewNodeIds,
+    deferredNodeIds,
   };
+}
+
+function terminalState(
+  nodeCount: number,
+  ready: number,
+  needsReview: number,
+  blocked: number,
+  deferred: number,
+): CleanupPlan["terminalState"] {
+  if (ready > 0) return "ready";
+  if (needsReview > 0) return "awaiting_review";
+  if (blocked > 0) return "blocked";
+  if (deferred > 0) return "deferred_only";
+  return nodeCount === 0 ? "clean" : "blocked";
 }
 
 function prerequisiteMap(

@@ -4,6 +4,7 @@ import { RULES_BY_ID } from "../catalog/rules.js";
 import { renderReviewQueue, runReviewQueue, type ReviewQueueState } from "./queue.js";
 import { parseReviewRequests, runReview, runReviewBatch, runReviewPrune } from "./run.js";
 import type { ReviewApplyReceipt, ReviewDecision, ReviewLifecycle } from "./types.js";
+import { renderRuntimeIdentity } from "../runtime.js";
 
 export function registerReviewCommands(program: Command, readStdin: () => Promise<string>): void {
   const review = program
@@ -148,6 +149,7 @@ export function registerReviewCommands(program: Command, readStdin: () => Promis
 export function renderReceipt(receipt: ReviewApplyReceipt): string {
   const lines = [
     receipt.dryRun ? "Review apply dry-run" : "Review apply",
+    renderRuntimeIdentity(receipt.runtime),
     `${receipt.reviews.length} decision(s)  wrote: ${receipt.wrote}`,
     `Path: ${receipt.decisionsPath}`,
   ];

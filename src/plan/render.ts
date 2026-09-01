@@ -1,14 +1,20 @@
 import { PHASES_BY_ID } from "../catalog/phases.js";
 import type { CleanupNode, CleanupPlan } from "./types.js";
+import { renderRuntimeIdentity } from "../runtime.js";
 
-export function renderPlan(plan: CleanupPlan): string {
+export function renderPlan(
+  plan: CleanupPlan,
+  options: { includeRuntime?: boolean } = {},
+): string {
   const ready = plan.nodes.filter((node) => node.state === "ready");
   const blocked = plan.nodes.filter((node) => node.state === "blocked");
   const needsReview = plan.nodes.filter((node) => node.state === "needs_review");
   const deferred = plan.nodes.filter((node) => node.state === "deferred");
   const lines = [
     "Coherent cleanup plan",
+    ...(options.includeRuntime === false ? [] : [renderRuntimeIdentity(plan.runtime)]),
     `Root: ${plan.root}`,
+    `Terminal state: ${plan.terminalState}`,
     `Nodes: ${plan.nodes.length}  Ready: ${ready.length}  Needs review: ${needsReview.length}  Deferred: ${deferred.length}  Blocked: ${blocked.length}`,
     ...(plan.reviewSummary ? [renderReviewSummary(plan.reviewSummary)] : []),
     "",
@@ -53,12 +59,16 @@ export function renderPlan(plan: CleanupPlan): string {
     lines.push("");
   }
 
-  if (plan.nodes.length === 0) {
+  if (plan.terminalState === "clean") {
     lines.push("No cleanup nodes. The reviewed plan is clean even if raw audit signals remain.");
-  } else if (ready.length > 0) {
+  } else if (plan.terminalState === "ready") {
     lines.push("Next step: `coherent fix next` selects one unlocked node. Do not rewrite the tree wholesale.");
+  } else if (plan.terminalState === "deferred_only") {
+    lines.push("No ready or unreviewed cleanup. Remaining work is explicitly deferred; report its missing evidence and reconsideration conditions.");
+  } else if (plan.terminalState === "awaiting_review") {
+    lines.push("No ready cleanup. Review candidate evidence with `coherent inspect --json`; confirm, dismiss, or defer before retrying fix next. Remaining work is not clean.");
   } else {
-    lines.push("No ready cleanup. Review candidate evidence with `coherent inspect --json`; confirm, dismiss, or defer before retrying fix next. Remaining work is not a clean result.");
+    lines.push("No ready cleanup. Remaining nodes are blocked; report their prerequisites and do not call the repository clean.");
   }
   return `${lines.join("\n")}\n`;
 }

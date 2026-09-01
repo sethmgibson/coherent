@@ -14,6 +14,7 @@ import type {
   ReviewLifecycle,
   ReviewReplacement,
 } from "./types.js";
+import { portableRuntimeIdentity } from "../runtime.js";
 
 export type { ReviewRequest } from "./parse.js";
 export { parseReviewRequests } from "./parse.js";
@@ -205,6 +206,7 @@ function toReceipt(
   wrote: boolean,
 ): ReviewApplyReceipt {
   return {
+    runtime: portableRuntimeIdentity(),
     dryRun,
     decisionsPath: decisionsPathValue,
     wrote,

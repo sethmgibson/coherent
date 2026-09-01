@@ -8,7 +8,11 @@ coherent check --changed
 coherent check --json
 ```
 
-The CLI reports NEW, EXISTING, and RESOLVED findings, classifies new debt shapes, and asks whether the change made the system conceptually harder to change.
+The CLI reports NEW, EXISTING, and RESOLVED findings, classifies new debt
+shapes, annotates current findings with their review disposition, and asks
+whether the change made the system conceptually harder to change. Gate status
+and drift status are separate: a passing prevention gate can still contain
+non-failing or reviewed drift.
 
 Default exit policy:
 
@@ -24,6 +28,12 @@ renames include both old and new paths. Import discovery shares full analysis's
 TypeScript resolver, including aliases and owning child configs. Inventory
 ignores still apply. Findings outside that scope are not reported as RESOLVED.
 Neither scoped nor full checks write Coherent metadata.
+
+Full checks may apply safe identity-based review matching because the complete
+peer set is present. Scoped checks apply exact fingerprint reviews only. When
+a scoped finding has a possible identity-based review, it is labeled
+`requires_full_scan` rather than optimistically applying a decision without
+the repository-wide ambiguity check.
 
 Use full `check` for repository-wide conclusions, particularly after changing
 package manifests, compiler configuration, or cross-file representations.

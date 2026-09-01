@@ -16,6 +16,11 @@ import { inspectJson, renderInspect, runInspect } from "./inspect.js";
 import { runDoctor } from "./doctor/run.js";
 import { renderDoctor } from "./doctor/render.js";
 import { registerReviewCommands } from "./review/cli.js";
+import {
+  checkRuntimeCompatibility,
+  renderRuntimeDetails,
+  runtimeIdentity,
+} from "./runtime.js";
 import { COHERENT_VERSION } from "./version.js";
 
 const program = new Command();
@@ -26,6 +31,45 @@ program
     "Maintainability tooling for backend and large AI-built codebases.",
   )
   .version(COHERENT_VERSION);
+
+program
+  .command("version")
+  .description("Report the exact Coherent runtime and verify skill compatibility")
+  .argument("[root]", "target repository root used to inspect its lockfile", ".")
+  .option("--json", "print runtime identity and compatibility as JSON", false)
+  .option("--expect-workflow <revision>", "required workflow revision", parseIntegerOption)
+  .option("--expect-detector <revision>", "required detector revision", parseIntegerOption)
+  .option(
+    "--require-capability <capabilities...>",
+    "capabilities required by the active skill workflow",
+  )
+  .action(async (
+    root: string,
+    options: {
+      json: boolean;
+      expectWorkflow?: number;
+      expectDetector?: number;
+      requireCapability?: string[];
+    },
+  ) => {
+    const runtime = await runtimeIdentity(resolve(root));
+    const issues = checkRuntimeCompatibility(runtime, {
+      workflowRevision: options.expectWorkflow ?? runtime.workflowRevision,
+      detectorRevision: options.expectDetector ?? runtime.detectorRevision,
+      capabilities: options.requireCapability ?? [],
+    });
+    if (options.json) {
+      console.log(JSON.stringify({ runtime, compatible: issues.length === 0, issues }, null, 2));
+    } else {
+      process.stdout.write(`${renderRuntimeDetails(runtime)}\n`);
+      process.stdout.write(
+        issues.length === 0
+          ? "Compatibility: OK\n"
+          : `Compatibility: FAILED\n${issues.map((issue) => `  ${issue}`).join("\n")}\n`,
+      );
+    }
+    if (issues.length > 0) process.exitCode = 1;
+  });
 
 program
   .command("init")
@@ -141,6 +185,10 @@ program
         console.log(
           JSON.stringify(
             {
+              runtime: result.runtime,
+              gateStatus: result.gateStatus,
+              driftStatus: result.driftStatus,
+              reviewSummary: result.reviewSummary,
               new: result.newFindings,
               existing: result.existingFindings,
               resolved: result.resolvedFindings,
@@ -180,7 +228,7 @@ program
 
 program
   .command("update")
-  .description("Refresh only the explicitly selected optional integrations")
+  .description("Refresh selected integrations only; this does not update the CLI package")
   .argument("[root]", "repository root", ".")
   .option("--adapter", "refresh the Cursor skill adapter", false)
   .option("--alias", "refresh the legacy /backend Cursor alias", false)
@@ -224,6 +272,8 @@ program
     const result = await runFixNext(resolve(root));
     if (options.json) {
       console.log(JSON.stringify({
+        runtime: result.plan.runtime,
+        terminalState: result.plan.terminalState,
         node: result.node ?? null,
         findings: result.findings,
         planReady: result.plan.readyNodeIds,
@@ -240,9 +290,18 @@ program
   .argument("[root]", "repository root", ".")
   .option("--json", "print the doctor report as JSON", false)
   .option("--deep", "run a full audit to verify orphan and stale reviews", false)
-  .action(async (root: string, options: { json: boolean; deep: boolean }) => {
+  .option("--staged", "validate the exact Git index snapshot", false)
+  .option("--ref <ref>", "validate the exact committed Git ref snapshot")
+  .action(async (
+    root: string,
+    options: { json: boolean; deep: boolean; staged: boolean; ref?: string },
+  ) => {
     try {
-      const result = await runDoctor(resolve(root), { deep: options.deep });
+      const result = await runDoctor(resolve(root), {
+        deep: options.deep,
+        staged: options.staged,
+        ...(options.ref ? { ref: options.ref } : {}),
+      });
       if (options.json) {
         console.log(JSON.stringify(result, null, 2));
       } else {
@@ -268,6 +327,14 @@ async function readStdin(): Promise<string> {
     chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(String(chunk)));
   }
   return Buffer.concat(chunks).toString("utf8");
+}
+
+function parseIntegerOption(value: string): number {
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isInteger(parsed) || String(parsed) !== value) {
+    throw new Error(`Expected an integer revision, received: ${value}`);
+  }
+  return parsed;
 }
 
 await program.parseAsync(process.argv);

@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
-  "coherentVersion": "0.1.0",
+  "coherentVersion": "0.2.0",
   "fingerprintVersion": 2,
   "detectorRevision": 8,
-  "createdAt": "2026-09-01T02:31:35.719Z",
+  "createdAt": "2026-09-01T06:12:38.322Z",
   "findings": [
     {
       "fingerprint": "b6470bbd7ec32af41b1c00d6ced9effa3300a5ad0e542dc5eaae2bc43de8ff2c",
@@ -216,6 +216,22 @@
       ]
     },
     {
+      "fingerprint": "5cb8dec76ba24db2470e6a334a4f9ec0284b42c509938a844d073abf2741c624",
+      "ruleId": "A06",
+      "identity": "duplicate-rep:CompactFindingsFile+FindingsFile",
+      "title": "Structurally similar representations",
+      "detectionMode": "hybrid",
+      "status": "candidate",
+      "severity": "medium",
+      "files": [
+        "src/audit/run.ts"
+      ],
+      "symbols": [
+        "CompactFindingsFile",
+        "FindingsFile"
+      ]
+    },
+    {
       "fingerprint": "4cbd3cafffc89e74b67ae36787e3ff6751c9f0acd4706b5c54d022169f56ca64",
       "ruleId": "E05",
       "identity": "await-in-loop:src/inventory-scan.ts:readPackages",
@@ -348,21 +364,6 @@
       ],
       "symbols": [
         "runInstall"
-      ]
-    },
-    {
-      "fingerprint": "651cba12b3e3612216a062cc35feb6b1b4ca798d19bc0d99dd36e1042a973f09",
-      "ruleId": "E05",
-      "identity": "seq-await:src/doctor/run.ts:runDoctor",
-      "title": "Sequential awaits",
-      "detectionMode": "hybrid",
-      "status": "candidate",
-      "severity": "medium",
-      "files": [
-        "src/doctor/run.ts"
-      ],
-      "symbols": [
-        "runDoctor"
       ]
     },
     {

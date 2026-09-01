@@ -1,8 +1,18 @@
 import type { PhaseId, RuleId } from "../catalog/types.js";
 import type { Confidence, FindingStatus } from "../domain/finding.js";
+import type { PortableRuntimeIdentity } from "../runtime.js";
 
 export const NODE_STATES = ["ready", "blocked", "done", "needs_review", "deferred"] as const;
 export type NodeState = (typeof NODE_STATES)[number];
+
+export const TERMINAL_STATES = [
+  "ready",
+  "awaiting_review",
+  "blocked",
+  "deferred_only",
+  "clean",
+] as const;
+export type TerminalState = (typeof TERMINAL_STATES)[number];
 
 export interface CleanupNode {
   id: string;
@@ -37,8 +47,10 @@ export interface PlanEdge {
 }
 
 export interface CleanupPlan {
+  runtime: PortableRuntimeIdentity;
   generatedAt: string;
   root: string;
+  terminalState: TerminalState;
   nodes: CleanupNode[];
   edges: PlanEdge[];
   readyNodeIds: string[];

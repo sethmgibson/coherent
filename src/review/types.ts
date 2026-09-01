@@ -1,5 +1,6 @@
 import type { RuleId } from "../catalog/types.js";
 import type { Finding } from "../domain/finding.js";
+import type { PortableRuntimeIdentity } from "../runtime.js";
 
 export const REVIEW_DECISIONS = ["confirmed", "dismissed", "deferred"] as const;
 export type ReviewDecision = (typeof REVIEW_DECISIONS)[number];
@@ -68,6 +69,7 @@ export interface ReviewReplacement {
 }
 
 export interface ReviewApplyReceipt {
+  runtime: PortableRuntimeIdentity;
   dryRun: boolean;
   decisionsPath: string;
   wrote: boolean;

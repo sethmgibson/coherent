@@ -72,15 +72,37 @@ try {
     assert.equal(run(binary, ["--version"], consumer).trim(), manifest.version);
     assert.match(run(binary, ["--help"], consumer), /Usage: coherent/);
   }
+  const coherent = join(consumer, "node_modules", ".bin", "coherent");
+  const versionReport = JSON.parse(run(coherent, ["version", consumer, "--json"], consumer)) as {
+    runtime: {
+      coherentVersion: string;
+      workflowRevision: number;
+      detectorRevision: number;
+      capabilities: unknown;
+      packageRoot: string;
+    };
+    compatible: boolean;
+    issues: unknown;
+  };
+  const { runtime } = versionReport;
+  assert.equal(versionReport.compatible, true);
+  assert.deepEqual(versionReport.issues, []);
+  assert.equal(runtime.coherentVersion, manifest.version);
+  assert.equal(runtime.workflowRevision, 1);
+  assert.equal(runtime.detectorRevision, 8);
+  assert(Array.isArray(runtime.capabilities) && runtime.capabilities.length > 0);
+  assert.equal(await realpath(runtime.packageRoot), installed);
   const target = join(temporaryRoot, "audit-target");
   await mkdir(target);
   await writeFile(join(target, "index.ts"), "export const answer = 42;\n");
-  const coherent = join(consumer, "node_modules", ".bin", "coherent");
   const audit = JSON.parse(run(coherent, ["audit", target, "--json"], consumer)) as {
     findings: unknown;
+    runtime?: { coherentVersion?: unknown; workflowRevision?: unknown };
   };
   assert(Array.isArray(audit.findings), "Installed CLI did not return findings JSON");
-  console.log("Installed CLI aliases and audit passed.");
+  assert.equal(audit.runtime?.coherentVersion, manifest.version);
+  assert.equal(audit.runtime?.workflowRevision, 1);
+  console.log("Installed CLI aliases, runtime identity, and audit passed.");
 
   await cp(join(repoRoot, "tests", "fixtures", "packed-package", "consumer.ts"), join(consumer, "consumer.ts"));
   await writeFile(join(consumer, "tsconfig.json"), JSON.stringify({

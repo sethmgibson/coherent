@@ -35,10 +35,11 @@ A high-confidence dead-code deletion can outrank a higher-severity semantic issu
 
 ## Setup
 
-1. If `.coherent/ARCHITECTURE.md` exists, read it before changing structure. If only `.backend/` exists, rename it to `.coherent/`.
-2. Load only the playbook that owns this request. The Commands table is the index.
-3. Prefer `coherent <command>` for mechanical work. When the CLI is installed as a project dependency, use `pnpm coherent <command>`. `backend` remains a compatibility alias.
-4. When adopting Coherent, read [reference/install.md](reference/install.md) before adding the CLI dependency. Check private-repository access in CI and containers first. Prefer the installed package's canonical skill when a global copy differs; do not mix workflow versions or create redundant editor copies.
+1. Read [reference/runtime.md](reference/runtime.md) and run its compatibility command with the exact CLI that will perform the work. If the command is missing or reports a mismatch, stop before scanning or writing reviews; align the skill and CLI first.
+2. If `.coherent/ARCHITECTURE.md` exists, read it before changing structure. If only `.backend/` exists, rename it to `.coherent/`.
+3. Load only the playbook that owns this request. The Commands table is the index.
+4. Prefer `coherent <command>` for mechanical work. When the CLI is installed as a project dependency, use `pnpm coherent <command>`. `backend` remains a compatibility alias.
+5. When adopting Coherent, read [reference/install.md](reference/install.md) before adding the CLI dependency. Check private-repository access in CI and containers first. Prefer the installed package's canonical skill when a global copy differs; do not mix workflow versions or create redundant editor copies.
 
 ## Before adding anything
 
@@ -64,6 +65,7 @@ missing evidence or prerequisite and when to reconsider.
 
 | Command | What it does | Reference |
 |---|---|---|
+| `version` | Identify the exact runtime and fail closed on skill/CLI incompatibility | [reference/runtime.md](reference/runtime.md) |
 | `init` | Inventory the repo and write durable `.coherent/ARCHITECTURE.md` | [reference/init.md](reference/init.md), [reference/architecture-analysis.md](reference/architecture-analysis.md) |
 | `refresh` | Update fenced discovered architecture facts only | [reference/init.md](reference/init.md) |
 | `audit` | Read-only deterministic scan plus agent semantic investigation | [reference/audit.md](reference/audit.md), [reference/semantic-audits.md](reference/semantic-audits.md) |
@@ -75,7 +77,7 @@ missing evidence or prerequisite and when to reconsider.
 | `check` | Compare a fresh audit to the baseline; `--changed` scopes to the git diff | [reference/check.md](reference/check.md), [reference/prevention.md](reference/prevention.md) |
 | `install` | Install only explicitly selected Cursor or Git integrations; Codex skill discovery is handled by the standard skill installer or `.agents/skills` | [reference/install.md](reference/install.md) |
 | `update` | Refresh those copied files without overwriting user edits | [reference/install.md](reference/install.md) |
-| `doctor` | Read-only state check; use `--deep` when current-finding review validation is needed | [reference/semantic-audits.md](reference/semantic-audits.md) |
+| `doctor` | Read-only worktree, staged-index, or Git-ref state check; use `--deep` when current-finding review validation is needed | [reference/semantic-audits.md](reference/semantic-audits.md) |
 
 Rule playbooks, when present: [reference/rules/](reference/rules/).
 

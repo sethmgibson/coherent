@@ -80,12 +80,54 @@ describe("CLI", () => {
     expect(result).toEqual({ stdout: `${packageJson.version}\n`, stderr: "", code: 0 });
   });
 
+  it("reports runtime identity and rejects incompatible skill requirements", async () => {
+    const root = await mkdtemp(join(tmpdir(), "coherent-runtime-cli-"));
+    try {
+      await writeFile(
+        join(root, "pnpm-lock.yaml"),
+        "coherent:\n  version: https://codeload.github.com/sethmgibson/coherent/tar.gz/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n",
+      );
+      const result = await runCli(["version", root, "--json"]);
+      expect(result.code).toBe(0);
+      const report = JSON.parse(result.stdout) as {
+        runtime: {
+          coherentVersion: string;
+          workflowRevision: number;
+          detectorRevision: number;
+          packageRoot: string;
+          declaredRevision?: string;
+          capabilities: string[];
+        };
+        compatible: boolean;
+      };
+      expect(report.compatible).toBe(true);
+      expect(report.runtime).toMatchObject({
+        coherentVersion: "0.2.0",
+        workflowRevision: 1,
+        packageRoot: repoRoot,
+        declaredRevision: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      });
+      expect(report.runtime.detectorRevision).toEqual(expect.any(Number));
+      expect(report.runtime.capabilities).toContain("doctor-staged");
+
+      const mismatch = await runCli([
+        "version", root, "--json", "--expect-detector", "999",
+        "--require-capability", "missing-capability",
+      ]);
+      expect(mismatch.code).toBe(1);
+      expect(JSON.parse(mismatch.stdout)).toMatchObject({ compatible: false });
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
   it("runs install and update without creating files when no integration is selected", async () => {
     const root = await mkdtemp(join(tmpdir(), "coherent-cli-no-integration-"));
     try {
       for (const command of ["install", "update"]) {
         const result = await runCli([command, root]);
         expect(result.code).toBe(0);
+        if (command === "update") expect(result.stdout).toContain("does not update the Coherent CLI package");
         expect(await readdir(root)).toEqual([]);
       }
     } finally {
@@ -140,7 +182,10 @@ describe("CLI", () => {
       const result = await runCli(["inspect", root, "--json"]);
       expect(result.code).toBe(0);
       const inspection = JSON.parse(result.stdout) as {
+        runtime: { workflowRevision: number };
+        terminalState: string;
         audit: {
+          runtime: { detectorRevision: number };
           summary: { total: number };
           findings: Array<{ fingerprint: string }>;
           candidates?: unknown;
@@ -152,6 +197,10 @@ describe("CLI", () => {
         nextNode: { id: string } | null;
       };
       expect(inspection.audit.findings).toHaveLength(inspection.audit.summary.total);
+      expect(inspection.runtime.workflowRevision).toBe(1);
+      expect(inspection.terminalState).toEqual(expect.any(String));
+      expect(inspection.audit.runtime.detectorRevision).toEqual(expect.any(Number));
+      expect(inspection.plan).toHaveProperty("terminalState");
       expect(inspection.audit.candidates).toBeUndefined();
       expect(inspection.plan.reviewSummary?.detected).toBe(
         inspection.audit.summary.total,
@@ -298,6 +347,8 @@ describe("CLI", () => {
       expect(doctor.stdout).toMatch(/Coherent doctor/);
       const doctorHelp = await runCli(["doctor", "--help"]);
       expect(doctorHelp.stdout).toContain("--deep");
+      expect(doctorHelp.stdout).toContain("--staged");
+      expect(doctorHelp.stdout).toContain("--ref");
     } finally {
       await rm(root, { recursive: true, force: true });
     }
@@ -343,6 +394,7 @@ describe("CLI", () => {
         await readFile(join(root, output), "utf8"),
       );
       expect(findings).toHaveProperty("findings", expect.any(Array));
+      expect(findings).toHaveProperty("runtime.workflowRevision", 1);
     } finally {
       await rm(root, { recursive: true, force: true });
     }
@@ -355,6 +407,7 @@ describe("CLI", () => {
       const result = await runCli(["audit", root, "--compact-json"]);
       expect(result.code).toBe(0);
       const compact = JSON.parse(result.stdout) as {
+        runtime: { workflowRevision: number };
         summary: {
           total: number;
           confirmed: number;
@@ -373,6 +426,7 @@ describe("CLI", () => {
         metrics?: unknown;
       };
       expect(compact.findings).toHaveLength(compact.summary.total);
+      expect(compact.runtime.workflowRevision).toBe(1);
       expect(compact.summary.confirmed + compact.summary.candidates).toBe(
         compact.summary.total,
       );

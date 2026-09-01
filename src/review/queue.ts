@@ -1,9 +1,10 @@
 import { resolve } from "node:path";
 import { runAudit } from "../audit/run.js";
 import type { Finding } from "../domain/finding.js";
-import { matchReview, requiresAgentReview } from "./apply.js";
+import { findingReviewState, matchReview } from "./apply.js";
 import { readDecisions } from "./store.js";
 import type { FindingReview, ReviewDecision } from "./types.js";
+import { portableRuntimeIdentity, renderRuntimeIdentity, type PortableRuntimeIdentity } from "../runtime.js";
 
 export type ReviewQueueState = "unreviewed" | "deferred" | "ready" | "dismissed";
 
@@ -25,10 +26,14 @@ export interface ReviewQueueGroup {
   id: string;
   ruleId: Finding["ruleId"];
   state: ReviewQueueState;
+  total: number;
+  shown: number;
+  truncated: boolean;
   items: ReviewQueueItem[];
 }
 
 export interface ReviewQueue {
+  runtime: PortableRuntimeIdentity;
   groups: ReviewQueueGroup[];
   counts: Record<ReviewQueueState, number>;
 }
@@ -43,6 +48,10 @@ export async function runReviewQueue(
   root: string,
   options: ReviewQueueOptions = {},
 ): Promise<ReviewQueue> {
+  const limit = options.limit ?? 8;
+  if (!Number.isInteger(limit) || limit < 0) {
+    throw new Error("review queue --limit must be a non-negative integer");
+  }
   const resolved = resolve(root);
   const [audit, decisions] = await Promise.all([
     runAudit(resolved),
@@ -55,19 +64,20 @@ export async function runReviewQueue(
     if (options.state && options.state !== "all" && item.state !== options.state) return false;
     return true;
   });
-  const groups = groupItems(filtered, options.limit ?? 8);
+  const groups = groupItems(filtered, limit);
   const counts = {
     unreviewed: items.filter((item) => item.state === "unreviewed").length,
     deferred: items.filter((item) => item.state === "deferred").length,
     ready: items.filter((item) => item.state === "ready").length,
     dismissed: items.filter((item) => item.state === "dismissed").length,
   };
-  return { groups, counts };
+  return { runtime: portableRuntimeIdentity(), groups, counts };
 }
 
 export function renderReviewQueue(queue: ReviewQueue): string {
   const lines = [
     "Coherent review queue",
+    renderRuntimeIdentity(queue.runtime),
     `Unreviewed: ${queue.counts.unreviewed}  Deferred: ${queue.counts.deferred}  Ready: ${queue.counts.ready}  Dismissed: ${queue.counts.dismissed}`,
     "",
   ];
@@ -76,7 +86,8 @@ export function renderReviewQueue(queue: ReviewQueue): string {
     return `${lines.join("\n")}\n`;
   }
   for (const group of queue.groups) {
-    lines.push(`${group.state.toUpperCase()}  ${group.ruleId}  ${group.items.length} item(s)`);
+    const shown = group.truncated ? `; showing ${group.shown}` : "";
+    lines.push(`${group.state.toUpperCase()}  ${group.ruleId}  ${group.total} item(s)${shown}`);
     for (const item of group.items) {
       lines.push(`  ${item.fingerprint}`);
       lines.push(`    ${item.title}  ${item.identity}`);
@@ -95,7 +106,7 @@ export function renderReviewQueue(queue: ReviewQueue): string {
 
 function toItem(finding: Finding, review: FindingReview | undefined): ReviewQueueItem {
   return {
-    state: itemState(finding, review),
+    state: findingReviewState(finding, review),
     fingerprint: finding.fingerprint,
     ruleId: finding.ruleId,
     identity: finding.identity,
@@ -107,13 +118,6 @@ function toItem(finding: Finding, review: FindingReview | undefined): ReviewQueu
     ...(review?.missingEvidence ? { missingEvidence: review.missingEvidence } : {}),
     ...(review?.reconsiderWhen ? { reconsiderWhen: review.reconsiderWhen } : {}),
   };
-}
-
-function itemState(finding: Finding, review: FindingReview | undefined): ReviewQueueState {
-  if (review?.decision === "dismissed") return "dismissed";
-  if (review?.decision === "deferred") return "deferred";
-  if (review?.decision === "confirmed" || !requiresAgentReview(finding)) return "ready";
-  return "unreviewed";
 }
 
 function groupItems(items: ReviewQueueItem[], limit: number): ReviewQueueGroup[] {
@@ -128,6 +132,9 @@ function groupItems(items: ReviewQueueItem[], limit: number): ReviewQueueGroup[]
     id,
     ruleId: group[0]!.ruleId,
     state: group[0]!.state,
+    total: group.length,
+    shown: Math.min(group.length, limit),
+    truncated: group.length > limit,
     items: group.slice(0, limit),
   }));
 }

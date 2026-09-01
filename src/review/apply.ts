@@ -4,6 +4,12 @@ import { reviewLifecycleState } from "./lifecycle.js";
 import type { FindingReview, MergedFindings } from "./types.js";
 
 export type ReviewMatch = "applied" | "stale" | "orphan";
+export type AppliedReviewKind = "exact" | "identity";
+
+export interface AppliedFindingReview {
+  review: FindingReview;
+  kind: AppliedReviewKind;
+}
 
 export function applyReviews(
   mechanical: Finding[],
@@ -41,10 +47,20 @@ export function matchReview(
   reviews: FindingReview[],
   peers: readonly Finding[] = [],
 ): FindingReview | undefined {
+  return matchReviewDetails(finding, reviews, peers)?.review;
+}
+
+export function matchReviewDetails(
+  finding: Finding,
+  reviews: FindingReview[],
+  peers: readonly Finding[] = [],
+  options: { allowIdentityFallback?: boolean } = {},
+): AppliedFindingReview | undefined {
   const exact = reviews.find((review) => review.fingerprint === finding.fingerprint);
   if (exact) {
-    return reviewApplies(finding, exact) ? exact : undefined;
+    return reviewApplies(finding, exact) ? { review: exact, kind: "exact" } : undefined;
   }
+  if (options.allowIdentityFallback === false) return undefined;
   const fallback = reviews.filter(
     (review) =>
       sameIdentity(review, finding) &&
@@ -53,7 +69,19 @@ export function matchReview(
   );
   if (fallback.length !== 1) return undefined;
   if (ambiguousIdentity(finding, peers)) return undefined;
-  return fallback[0];
+  return { review: fallback[0]!, kind: "identity" };
+}
+
+export function hasPotentialIdentityReview(
+  finding: Finding,
+  reviews: FindingReview[],
+): boolean {
+  return reviews.some(
+    (review) =>
+      sameIdentity(review, finding) &&
+      hasCurrentDetectorRevision(review) &&
+      reviewLifecycleState(review) === "current",
+  );
 }
 
 export function hasCurrentDetectorRevision(review: FindingReview): boolean {
@@ -100,6 +128,18 @@ function ambiguousIdentity(finding: Finding, peers: readonly Finding[]): boolean
 
 export function requiresAgentReview(finding: Finding): boolean {
   return finding.status === "candidate" || finding.detectionMode !== "deterministic";
+}
+
+export type FindingReviewState = "unreviewed" | "deferred" | "ready" | "dismissed";
+
+export function findingReviewState(
+  finding: Finding,
+  review: FindingReview | undefined,
+): FindingReviewState {
+  if (review?.decision === "dismissed") return "dismissed";
+  if (review?.decision === "deferred") return "deferred";
+  if (review?.decision === "confirmed" || !requiresAgentReview(finding)) return "ready";
+  return "unreviewed";
 }
 
 function applyConfirm(finding: Finding, review: FindingReview): Finding {

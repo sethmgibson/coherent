@@ -15,8 +15,10 @@ import { classifyReview, hasCurrentDetectorRevision } from "../review/apply.js";
 import { reviewLifecycleState } from "../review/lifecycle.js";
 import { readDecisions } from "../review/store.js";
 import type { DoctorIssue, DoctorResult } from "./types.js";
+import { runtimeIdentity } from "../runtime.js";
+import { withDoctorSnapshot, type DoctorSnapshotOptions } from "./snapshot.js";
 
-export interface DoctorOptions {
+export interface DoctorOptions extends DoctorSnapshotOptions {
   deep?: boolean;
 }
 
@@ -24,12 +26,21 @@ export async function runDoctor(
   root: string,
   options: DoctorOptions = {},
 ): Promise<DoctorResult> {
-  const issues: DoctorIssue[] = [];
-  checkLegacyStateDir(root, issues);
-  await checkArchitecture(root, issues);
-  const baselineFingerprints = await checkBaseline(root, issues);
-  await checkDecisions(root, issues, options.deep === true, baselineFingerprints);
-  return { issues, ok: issues.length === 0 };
+  return withDoctorSnapshot(root, options, async (snapshotRoot, target) => {
+    const issues: DoctorIssue[] = [];
+    checkLegacyStateDir(snapshotRoot, issues);
+    await checkArchitecture(snapshotRoot, issues);
+    const baseline = await checkBaseline(snapshotRoot, issues);
+    await checkDecisions(
+      snapshotRoot,
+      issues,
+      options.deep === true,
+      baseline.fingerprints,
+      baseline.detectorRevision,
+    );
+    const runtime = await runtimeIdentity(snapshotRoot);
+    return { runtime, target, issues, ok: issues.length === 0 };
+  });
 }
 
 function checkLegacyStateDir(root: string, issues: DoctorIssue[]): void {
@@ -76,10 +87,13 @@ async function checkArchitecture(root: string, issues: DoctorIssue[]): Promise<v
   }
 }
 
-async function checkBaseline(root: string, issues: DoctorIssue[]): Promise<Set<string>> {
+async function checkBaseline(
+  root: string,
+  issues: DoctorIssue[],
+): Promise<{ fingerprints: Set<string>; detectorRevision?: number }> {
   try {
     const raw = await readBaseline(root);
-    if (!raw) return new Set();
+    if (!raw) return { fingerprints: new Set() };
     const stale = isBaselineStale(raw) || raw.schemaVersion === undefined;
     if (stale) {
       issues.push({
@@ -95,13 +109,16 @@ async function checkBaseline(root: string, issues: DoctorIssue[]): Promise<Set<s
     }
     const fingerprints = raw.findings.map((entry) => entry.fingerprint);
     reportDuplicates(fingerprints, "baseline.json", issues);
-    return stale ? new Set() : new Set(fingerprints);
+    return {
+      fingerprints: stale ? new Set() : new Set(fingerprints),
+      detectorRevision: raw.detectorRevision,
+    };
   } catch (error) {
     issues.push({
       code: "invalid-baseline",
       message: error instanceof Error ? error.message : "Invalid baseline.json",
     });
-    return new Set();
+    return { fingerprints: new Set() };
   }
 }
 
@@ -110,6 +127,7 @@ async function checkDecisions(
   issues: DoctorIssue[],
   deep: boolean,
   baselineFingerprints: ReadonlySet<string>,
+  baselineDetectorRevision?: number,
 ): Promise<void> {
   try {
     const decisions = await readDecisions(root);
@@ -122,6 +140,12 @@ async function checkDecisions(
       decisions.findings
         .filter((finding) => finding.detectionMode === "semantic")
         .map((finding) => finding.fingerprint),
+    );
+    reportStateVersionSkew(
+      decisions.reviews,
+      semanticFingerprints,
+      baselineDetectorRevision,
+      issues,
     );
     const stale = new Set<string>();
     for (const review of decisions.reviews) {
@@ -158,6 +182,27 @@ async function checkDecisions(
       message: error instanceof Error ? error.message : "Invalid decisions.json",
     });
   }
+}
+
+function reportStateVersionSkew(
+  reviews: Awaited<ReturnType<typeof readDecisions>>["reviews"],
+  semanticFingerprints: ReadonlySet<string>,
+  baselineDetectorRevision: number | undefined,
+  issues: DoctorIssue[],
+): void {
+  if (baselineDetectorRevision === undefined) return;
+  const mismatched = reviews.filter(
+    (review) =>
+      !semanticFingerprints.has(review.fingerprint) &&
+      review.detectorRevision !== undefined &&
+      review.detectorRevision !== baselineDetectorRevision,
+  );
+  if (mismatched.length === 0) return;
+  const revisions = [...new Set(mismatched.map((review) => review.detectorRevision))].sort();
+  issues.push({
+    code: "state-version-skew",
+    message: `${mismatched.length} mechanical or hybrid review(s) use detector revision ${revisions.join(", ")} while baseline.json uses revision ${baselineDetectorRevision}. Commit the CLI lock, baseline, and decisions as one compatible state before trusting this snapshot.`,
+  });
 }
 
 function reportLifecycleReview(

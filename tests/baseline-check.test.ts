@@ -6,9 +6,10 @@ import { describe, expect, it } from "vitest";
 import { DETECTOR_REVISION, FINGERPRINT_VERSION } from "../src/config.js";
 import { runAudit } from "../src/audit/run.js";
 import { readBaseline, runBaseline } from "../src/baseline/run.js";
-import { runCheck } from "../src/check/run.js";
+import { renderCheck, runCheck } from "../src/check/run.js";
 import { fingerprintFinding } from "../src/domain/finding.js";
 import { scannerFixture } from "./helpers/audit-fixture.js";
+import { runReview } from "../src/review/run.js";
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -78,6 +79,48 @@ describe("fingerprints, baseline, and check", () => {
       baseline.detectorRevision = 99;
       await writeFile(path, `${JSON.stringify(baseline, null, 2)}\n`, "utf8");
       await expect(runCheck(root)).rejects.toThrow(/Re-run `coherent baseline`/);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it("reports baseline drift and review disposition as separate states", async () => {
+    const root = await mkdtemp(join(tmpdir(), "coherent-check-reviewed-"));
+    await cp(scannerFixture, root, { recursive: true });
+    try {
+      const baseline = await runBaseline(root);
+      const target = baseline.audit.findings.find(
+        (finding) => finding.ruleId === "A08" && finding.status === "candidate",
+      );
+      expect(target).toBeDefined();
+      await runReview(
+        root,
+        "dismissed",
+        target!.fingerprint,
+        "Intentional public or test support surface verified during review.",
+      );
+      const raw = JSON.parse(await readFile(baseline.baselinePath, "utf8")) as {
+        findings: Array<{ fingerprint: string }>;
+      };
+      raw.findings = raw.findings.filter(
+        (finding) => finding.fingerprint !== target!.fingerprint,
+      );
+      await writeFile(baseline.baselinePath, `${JSON.stringify(raw, null, 2)}\n`);
+
+      const result = await runCheck(root);
+      const reviewed = result.newFindings.find(
+        (finding) => finding.fingerprint === target!.fingerprint,
+      );
+      expect(reviewed).toMatchObject({
+        kind: "NEW",
+        reviewState: "dismissed",
+        reviewDecision: "dismissed",
+        reviewMatch: "exact",
+      });
+      expect(result.reviewSummary.dismissed).toBe(1);
+      expect(result.gateStatus).toBe("passed");
+      expect(result.driftStatus).toBe("present");
+      expect(renderCheck(result)).toMatch(/Gate: PASSED\s+Drift: PRESENT/);
     } finally {
       await rm(root, { recursive: true, force: true });
     }

@@ -1,6 +1,6 @@
 {
   "name": "coherent",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Impeccable-style maintainability tooling for backend and large AI-built codebases.",
   "type": "module",
   "license": "MIT",
@@ -30,7 +30,7 @@
     "lint": "eslint . --max-warnings 0",
     "test": "vitest run",
     "generate:skill-docs": "tsx scripts/generate-skill-docs.ts",
-    "check:skill-docs": "pnpm generate:skill-docs && git diff --exit-code -- skills/coherent/reference/taxonomy.md skills/coherent/reference/cleanup-phases.md",
+    "check:skill-docs": "pnpm generate:skill-docs && git diff --exit-code -- skills/coherent/reference/taxonomy.md skills/coherent/reference/cleanup-phases.md skills/coherent/reference/runtime.md",
     "check:unique-fingerprints": "tsx scripts/check-unique-fingerprints.ts",
     "check:dependencies": "knip --dependencies && knip --dependencies --production --strict",
     "check:security": "pnpm audit --audit-level high",

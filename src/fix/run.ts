@@ -4,6 +4,7 @@ import type { Finding } from "../domain/finding.js";
 import { runPlan } from "../plan/run.js";
 import type { CleanupNode, CleanupPlan } from "../plan/types.js";
 import { selectNextNode } from "./select.js";
+import { renderRuntimeIdentity } from "../runtime.js";
 
 export interface FixNextResult {
   plan: CleanupPlan;
@@ -22,22 +23,42 @@ export function findingsForNode(node: CleanupNode | undefined, findings: Finding
   return findings.filter((finding) => fingerprints.has(finding.fingerprint));
 }
 
-export function renderFixNext(result: FixNextResult): string {
+export function renderFixNext(
+  result: FixNextResult,
+  options: { includeRuntime?: boolean } = {},
+): string {
+  const header = [
+    "Coherent fix next",
+    ...(options.includeRuntime === false ? [] : [renderRuntimeIdentity(result.plan.runtime)]),
+    "",
+  ].join("\n");
   if (!result.node) {
-    if (result.plan.nodes.length === 0) {
-      return "Coherent fix next\n\nNo cleanup nodes. Reviewed plan is clean.\n";
+    if (result.plan.terminalState === "clean") {
+      return `${header}No cleanup nodes. Reviewed plan is clean.\n`;
     }
-    return "Coherent fix next\n\nNo unlocked cleanup node. Remaining nodes need review or are blocked.\nUse `coherent inspect --json` to review evidence, then confirm, dismiss, or defer. The repository is not clean.\n";
+    if (result.plan.terminalState === "deferred_only") {
+      return `${header}No unlocked cleanup node. All remaining work is explicitly deferred.\nReport the missing evidence and reconsideration conditions; fix next will not select deferred work.\n`;
+    }
+    return `${header}No unlocked cleanup node. Remaining nodes need review or are blocked.\nUse \`coherent inspect --json\` to review evidence, then confirm, dismiss, or defer. The repository is not clean.\n`;
   }
-  return `${workBrief(result.node, result.findings)}\n`;
+  return `${workBrief(
+    result.node,
+    result.findings,
+    options.includeRuntime === false ? undefined : result.plan.runtime,
+  )}\n`;
 }
 
-function workBrief(node: CleanupNode, findings: Finding[]): string {
+function workBrief(
+  node: CleanupNode,
+  findings: Finding[],
+  runtime?: CleanupPlan["runtime"],
+): string {
   const findingNames = node.ruleIds.map((id) => RULES_BY_ID[id].title);
   const rescanNames = node.rescanAfter.map((id) => RULES_BY_ID[id].title);
   const phase = PHASES_BY_ID[node.defaultPhase];
   return [
     "Coherent fix next — one bounded cleanup node",
+    ...(runtime ? [renderRuntimeIdentity(runtime)] : []),
     "",
     `Work item: ${node.title}`,
     `Finding types: ${findingNames.join(", ")}`,

@@ -1,17 +1,5 @@
-import { existsSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
-
-export function packageRoot(): string {
-  let dir = dirname(fileURLToPath(import.meta.url));
-  for (let i = 0; i < 8; i += 1) {
-    if (existsSync(join(dir, "skills", "coherent", "SKILL.md"))) return dir;
-    const parent = dirname(dir);
-    if (parent === dir) break;
-    dir = parent;
-  }
-  throw new Error("Could not find the Coherent package (skills/coherent is missing).");
-}
+import { join } from "node:path";
+export { packageRoot } from "../runtime.js";
 
 export function adapterSkillPath(pkgRoot: string): string {
   return join(pkgRoot, "skills", "coherent", "adapters", "cursor", "skill-template.md");

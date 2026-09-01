@@ -6,12 +6,15 @@ default for ordinary feature work.
 
 ## Prepare
 
-1. Read `.coherent/ARCHITECTURE.md`; run `coherent init` only when it is absent.
-2. Run `coherent doctor`, then `coherent inspect`. Use `inspect --json` when
+1. Run the exact compatibility command in [runtime.md](runtime.md). Stop on a
+   missing command, revision mismatch, missing capability, or unexpected
+   package/lock revision. Do not continue with a newer skill and older CLI.
+2. Read `.coherent/ARCHITECTURE.md`; run `coherent init` only when it is absent.
+3. Run `coherent doctor`, then `coherent inspect`. Use `inspect --json` when
    complete finding evidence is needed for review.
-3. Apply the compact [semantic triage](semantic-triage.md) once. A zero-node
+4. Apply the compact [semantic triage](semantic-triage.md) once. A zero-node
    mechanical plan does not prove that rules without detectors are clean.
-4. Create a baseline only when it is missing, stale, or the user intentionally
+5. Create a baseline only when it is missing, stale, or the user intentionally
    wants to reset the comparison point. An equivalent baseline is left
    byte-for-byte unchanged.
 
@@ -79,6 +82,13 @@ typecheck, build, skill-doc consistency, and fingerprint uniqueness).
 `check: NEW 0` reports drift against the baseline, not correct behavior or
 completed semantic review. `doctor` verifies Coherent state, not application
 health. Report which normal validation gates passed, failed, or were not run.
+
+Before committing, stage the intended artifact and run `coherent doctor
+--staged --deep`. After committing, run `coherent doctor --ref HEAD --deep` if
+the commit includes Coherent decisions, a baseline, or a CLI dependency
+change. A dirty-worktree doctor pass is not proof that the selected commit is
+valid. Treat the CLI lock, detector-version baseline, and mechanical/hybrid
+decisions as coupled state; do not split incompatible revisions across commits.
 
 Do not run `install` or `update` during cleanup unless the user explicitly
 selected an optional Cursor or Git integration.

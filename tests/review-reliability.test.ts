@@ -300,8 +300,9 @@ describe("review persistence and identity", () => {
     const merged = applyReviews([target], [deferredReview], []);
     expect(merged.needsReview.has(target.fingerprint)).toBe(false);
     expect(merged.deferred.has(target.fingerprint)).toBe(true);
-    const plan = buildPlan(".", merged.findings, { ...merged, reviews: [deferredReview] });
-    expect(plan.nodes[0]?.state).toBe("deferred");
+      const plan = buildPlan(".", merged.findings, { ...merged, reviews: [deferredReview] });
+      expect(plan.nodes[0]?.state).toBe("deferred");
+      expect(plan.terminalState).toBe("deferred_only");
     const rendered = renderPlan(plan);
     expect(rendered).toMatch(/DEFERRED/);
     expect(rendered).not.toMatch(/NEEDS REVIEW/);
@@ -319,6 +320,11 @@ describe("review queue", () => {
       const unreviewed = finding({
         ruleId: "A01",
         identity: "fossil:Open",
+        detectionMode: "semantic",
+      });
+      const unreviewedPeer = finding({
+        ruleId: "A01",
+        identity: "fossil:Second",
         detectionMode: "semantic",
       });
       const deferred = finding({
@@ -343,15 +349,20 @@ describe("review queue", () => {
             },
             review(ready, "confirmed"),
           ],
-          findings: [unreviewed, deferred, ready],
+          findings: [unreviewed, unreviewedPeer, deferred, ready],
         }, null, 2)}\n`,
       );
-      const queue = await runReviewQueue(root);
+      const queue = await runReviewQueue(root, { limit: 1 });
       expect(queue.counts.unreviewed).toBeGreaterThanOrEqual(1);
       expect(queue.counts.deferred).toBeGreaterThanOrEqual(1);
       expect(queue.counts.ready).toBeGreaterThanOrEqual(1);
       expect(queue.groups.some((group) => group.state === "deferred")).toBe(true);
       expect(queue.groups.some((group) => group.state === "unreviewed")).toBe(true);
+      const group = queue.groups.find(
+        (item) => item.state === "unreviewed" && item.ruleId === "A01",
+      );
+      expect(group).toMatchObject({ total: 2, shown: 1, truncated: true });
+      expect(group?.items).toHaveLength(1);
     } finally {
       await rm(root, { recursive: true, force: true });
     }

@@ -4,7 +4,8 @@ Maintainability guidance and tooling for backend and large AI-built codebases.
 
 Coherent helps a coding agent understand the architecture that is actually in use, find code and concepts that have drifted, choose a safe cleanup order, and keep new work from adding more debt.
 
-> Quick start: install the skill and CLI from your project root, then invoke
+> Quick start: install the skill and CLI from your project root, verify that
+> they describe the same runtime with `coherent version`, then invoke
 > `$coherent init` in Codex or `/coherent init` in Cursor.
 
 ## Install
@@ -66,6 +67,11 @@ next-node selection share the same scan:
 $coherent inspect
 ```
 
+Before a full cleanup, the packaged skill runs a machine-checked `coherent
+version --json` preflight. It stops when the CLI is missing the workflow,
+detector revision, or capabilities required by the skill, and reports the
+resolved package path and lockfile Git revision when available.
+
 - `init` records the repository's living architecture so later work has context.
 - `audit` finds maintainability problems without changing code or writing project files.
 - `fix next` chooses one safe, unblocked cleanup instead of rewriting the repository wholesale.
@@ -106,6 +112,7 @@ Some findings can be proven mechanically. Others require judgment about meaning,
 
 | Command | What it does |
 |---|---|
+| `coherent version` | Identify the exact CLI runtime and verify skill compatibility |
 | `$coherent init` | Inventory the repository and create durable architecture context |
 | `$coherent refresh` | Refresh discovered facts without overwriting confirmed architecture notes |
 | `$coherent audit` | Run deterministic checks and guide semantic investigation |
@@ -115,7 +122,7 @@ Some findings can be proven mechanically. Others require judgment about meaning,
 | `$coherent plan` | Build a dependency-aware cleanup plan |
 | `$coherent fix next` | Select one safe, unblocked cleanup |
 | `$coherent check --changed` | Report new and resolved debt in the current change |
-| `$coherent doctor` | Check project-state integrity quickly; add `--deep` to verify reviews against a fresh audit |
+| `$coherent doctor` | Check worktree integrity; add `--staged` or `--ref HEAD` to validate the exact Git artifact and `--deep` to rescan reviews |
 
 In Codex, mention `$coherent` without a command to get the recommended next
 step. In Cursor, use `/coherent` for the same requests.
@@ -164,9 +171,24 @@ the clean terminal state.
 `--write` only after verifying the preview; baseline-backed resolved reviews
 are preserved automatically while their lifecycle remains current.
 
+Before committing Coherent state, stage the intended files and run `coherent
+doctor --staged --deep`. If the commit changes the CLI dependency, baseline,
+or mechanical/hybrid decisions, validate `coherent doctor --ref HEAD --deep`
+afterward. The lockfile, detector-version baseline, and those decisions are a
+coupled compatibility set; a passing dirty-worktree check is not proof about a
+selected commit.
+
+`check` reports gate status separately from drift and annotates NEW findings as
+ready, unreviewed, deferred, dismissed, or requiring a full scan. Exit code 0
+means the prevention gate passed, not that drift is absent or semantic review
+is complete. `inspect` exposes a separate terminal state so deferred-only work
+cannot be confused with an empty reviewed plan.
+
 TypeScript analysis reads repository tsconfigs, including inherited compiler options, path aliases, and the owning child config in project-reference workspaces. Resolution stays in memory; Coherent does not generate a synthetic tsconfig or cache.
 
 Optional Cursor and Git integrations are also zero-install by default. Select only what you want, for example `coherent install --rule`, `--cursor-hook`, or `--git-hook`; use `--adapter` only when Cursor needs a project-local adapter. Codex discovers repo-scoped skills from `.agents/skills`, so it does not require the Cursor adapter command.
+`coherent update` refreshes only those selected integration files; it does not
+update the CLI dependency or lockfile.
 
 ## Technical details
 

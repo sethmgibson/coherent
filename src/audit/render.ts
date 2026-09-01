@@ -3,6 +3,7 @@ import { RULES_BY_ID } from "../catalog/rules.js";
 import type { Finding } from "../domain/finding.js";
 import { renderMetrics } from "./metrics.js";
 import type { AuditResult } from "./run.js";
+import { renderRuntimeIdentity } from "../runtime.js";
 
 export function renderAudit(result: AuditResult): string {
   const { findings, inventory, durationMs } = result;
@@ -10,6 +11,7 @@ export function renderAudit(result: AuditResult): string {
   const candidates = findings.filter((finding) => finding.status === "candidate");
   const lines = [
     "Coherent audit",
+    renderRuntimeIdentity(result.file.runtime),
     `Root: ${inventory.root}`,
     `Files: ${inventory.fileCount}  Findings: ${findings.length} (${confirmed.length} confirmed, ${candidates.length} candidates)`,
     `Scan: ${formatDuration(durationMs)}`,

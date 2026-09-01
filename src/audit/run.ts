@@ -23,8 +23,10 @@ import type { Metric } from "./metrics.js";
 import { groupFindings } from "../plan/group.js";
 import type { FindingGroup } from "../plan/types.js";
 import { assertUniqueFingerprints, mergeFindingsByFingerprint } from "./dedupe.js";
+import { portableRuntimeIdentity, type PortableRuntimeIdentity } from "../runtime.js";
 
 export interface FindingsFile {
+  runtime: PortableRuntimeIdentity;
   generatedAt: string;
   root: string;
   durationMs: number;
@@ -37,6 +39,7 @@ export interface FindingsFile {
 }
 
 export interface CompactFindingsFile {
+  runtime: PortableRuntimeIdentity;
   generatedAt: string;
   root: string;
   durationMs: number;
@@ -108,6 +111,7 @@ export async function runAudit(
   const architecturePath = join(state.path, ARCHITECTURE_FILE);
   const hasArchitecture = await fileExists(architecturePath);
   const file: FindingsFile = {
+    runtime: portableRuntimeIdentity(),
     generatedAt: new Date().toISOString(),
     root: PORTABLE_ROOT,
     durationMs,
@@ -138,6 +142,7 @@ export function compactFindingsFile(file: FindingsFile): CompactFindingsFile {
     byRule.set(finding.ruleId, counts);
   }
   return {
+    runtime: file.runtime,
     generatedAt: file.generatedAt,
     root: file.root,
     durationMs: file.durationMs,
