@@ -1,14 +1,16 @@
 import { ESLint } from "eslint";
-import { readFile, writeFile } from "node:fs/promises";
+import { spawnSync } from "node:child_process";
+import { rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 import { render as probeRender } from "./eslint-ci-probe.js";
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
+const eslintJs = join(repoRoot, "node_modules", "eslint", "bin", "eslint.js");
 const eslint = new ESLint({ cwd: repoRoot });
 const probePath = join(repoRoot, "tests", "eslint-ci-probe.ts");
-const originalProbe = await readFile(probePath, "utf8");
+const unsafePath = join(repoRoot, "tests", "eslint-ci-probe-unsafe.ts");
 
 const unsafeSource = `
   const unsafe = JSON.parse('{}');
@@ -25,20 +27,25 @@ const unsafeSource = `
   }
 `;
 
-async function lintProbe(source: string) {
-  await writeFile(probePath, source);
-  try {
-    // A fresh ESLint reads the current file. lintText against a different
-    // on-disk AST skips type-aware rules on GitHub Actions Linux.
-    const instance = new ESLint({ cwd: repoRoot });
-    return (await instance.lintFiles([probePath])).flatMap((result) => result.messages);
-  } finally {
-    await writeFile(probePath, originalProbe);
-  }
+function lintFile(filePath: string) {
+  const result = spawnSync(process.execPath, [
+    eslintJs, filePath, "--format", "json", "--max-warnings", "0",
+  ], {
+    cwd: repoRoot,
+    encoding: "utf8",
+    timeout: 30_000,
+    // Vitest's worker NODE_OPTIONS/loader breaks typed lint lib resolution.
+    env: { ...process.env, NODE_OPTIONS: "", NODE_PATH: "" },
+  });
+  if (result.error) throw result.error;
+  const parsed = JSON.parse(result.stdout) as Array<{
+    messages: Array<{ ruleId: string | null; severity: number }>;
+  }>;
+  return parsed.flatMap((file) => file.messages);
 }
 
 afterEach(async () => {
-  await writeFile(probePath, originalProbe);
+  await rm(unsafePath, { force: true });
 });
 
 describe("type-aware ESLint gate", () => {
@@ -52,7 +59,8 @@ describe("type-aware ESLint gate", () => {
   });
 
   it("rejects unsafe code in a project-included TypeScript file", async () => {
-    const messages = await lintProbe(unsafeSource);
+    await writeFile(unsafePath, unsafeSource);
+    const messages = lintFile(unsafePath);
 
     expect(messages.map((message) => message.ruleId)).toEqual(expect.arrayContaining([
       "@typescript-eslint/no-unsafe-assignment",
@@ -71,8 +79,7 @@ describe("type-aware ESLint gate", () => {
 
   it("accepts narrowed unknown values, handled promises, and exhaustive switches", async () => {
     expect(await probeRender("ready")).toBe("Ready");
-    const results = await eslint.lintFiles([probePath]);
-    expect(results.flatMap((result) => result.messages)).toEqual([]);
+    expect(lintFile(probePath)).toEqual([]);
   });
 
   it.each([
