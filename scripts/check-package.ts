@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { cp, mkdir, mkdtemp, readFile, realpath, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readFile, readdir, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, isAbsolute, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -73,6 +73,12 @@ try {
     assert.match(run(binary, ["--help"], consumer), /Usage: coherent/);
   }
   const coherent = join(consumer, "node_modules", ".bin", "coherent");
+  const installHelp = run(coherent, ["install", "--help"], consumer);
+  assert.match(installHelp, /--providers/);
+  assert.match(installHelp, /--scope/);
+  assert.match(installHelp, /--yes/);
+  assert.match(installHelp, /github:sethmgibson\/coherent/);
+  assert.doesNotMatch(installHelp, /npx coherent install/);
   const versionReport = JSON.parse(run(coherent, ["version", consumer, "--json"], consumer)) as {
     runtime: {
       coherentVersion: string;
@@ -108,6 +114,47 @@ try {
   assert.equal(audit.runtime?.coherentVersion, manifest.version);
   assert.equal(audit.runtime?.workflowRevision, 2);
   console.log("Installed CLI aliases, runtime identity, and audit passed.");
+
+  const smoke = join(temporaryRoot, "smoke repo");
+  const smokeHome = join(temporaryRoot, "smoke home");
+  await mkdir(smoke);
+  await mkdir(smokeHome);
+  await writeFile(join(smoke, "package.json"), `${JSON.stringify({ name: "coherent-smoke", private: true }, null, 2)}\n`);
+  run("git", ["init", "-b", "main"], smoke);
+  const smokeEnv = { ...process.env, HOME: smokeHome, NODE_PATH: "", NODE_OPTIONS: "" };
+  const smokeResult = spawnSync("npm", [
+    "exec", "--yes", "--package", tarball, "--",
+    "coherent", "install", smoke, "--providers=codex,cursor", "--scope=project", "--yes",
+  ], {
+    cwd: smoke,
+    encoding: "utf8",
+    timeout: 120_000,
+    maxBuffer: 10 * 1024 * 1024,
+    env: smokeEnv,
+  });
+  if (smokeResult.error || smokeResult.status !== 0) {
+    throw new Error(
+      `npm exec install smoke failed (${smokeResult.status ?? smokeResult.signal})\n${smokeResult.stdout}\n${smokeResult.stderr}`,
+      { cause: smokeResult.error },
+    );
+  }
+  assert.match(smokeResult.stdout, /\$coherent init|\/coherent init/);
+  const smokeSkill = join(smoke, ".agents", "skills", "coherent", "SKILL.md");
+  const smokeTaxonomy = join(smoke, ".agents", "skills", "coherent", "reference", "taxonomy.md");
+  const smokeCursor = join(smoke, ".cursor", "skills", "coherent", "SKILL.md");
+  assert.match(await readFile(smokeSkill, "utf8"), /reference\/taxonomy\.md/);
+  assert.match(await readFile(smokeTaxonomy, "utf8"), /A08/);
+  assert.match(await readFile(smokeCursor, "utf8"), /name: coherent/);
+  const smokeManifest = JSON.parse(await readFile(join(smoke, "package.json"), "utf8")) as {
+    devDependencies?: { coherent?: string };
+  };
+  assert.equal(smokeManifest.devDependencies?.coherent, "github:sethmgibson/coherent");
+  const homeEntries = await readdir(smokeHome);
+  assert.ok(
+    homeEntries.every((name) => name === ".npm" || name === ".local" || name === "Library"),
+    `smoke install wrote unexpected home entries: ${homeEntries.join(", ")}`,
+  );
+  console.log("Documented npm exec install smoke passed in an isolated Git repo.");
 
   await cp(join(repoRoot, "tests", "fixtures", "packed-package", "consumer.ts"), join(consumer, "consumer.ts"));
   await writeFile(join(consumer, "tsconfig.json"), JSON.stringify({

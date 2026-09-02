@@ -69,6 +69,14 @@ function fencesFor(kind: ManagedKind): { open: string; close: string } {
     : { open: ADAPTER_OPEN, close: ADAPTER_CLOSE };
 }
 
+export function looksLikeAdapterSkill(existing: string): boolean {
+  return (
+    existing.includes("<!-- coherent:adapter -->") ||
+    existing.includes("runtime.skillPath") ||
+    existing.includes("../../../skills/coherent/SKILL.md")
+  );
+}
+
 function looksLikeStub(existing: string, kind: ManagedKind): boolean {
   if (kind === "prevention") return false;
   const lines = existing.split("\n").length;

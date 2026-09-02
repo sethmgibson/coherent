@@ -12,4 +12,5 @@ Read that file completely before taking action, then load only the reference it
 names for the requested command. Do not invent a second methodology here.
 
 In Codex, invoke this skill as `$coherent`. The CLI command remains `coherent`.
+Consumer projects should run `npx --yes --package github:sethmgibson/coherent -- coherent install` rather than copying this source-relative adapter.
 <!-- /coherent:adapter -->

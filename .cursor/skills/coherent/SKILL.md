@@ -14,4 +14,6 @@ repair the CLI/skill installation before auditing or writing Coherent state.
 In chat: `/coherent init`, `/coherent refresh`, `/coherent audit`, `/coherent inspect`, `/coherent review`, `/coherent baseline`, `/coherent plan`, `/coherent fix next`, `/coherent check`, `/coherent doctor`, `/coherent install`, `/coherent update`.
 
 `/backend` is a skill alias for the same workflow. CLI: `coherent` (alias `backend`).
+
+Project adoption: `npx --yes --package github:sethmgibson/coherent -- coherent install`.
 <!-- /coherent:adapter -->

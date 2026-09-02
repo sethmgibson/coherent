@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { mkdir, writeFile } from "node:fs/promises";
+import { homedir } from "node:os";
 import { dirname, resolve } from "node:path";
 import { Command } from "commander";
 import { runInit, runRefresh } from "./init/run.js";
@@ -215,30 +216,58 @@ program
 
 program
   .command("install")
-  .description("Install only the explicitly selected optional integrations")
+  .description("Install Codex/Cursor skills and only the explicitly selected optional integrations")
   .argument("[root]", "repository root", ".")
+  .option("--providers <list>", "comma-separated harnesses: codex,cursor")
+  .option("--scope <scope>", "install location: project or global")
+  .option("-y, --yes", "non-interactive defaults (detected or both providers, project scope)", false)
   .option("--adapter", "copy the Cursor skill adapter", false)
   .option("--alias", "copy the legacy /backend Cursor alias", false)
   .option("--rule", "install the Cursor prevention rule", false)
   .option("--cursor-hook", "register the Cursor check --changed hook", false)
   .option("--git-hook", "register the Git pre-commit check --changed hook", false)
+  .addHelpText(
+    "after",
+    "\nThe unscoped npm name \"coherent\" is a different package. From GitHub:\n\n  npx --yes --package github:sethmgibson/coherent -- coherent install\n  npm exec --yes --package github:sethmgibson/coherent -- coherent install\n",
+  )
   .action(async (root: string, options: InstallOptions) => {
-    const result = await runInstall(resolve(root), options);
-    process.stdout.write(renderInstall("Coherent install", result));
+    try {
+      const result = await runInstall(resolve(root), {
+        ...options,
+        home: process.env.HOME ?? homedir(),
+        interactive: Boolean(process.stdin.isTTY && process.stdout.isTTY),
+      });
+      process.stdout.write(renderInstall("Coherent install", result));
+    } catch (error) {
+      console.error(error instanceof Error ? error.message : error);
+      process.exitCode = 1;
+    }
   });
 
 program
   .command("update")
   .description("Refresh selected integrations only; this does not update the CLI package")
   .argument("[root]", "repository root", ".")
+  .option("--providers <list>", "comma-separated harnesses: codex,cursor")
+  .option("--scope <scope>", "install location: project or global")
+  .option("-y, --yes", "non-interactive defaults (detected or both providers, project scope)", false)
   .option("--adapter", "refresh the Cursor skill adapter", false)
   .option("--alias", "refresh the legacy /backend Cursor alias", false)
   .option("--rule", "refresh the Cursor prevention rule", false)
   .option("--cursor-hook", "refresh the Cursor check --changed hook", false)
   .option("--git-hook", "refresh the Git pre-commit check --changed hook", false)
   .action(async (root: string, options: InstallOptions) => {
-    const result = await runUpdate(resolve(root), options);
-    process.stdout.write(renderInstall("Coherent update", result));
+    try {
+      const result = await runUpdate(resolve(root), {
+        ...options,
+        home: process.env.HOME ?? homedir(),
+        interactive: Boolean(process.stdin.isTTY && process.stdout.isTTY),
+      });
+      process.stdout.write(renderInstall("Coherent update", result));
+    } catch (error) {
+      console.error(error instanceof Error ? error.message : error);
+      process.exitCode = 1;
+    }
   });
 
 program

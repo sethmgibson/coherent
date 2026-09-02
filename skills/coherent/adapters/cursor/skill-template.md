@@ -18,5 +18,5 @@ Routing:
 - **Ordinary feature work:** load `reference/prevention.md` beside the canonical skill. Prefer `coherent check --changed` after edits.
 - **Taxonomy:** load `reference/taxonomy.md` beside the canonical skill (generated from `src/catalog/rules.ts`).
 
-If you install a project rule, copy `adapters/cursor/prevention.mdc` rather than rewriting the methodology here.
+Project adoption copies this skill tree with `npx --yes --package github:sethmgibson/coherent -- coherent install`. If you install a project rule, copy `adapters/cursor/prevention.mdc` rather than rewriting the methodology here.
 <!-- /coherent:adapter -->

@@ -4,38 +4,40 @@ Maintainability guidance and tooling for backend and large AI-built codebases.
 
 Coherent helps a coding agent understand the architecture that is actually in use, find code and concepts that have drifted, choose a safe cleanup order, and keep new work from adding more debt.
 
-> Quick start: install the skill and CLI from your project root, verify that
-> they describe the same runtime with `coherent version`, then invoke
-> `$coherent init` in Codex or `/coherent init` in Cursor.
+> Quick start: from your project root run
+> `npx --yes --package github:sethmgibson/coherent -- coherent install`,
+> reload Codex or Cursor, then invoke `$coherent init` or `/coherent init`.
 
 ## Install
 
-Requires Node.js 20+ and pnpm.
-
-Before adding the CLI to a shared project, verify that CI and deployment
-builds can fetch its Git repository. A private repository needs access outside
-your local machine. Without that access, run an existing separate Coherent
-checkout against your project instead of changing its lockfile; see the
-[adoption preflight](skills/coherent/reference/install.md#adoption-preflight).
+Requires Node.js 20+. The unscoped npm name `coherent` is a different package,
+so do not run `npx coherent`. From the project root:
 
 ```bash
-npx skills add sethmgibson/coherent
-pnpm add --save-dev github:sethmgibson/coherent
+npx --yes --package github:sethmgibson/coherent -- coherent install
 ```
 
-With Codex's standard skill installer, point at the canonical skill directory.
-The repository's current default branch is `master`:
+That is the same as `npm exec --yes --package github:sethmgibson/coherent -- coherent install`.
+The installer detects Codex (`.agents`, `.codex`, `~/.codex`, or `codex` on
+`PATH`) and Cursor (`.cursor`, `~/.cursor`, or `cursor` on `PATH`). A TTY asks
+which harnesses to keep and whether to install into the project or globally.
+Scripts can skip prompts:
 
-```text
-$skill-installer install https://github.com/sethmgibson/coherent/tree/master/skills/coherent
+```bash
+npx --yes --package github:sethmgibson/coherent -- coherent install --providers=codex,cursor --scope=project --yes
 ```
 
-Restart your coding tool so it discovers the skill. The core skill follows the
-open agent skills format and works with Codex and Cursor. This repository also
-checks in discovery adapters for both tools: `.agents/skills/coherent` for Codex
-and `.cursor/skills/coherent` for Cursor. Coherent's optional hook and
-project-rule installer currently targets Cursor; the Git hook is
-provider-independent.
+Project scope copies the packaged skill tree (so `reference/` links keep
+working) and records `github:sethmgibson/coherent` as a devDependency specifier.
+Add that Git dependency with your package manager when CI and containers can
+fetch GitHub; see the [adoption preflight](skills/coherent/reference/install.md#adoption-preflight).
+Global scope copies skill files under your home directory and does not put
+the CLI on `PATH`.
+
+Reload Codex or Cursor so it discovers the skill, then run `$coherent init` or
+`/coherent init`. Optional Cursor rules, the `/backend` alias, and
+`check --changed` hooks stay opt-in: `coherent install --rule`, `--alias`,
+`--cursor-hook`, or `--git-hook`.
 
 ## Use it
 
@@ -186,9 +188,12 @@ cannot be confused with an empty reviewed plan.
 
 TypeScript analysis reads repository tsconfigs, including inherited compiler options, path aliases, and the owning child config in project-reference workspaces. Resolution stays in memory; Coherent does not generate a synthetic tsconfig or cache.
 
-Optional Cursor and Git integrations are also zero-install by default. Select only what you want, for example `coherent install --rule`, `--cursor-hook`, or `--git-hook`; use `--adapter` only when Cursor needs a project-local adapter. Codex discovers repo-scoped skills from `.agents/skills`, so it does not require the Cursor adapter command.
-`coherent update` refreshes only those selected integration files; it does not
-update the CLI dependency or lockfile.
+Optional Cursor and Git integrations remain zero-install unless you pass
+`--adapter`, `--alias`, `--rule`, `--cursor-hook`, or `--git-hook`.
+`coherent update` refreshes selected skill copies and those integration files;
+it does not update the CLI dependency or lockfile. A non-TTY `install` or
+`update` without `--yes`, `--providers`, `--scope`, or an integration flag
+writes nothing.
 
 ## Technical details
 
@@ -208,7 +213,11 @@ Coherent stays conservative around dependency injection, decorators, reflection,
 
 ### Current packaging
 
-The skill and CLI currently install separately. The unscoped `coherent` name on npm belongs to another project, so the CLI dependency intentionally uses this GitHub repository until Coherent has a dedicated published package name. A unified installer is the main remaining installation gap compared with [Impeccable](https://github.com/pbakaus/impeccable).
+The unscoped `coherent` name on npm belongs to another project, so the public
+installer and the CLI dependency use this GitHub repository until Coherent has
+a dedicated published package name. The one-command flow is
+`npx --yes --package github:sethmgibson/coherent -- coherent install`, then
+`$coherent init` or `/coherent init` after a reload.
 
 ## Development
 

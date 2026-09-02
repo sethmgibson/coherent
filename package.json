@@ -4,6 +4,10 @@
   "description": "Impeccable-style maintainability tooling for backend and large AI-built codebases.",
   "type": "module",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sethmgibson/coherent.git"
+  },
   "engines": {
     "node": ">=20"
   },
@@ -36,7 +40,7 @@
     "check:security": "pnpm audit --audit-level high",
     "check:package": "tsx scripts/check-package.ts",
     "validate": "pnpm lint && pnpm check:dependencies && pnpm check:security && pnpm test && pnpm typecheck && pnpm check:package && pnpm check:skill-docs && pnpm check:unique-fingerprints",
-    "prepack": "pnpm build"
+    "prepack": "tsc"
   },
   "keywords": [
     "maintainability",

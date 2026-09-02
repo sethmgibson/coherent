@@ -118,6 +118,22 @@ describe("install and update", () => {
     }
   });
 
+  it("skips a malformed Cursor hooks.json without overwriting it", async () => {
+    const root = await mkdtemp(join(tmpdir(), "coherent-hooks-bad-"));
+    try {
+      await mkdir(join(root, ".cursor"), { recursive: true });
+      await writeFile(join(root, ".cursor", "hooks.json"), "{not json", "utf8");
+      const result = await runInstall(root, { cursorHook: true });
+      expect(result.actions.find((action) => action.path === ".cursor/hooks.json")).toMatchObject({
+        action: "skipped",
+        reason: "hooks.json is not valid JSON",
+      });
+      expect(await readFile(join(root, ".cursor", "hooks.json"), "utf8")).toBe("{not json");
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
   it("merges Cursor hooks and writes a git hook only when safe", async () => {
     const root = await mkdtemp(join(tmpdir(), "coherent-hooks-"));
     const clean = await mkdtemp(join(tmpdir(), "coherent-githook-"));
