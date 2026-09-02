@@ -7,11 +7,11 @@ import ast
 import json
 import re
 import sys
-from typing import Any
+from typing import Any, NamedTuple
 
 MEANINGFUL = re.compile(
-    r"(authoriz|auth|validat|map|transform|cache|log|metric|audit|translat|wrap|"
-    r"retr|transaction|lock|hydrat|polic|permission|guard)",
+    r"(authoriz|auth|validat|map|transform|cache|(?<![A-Za-z])log(?:ger|ging)?(?![A-Za-z])|"
+    r"metric|audit|translat|wrap|retr|transaction|lock|hydrat|polic|permission|guard)",
     re.I,
 )
 FLAG_NAME = re.compile(
@@ -45,7 +45,14 @@ NOT_A_FLAG = {
     "result",
     "data",
 }
-LOG_NAME = re.compile(r"(log|logger|print|report|capture|track|metric|warning|exception)", re.I)
+# Identifier tokens only. Substrings such as catalog, login, or
+# fail_item_after_exception must not count as logging.
+LOG_NAME = re.compile(
+    r"(?<![A-Za-z])(?:log(?:ger|ging)?|print)(?![A-Za-z])"
+    r"|(?<![A-Za-z0-9_])(?:report|capture|track|metric)(?![A-Za-z0-9_])"
+    r"|(?<![A-Za-z0-9_])(?:debug|info|warn|warning|error|exception|critical)(?![A-Za-z0-9_])",
+    re.I,
+)
 TEST_DIR = re.compile(r"(^|/)(tests?|__tests__|spec|e2e)(/|$)")
 TEST_FILE = re.compile(r"(^|/)(test_[^/]+\.py|[^/]+_test\.py|conftest\.py)$")
 
@@ -59,6 +66,7 @@ def main() -> int:
         return 0
     findings: list[dict[str, Any]] = []
     syntax_errors: list[dict[str, Any]] = []
+    io_errors: list[dict[str, Any]] = []
     flag_sets: list[dict[str, Any]] = []
     for file in files:
         relative = file["relative"]
@@ -69,7 +77,7 @@ def main() -> int:
             syntax_errors.append(syntax_error(relative, error))
             continue
         except OSError as error:
-            syntax_errors.append(
+            io_errors.append(
                 {
                     "file": relative,
                     "line": 1,
@@ -78,15 +86,12 @@ def main() -> int:
                 }
             )
             continue
-        attach_parents(tree)
-        collect_unreachable(findings, tree, relative, source)
-        if is_test_file(relative):
-            continue
-        collect_wrappers(findings, tree, relative)
-        collect_booleans(findings, flag_sets, tree, relative)
-        collect_exceptions(findings, tree, relative)
+        analyze_tree(findings, flag_sets, tree, relative, source, is_test_file(relative))
     add_boolean_combos(findings, flag_sets)
-    json.dump({"findings": findings, "syntaxErrors": syntax_errors}, sys.stdout)
+    json.dump(
+        {"findings": findings, "syntaxErrors": syntax_errors, "ioErrors": io_errors},
+        sys.stdout,
+    )
     return 0
 
 
@@ -108,16 +113,34 @@ def is_test_file(relative: str) -> bool:
     return bool(TEST_DIR.search(relative) or TEST_FILE.search(relative))
 
 
-def collect_unreachable(
+def analyze_tree(
     findings: list[dict[str, Any]],
+    flag_sets: list[dict[str, Any]],
     tree: ast.AST,
     relative: str,
     source: str,
+    test_file: bool,
 ) -> None:
-    for node in ast.walk(tree):
+    owners = ["anonymous"]
+
+    def visit(node: ast.AST) -> None:
+        function = isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+        if function:
+            if not test_file:
+                consider_wrapper(findings, node, relative)
+                consider_booleans(findings, flag_sets, node, relative)
+            owners.append(node.name)
+        elif isinstance(node, ast.ExceptHandler) and not test_file:
+            classify_except(findings, node, relative, owners[-1])
         for body in statement_blocks(node):
             if body:
                 scan_block(findings, body, relative, source)
+        for child in ast.iter_child_nodes(node):
+            visit(child)
+        if function:
+            owners.pop()
+
+    visit(tree)
 
 
 def statement_blocks(node: ast.AST) -> list[list[ast.stmt]]:
@@ -205,57 +228,84 @@ def is_false_literal(node: ast.AST) -> bool:
     return isinstance(node, ast.Constant) and node.value is False
 
 
-def collect_wrappers(findings: list[dict[str, Any]], tree: ast.AST, relative: str) -> None:
-    for node in ast.walk(tree):
-        if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            continue
-        name = node.name
-        if not name or MEANINGFUL.search(name) or node.decorator_list:
-            continue
-        params = callable_params(node)
-        if not params:
-            continue
-        body = significant_body(node.body)
-        if len(body) != 1:
-            continue
-        call = single_call(body[0])
-        if call is None or not same_arguments(params, call):
-            continue
-        if is_builder_chain(call) or call_is_meaningful(call):
-            continue
-        callee = callee_name(call)
-        findings.append(
-            finding(
-                "B04",
-                f"forwarding:{relative}:{name}",
-                "Forwarding wrapper",
-                "medium",
-                "medium",
-                "candidate",
-                (
-                    f"'{name}' accepts arguments, calls one downstream operation "
-                    "with the same values, and adds no visible domain behavior."
-                ),
-                {
-                    "summary": f"{name} forwards to {callee}.",
-                    "details": [
-                        f"Parameters: {', '.join(params)}",
-                        f"Downstream: {callee}",
-                        "No authorization, validation, mapping, caching, logging, or error translation is visible.",
-                        "Decorators, public exports, and registration are not treated as deletion evidence.",
-                    ],
-                },
-                [location(relative, node, name)],
-                [name, callee],
-            )
+def consider_wrapper(
+    findings: list[dict[str, Any]],
+    node: ast.FunctionDef | ast.AsyncFunctionDef,
+    relative: str,
+) -> None:
+    name = node.name
+    if not name or MEANINGFUL.search(name) or node.decorator_list:
+        return
+    signature = callable_signature(node)
+    if signature.empty():
+        return
+    body = significant_body(node.body)
+    if len(body) != 1:
+        return
+    call = single_call(body[0])
+    if call is None or not same_arguments(signature, call):
+        return
+    if is_builder_chain(call) or call_is_meaningful(call):
+        return
+    callee = callee_name(call)
+    findings.append(
+        finding(
+            "B04",
+            f"forwarding:{relative}:{name}",
+            "Forwarding wrapper",
+            "medium",
+            "medium",
+            "candidate",
+            (
+                f"'{name}' accepts arguments, calls one downstream operation "
+                "with the same values, and adds no visible domain behavior."
+            ),
+            {
+                "summary": f"{name} forwards to {callee}.",
+                "details": [
+                    f"Parameters: {signature.rendered()}",
+                    f"Downstream: {callee}",
+                    "No authorization, validation, mapping, caching, logging, or error translation is visible.",
+                    "Decorators, public exports, and registration are not treated as deletion evidence.",
+                ],
+            },
+            [location(relative, node, name)],
+            [name, callee],
         )
+    )
 
 
-def callable_params(node: ast.FunctionDef | ast.AsyncFunctionDef) -> list[str]:
-    args = [arg.arg for arg in node.args.args]
-    if args and args[0] in {"self", "cls"}:
-        args = args[1:]
-    return args
+class Signature(NamedTuple):
+    positional: tuple[str, ...]
+    vararg: str | None
+    kwonly: tuple[str, ...]
+    kwarg: str | None
+
+    def empty(self) -> bool:
+        return not self.positional and self.vararg is None and not self.kwonly and self.kwarg is None
+
+    def rendered(self) -> str:
+        parts = list(self.positional)
+        if self.vararg:
+            parts.append(f"*{self.vararg}")
+        if self.kwonly:
+            parts.append("*")
+            parts.extend(self.kwonly)
+        if self.kwarg:
+            parts.append(f"**{self.kwarg}")
+        return ", ".join(parts)
+
+
+def callable_signature(node: ast.FunctionDef | ast.AsyncFunctionDef) -> Signature:
+    positional = [arg.arg for arg in (*node.args.posonlyargs, *node.args.args)]
+    if positional and positional[0] in {"self", "cls"}:
+        positional = positional[1:]
+    return Signature(
+        tuple(positional),
+        node.args.vararg.arg if node.args.vararg else None,
+        tuple(arg.arg for arg in node.args.kwonlyargs),
+        node.args.kwarg.arg if node.args.kwarg else None,
+    )
 
 
 def significant_body(body: list[ast.stmt]) -> list[ast.stmt]:
@@ -286,19 +336,62 @@ def single_call(statement: ast.stmt) -> ast.Call | None:
     return expr if isinstance(expr, ast.Call) else None
 
 
-def same_arguments(params: list[str], call: ast.Call) -> bool:
-    if call.keywords:
-        return False
-    args = call.args
-    if len(args) == 1 and isinstance(args[0], ast.Starred) and isinstance(args[0].value, ast.Name):
-        return True
-    if len(args) != len(params):
-        return False
-    for arg, param in zip(args, params):
-        if isinstance(arg, ast.Name) and arg.id == param:
+def same_arguments(signature: Signature, call: ast.Call) -> bool:
+    remaining_pos = list(signature.positional)
+    remaining_kwonly = list(signature.kwonly)
+    saw_varargs = False
+    saw_kwargs = False
+
+    for arg in call.args:
+        if isinstance(arg, ast.Starred):
+            if (
+                saw_varargs
+                or signature.vararg is None
+                or not isinstance(arg.value, ast.Name)
+                or arg.value.id != signature.vararg
+            ):
+                return False
+            saw_varargs = True
             continue
-        if isinstance(arg, ast.Starred) and isinstance(arg.value, ast.Name) and arg.value.id == param:
+        if saw_varargs:
+            return False
+        if isinstance(arg, ast.Name) and remaining_pos and arg.id == remaining_pos[0]:
+            remaining_pos.pop(0)
             continue
+        if isinstance(arg, ast.Name) and arg.id in remaining_kwonly:
+            remaining_kwonly.remove(arg.id)
+            continue
+        return False
+
+    for keyword in call.keywords:
+        if keyword.arg is None:
+            if (
+                saw_kwargs
+                or signature.kwarg is None
+                or not isinstance(keyword.value, ast.Name)
+                or keyword.value.id != signature.kwarg
+            ):
+                return False
+            saw_kwargs = True
+            continue
+        if saw_kwargs:
+            return False
+        if not isinstance(keyword.value, ast.Name) or keyword.value.id != keyword.arg:
+            return False
+        name = keyword.arg
+        if name in remaining_pos:
+            remaining_pos.remove(name)
+            continue
+        if name in remaining_kwonly:
+            remaining_kwonly.remove(name)
+            continue
+        return False
+
+    if remaining_pos or remaining_kwonly:
+        return False
+    if signature.vararg is not None and not saw_varargs:
+        return False
+    if signature.kwarg is not None and not saw_kwargs:
         return False
     return True
 
@@ -323,26 +416,23 @@ def callee_name(call: ast.Call) -> str:
     return ast.unparse(call.func)
 
 
-def collect_booleans(
+def consider_booleans(
     findings: list[dict[str, Any]],
     flag_sets: list[dict[str, Any]],
-    tree: ast.AST,
+    node: ast.FunctionDef | ast.AsyncFunctionDef,
     relative: str,
 ) -> None:
-    for node in ast.walk(tree):
-        if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            continue
-        name = node.name
-        if not name:
-            continue
-        bool_params = [arg.arg for arg in node.args.args if is_bool_param(node, arg)]
-        branched = boolean_branches(node)
-        flags = list(dict.fromkeys([*bool_params, *branched]))
-        flag_sets.append({"name": name, "flags": flags, "file": relative})
-        if len(bool_params) >= 3:
-            findings.append(flag_finding(node, name, relative, bool_params, branched, "boolean-params"))
-        elif len(bool_params) >= 2 and len(branched) >= 3:
-            findings.append(flag_finding(node, name, relative, bool_params, branched, "boolean-branching"))
+    name = node.name
+    if not name:
+        return
+    bool_params = [arg.arg for arg in node.args.args if is_bool_param(node, arg)]
+    branched = boolean_branches(node)
+    flags = list(dict.fromkeys([*bool_params, *branched]))
+    flag_sets.append({"name": name, "flags": flags, "file": relative})
+    if len(bool_params) >= 3:
+        findings.append(flag_finding(node, name, relative, bool_params, branched, "boolean-params"))
+    elif len(bool_params) >= 2 and len(branched) >= 3:
+        findings.append(flag_finding(node, name, relative, bool_params, branched, "boolean-branching"))
 
 
 def is_bool_param(fn: ast.FunctionDef | ast.AsyncFunctionDef, arg: ast.arg) -> bool:
@@ -477,18 +567,15 @@ def add_boolean_combos(findings: list[dict[str, Any]], flag_sets: list[dict[str,
         )
 
 
-def collect_exceptions(findings: list[dict[str, Any]], tree: ast.AST, relative: str) -> None:
-    for node in ast.walk(tree):
-        if not isinstance(node, ast.ExceptHandler):
-            continue
-        classify_except(findings, node, relative)
-
-
-def classify_except(findings: list[dict[str, Any]], handler: ast.ExceptHandler, relative: str) -> None:
+def classify_except(
+    findings: list[dict[str, Any]],
+    handler: ast.ExceptHandler,
+    relative: str,
+    owner: str,
+) -> None:
     body = handler.body
     if except_rethrows(body) or except_translates(body):
         return
-    owner = owner_name(handler)
     logs = has_log_call(body)
     returns = [stmt for stmt in body if isinstance(stmt, ast.Return)]
     return_expr = ast.unparse(returns[0].value) if returns and returns[0].value is not None else None
@@ -603,22 +690,6 @@ def is_log_statement(statement: ast.stmt) -> bool:
     if isinstance(statement, ast.Expr) and isinstance(statement.value, ast.Call):
         return bool(LOG_NAME.search(callee_name(statement.value)))
     return False
-
-
-def owner_name(handler: ast.ExceptHandler) -> str:
-    parent = getattr(handler, "parent", None)
-    current: ast.AST | None = parent
-    while current is not None:
-        if isinstance(current, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            return current.name
-        current = getattr(current, "parent", None)
-    return "anonymous"
-
-
-def attach_parents(tree: ast.AST) -> None:
-    for node in ast.walk(tree):
-        for child in ast.iter_child_nodes(node):
-            setattr(child, "parent", node)
 
 
 def collect_imports(files: list[dict[str, str]]) -> list[dict[str, str]]:

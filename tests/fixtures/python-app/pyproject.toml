@@ -5,3 +5,6 @@ dependencies = [
   "fastapi>=0.115.0",
   "sqlalchemy>=2.0.0",
 ]
+
+[project.scripts]
+python-app = "billing.service:persist_charge"

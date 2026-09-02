@@ -13,13 +13,17 @@ import {
   detectTopLevelModules,
   detectWorkspace,
   extensionOf,
+  isPythonSource,
   mergeDependencies,
   readPackages,
 } from "./inventory-scan.js";
 import {
+  hasPythonMainGuard,
+  isPythonTestFile,
   pythonFrameworks,
   pythonManifestPaths,
   pythonPersistence,
+  pythonScriptEntrypoints,
   readPythonDependencySignals,
 } from "./inventory-python.js";
 import { walkFiles } from "./inventory-walk.js";
@@ -73,15 +77,30 @@ export async function collectInventory(
 
   const packages = await readPackages(root, packageJsonFiles);
   const pythonManifests = pythonManifestPaths(files);
-  const pythonDependencies = await readPythonDependencySignals(root, pythonManifests);
+  const knownPython = new Set(
+    files.filter((file) => isPythonSource(file.relativePath)).map((file) => file.relativePath),
+  );
+  const [pythonDependencies, scriptEntrypoints] = await Promise.all([
+    readPythonDependencySignals(root, pythonManifests),
+    pythonScriptEntrypoints(root, pythonManifests, knownPython),
+  ]);
   const sourceDirectories = detectSourceDirectories(files);
   const { dependencies, devDependencies } = mergeDependencies(packages);
   const allDeps = { ...dependencies, ...devDependencies, ...pythonDependencies };
 
   let lineCount = 0;
+  const mainGuardEntrypoints: string[] = [];
   for (const file of files) {
     if (!SOURCE_EXTENSIONS.has(extensionOf(file.name))) continue;
-    lineCount += countLines(await readFile(file.absolutePath, "utf8"));
+    const text = await readFile(file.absolutePath, "utf8");
+    lineCount += countLines(text);
+    if (
+      isPythonSource(file.relativePath) &&
+      !isPythonTestFile(file.relativePath) &&
+      hasPythonMainGuard(text)
+    ) {
+      mainGuardEntrypoints.push(file.relativePath);
+    }
   }
 
   return {
@@ -94,7 +113,11 @@ export async function collectInventory(
     tsconfigFiles,
     sourceDirectories,
     testDirectories: detectTestDirectories(files),
-    entrypoints: detectEntrypoints(packages, files),
+    entrypoints: uniqueSorted([
+      ...detectEntrypoints(packages, files),
+      ...scriptEntrypoints,
+      ...mainGuardEntrypoints,
+    ]),
     topLevelModules: detectTopLevelModules(files, sourceDirectories),
     packages,
     dependencies,

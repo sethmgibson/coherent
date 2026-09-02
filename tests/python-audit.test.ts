@@ -20,7 +20,11 @@ describe("Python inventory and audit", { timeout: 15_000 }, () => {
     expect(inventory.frameworks).toContain("FastAPI");
     expect(inventory.persistenceLibraries).toContain("sqlalchemy");
     expect(inventory.sourceDirectories).toContain("src");
-    expect(inventory.entrypoints).toEqual(expect.arrayContaining([]));
+    expect(inventory.entrypoints).toEqual([
+      "src/billing/run_job.py",
+      "src/billing/service.py",
+      "src/main.py",
+    ]);
     expect(inventory.fileCount).toBeGreaterThan(5);
     expect(inventory.lineCount).toBeGreaterThan(20);
   });
@@ -69,6 +73,25 @@ describe("Python inventory and audit", { timeout: 15_000 }, () => {
     expect(findingFor(errors, "load_or_translate")).toBeUndefined();
   });
 
+  it("does not treat catalog, login, or exception substrings as logging", async () => {
+    const { findings } = await runAudit(pythonApp);
+    const errors = byRule(findings, "D03");
+    expect(findingFor(errors, "load_from_catalog")?.identity).toMatch(/^swallowed-empty:/);
+    expect(findingFor(errors, "after_named_exception")?.identity).toMatch(/^swallowed-empty:/);
+    expect(findingFor(errors, "login_result")).toBeUndefined();
+    expect(findingFor(errors, "load_or_log_event")?.identity).toMatch(/^log-only:/);
+    expect(errors.every((finding) => !finding.identity.includes("catalog") || finding.identity.startsWith("swallowed-empty:"))).toBe(true);
+  });
+
+  it("treats *args, **kwargs, and keyword-only forwards as the same arguments", async () => {
+    const { findings } = await runAudit(pythonApp);
+    const wrappers = byRule(findings, "B04");
+    expect(findingFor(wrappers, "forward_all")?.status).toBe("candidate");
+    expect(findingFor(wrappers, "forward_kwonly")?.status).toBe("candidate");
+    expect(findingFor(wrappers, "forward_keywords")?.status).toBe("candidate");
+    expect(findingFor(wrappers, "not_star_mismatch")).toBeUndefined();
+  });
+
   it("audits mixed TypeScript and Python files in one scan", async () => {
     const { findings } = await runAudit(mixedApp);
     expect(findingFor(byRule(findings, "A08"), "neverUsedInternal")?.status).toBe("confirmed");
@@ -110,6 +133,23 @@ describe("Python inventory and audit", { timeout: 15_000 }, () => {
       await expect(runAudit(root)).rejects.toThrow(
         /Incomplete analysis: Python files are in scope but no supported interpreter was found[\s\S]*app\.py/,
       );
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it("fails closed on unreadable Python sources without calling them syntax errors", async () => {
+    const root = await mkdtemp(join(tmpdir(), "coherent-py-missing-"));
+    try {
+      await writeFile(join(root, "app.py"), "x = 1\n", "utf8");
+      let message = "";
+      try {
+        await runAudit(root, { include: ["missing.py"] });
+      } catch (error) {
+        message = error instanceof Error ? error.message : String(error);
+      }
+      expect(message).toMatch(/Incomplete analysis: failed to load source file missing\.py/);
+      expect(message).not.toMatch(/Python syntax error/);
     } finally {
       await rm(root, { recursive: true, force: true });
     }

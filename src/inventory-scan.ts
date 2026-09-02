@@ -218,6 +218,8 @@ export function detectEntrypoints(
         dir.endsWith("/src") ||
         file.name === "app.module.ts" ||
         file.name === "manage.py" ||
+        file.name === "wsgi.py" ||
+        file.name === "asgi.py" ||
         file.name === "__main__.py"
       ) {
         found.add(file.relativePath);
@@ -344,7 +346,7 @@ function exportPaths(value: unknown): string[] {
   return paths;
 }
 
-function isTestPath(relativePath: string): boolean {
+export function isTestPath(relativePath: string): boolean {
   return /(^|\/)(tests?|__tests__|spec|e2e)(\/|$)/.test(relativePath);
 }
 

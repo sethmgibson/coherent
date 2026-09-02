@@ -1,4 +1,4 @@
-import { access, readFile } from "node:fs/promises";
+import { access } from "node:fs/promises";
 import { execFile, spawn } from "node:child_process";
 import { join } from "node:path";
 import { promisify } from "node:util";
@@ -41,6 +41,7 @@ interface SidecarFinding {
 interface AnalyzeResponse {
   findings?: SidecarFinding[];
   syntaxErrors?: PythonSyntaxError[];
+  ioErrors?: PythonSyntaxError[];
 }
 
 interface ImportResponse {
@@ -72,19 +73,27 @@ export async function collectPythonFindings(
 ): Promise<Finding[]> {
   const files = await listPythonFiles(root, config, include);
   if (files.length === 0) return [];
-  await assertPythonFilesReadable(files);
+  let interpreter: string;
   try {
-    await resolvePythonInterpreter(config);
+    interpreter = await resolvePythonInterpreter(config);
   } catch (error) {
     throw new Error(
       `${errorMessage(error)} In-scope files: ${files.map((file) => file.relativePath).join(", ")}.`,
       { cause: error },
     );
   }
-  const response = await runSidecar<AnalyzeResponse>(root, config, files, "analyze");
+  const response = await runSidecar<AnalyzeResponse>(root, config, files, "analyze", interpreter);
+  const ioErrors = response.ioErrors ?? [];
   const syntaxErrors = response.syntaxErrors ?? [];
-  if (syntaxErrors.length > 0) {
-    throw new Error(formatSyntaxErrors(syntaxErrors));
+  if (ioErrors.length > 0 || syntaxErrors.length > 0) {
+    throw new Error(
+      [
+        ioErrors.length > 0 ? formatIoErrors(ioErrors) : "",
+        syntaxErrors.length > 0 ? formatSyntaxErrors(syntaxErrors) : "",
+      ]
+        .filter(Boolean)
+        .join(" "),
+    );
   }
   return (response.findings ?? []).map(toFinding);
 }
@@ -149,6 +158,7 @@ async function runSidecar<T>(
   config: CoherentConfig,
   files: WalkedFile[],
   mode: "analyze" | "imports",
+  interpreter?: string,
 ): Promise<T> {
   const analyzer = pythonAnalyzerPath();
   try {
@@ -159,13 +169,13 @@ async function runSidecar<T>(
       { cause: error },
     );
   }
-  const interpreter = await resolvePythonInterpreter(config);
+  const resolvedInterpreter = interpreter ?? await resolvePythonInterpreter(config);
   const payload = JSON.stringify({
     mode,
     files: files.map((file) => ({ path: file.absolutePath, relative: file.relativePath })),
   });
   try {
-    const stdout = await spawnSidecar(interpreter, analyzer, root, payload);
+    const stdout = await spawnSidecar(resolvedInterpreter, analyzer, root, payload);
     return JSON.parse(stdout) as T;
   } catch (error) {
     throw new Error(
@@ -238,19 +248,6 @@ async function interpreterSupported(command: string): Promise<boolean> {
   }
 }
 
-async function assertPythonFilesReadable(files: WalkedFile[]): Promise<void> {
-  for (const file of files) {
-    try {
-      await readFile(file.absolutePath);
-    } catch (error) {
-      throw new Error(
-        `Incomplete analysis: failed to load source file ${file.relativePath}: ${errorMessage(error)}`,
-        { cause: error },
-      );
-    }
-  }
-}
-
 function toFinding(raw: SidecarFinding): Finding {
   return makeFinding({
     ruleId: raw.ruleId,
@@ -268,6 +265,11 @@ function toFinding(raw: SidecarFinding): Finding {
         ? "Low if the statement is truly unreachable; do not treat missing static references as deletion evidence."
         : "Needs semantic review before deletion or consolidation. Dynamic reachability, decorators, exports, __all__, framework registration, reflection, and unknown imports are not deletion evidence.",
   });
+}
+
+function formatIoErrors(errors: PythonSyntaxError[]): string {
+  const details = errors.map((error) => `${error.file}: ${error.message}`);
+  return `Incomplete analysis: failed to load source file ${details.join("; ")}`;
 }
 
 function formatSyntaxErrors(errors: PythonSyntaxError[]): string {
