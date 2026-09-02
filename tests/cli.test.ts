@@ -381,6 +381,7 @@ describe("CLI", () => {
     expect(install.stdout).toContain("--providers");
     expect(install.stdout).toContain("--scope");
     expect(install.stdout).toContain("--yes");
+    expect(install.stdout).toContain("--skills-only");
     expect(install.stdout).toContain("github:sethmgibson/coherent");
     expect(install.stdout).not.toContain("npx coherent install");
     const update = await runCli(["update", "--help"]);

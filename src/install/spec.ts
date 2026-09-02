@@ -7,16 +7,37 @@ export const PUBLIC_NPX_INSTALL =
 export const PUBLIC_NPM_EXEC_INSTALL =
   "npm exec --yes --package github:sethmgibson/coherent -- coherent install";
 
-export function addCliCommand(manager: "pnpm" | "npm" | "yarn" | "bun" | "unknown"): string {
-  switch (manager) {
+export type SupportedManager = "pnpm" | "npm" | "yarn" | "bun";
+export type ProjectManager = SupportedManager | "unknown";
+
+export function resolveInstallManager(manager: ProjectManager): SupportedManager {
+  return manager === "unknown" ? "npm" : manager;
+}
+
+export function cliInstallArgv(
+  manager: ProjectManager,
+  spec: string = GITHUB_PACKAGE_SPEC,
+): { command: string; args: string[] } {
+  switch (resolveInstallManager(manager)) {
     case "npm":
-      return `npm install --save-dev ${GITHUB_PACKAGE_SPEC}`;
+      return { command: "npm", args: ["install", "--save-dev", spec] };
     case "yarn":
-      return `yarn add --dev ${GITHUB_PACKAGE_SPEC}`;
+      return { command: "yarn", args: ["add", "--dev", spec] };
     case "bun":
-      return `bun add --dev ${GITHUB_PACKAGE_SPEC}`;
+      return { command: "bun", args: ["add", "--dev", spec] };
     case "pnpm":
-    case "unknown":
-      return `pnpm add --save-dev ${GITHUB_PACKAGE_SPEC}`;
+      return { command: "pnpm", args: ["add", "--save-dev", spec] };
   }
+}
+
+export function addCliCommand(manager: ProjectManager): string {
+  const { command, args } = cliInstallArgv(manager);
+  return [command, ...args].join(" ");
+}
+
+export function isSameCoherentPackageSpec(spec: string): boolean {
+  const value = spec.trim();
+  if (value === GITHUB_PACKAGE_SPEC) return true;
+  if (value.startsWith("github:sethmgibson/coherent")) return true;
+  return /^git\+https:\/\/github\.com\/sethmgibson\/coherent(\.git)?([#?].*)?$/i.test(value);
 }

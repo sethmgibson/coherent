@@ -216,11 +216,12 @@ program
 
 program
   .command("install")
-  .description("Install Codex/Cursor skills and only the explicitly selected optional integrations")
+  .description("Install Codex/Cursor skills and the project CLI; optional integrations stay explicit")
   .argument("[root]", "repository root", ".")
   .option("--providers <list>", "comma-separated harnesses: codex,cursor")
   .option("--scope <scope>", "install location: project or global")
   .option("-y, --yes", "non-interactive defaults (detected or both providers, project scope)", false)
+  .option("--skills-only", "copy skill files without installing the project CLI", false)
   .option("--adapter", "copy the Cursor skill adapter", false)
   .option("--alias", "copy the legacy /backend Cursor alias", false)
   .option("--rule", "install the Cursor prevention rule", false)

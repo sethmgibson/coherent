@@ -7,7 +7,14 @@ import {
   writeManagedFile,
   type CopyResult,
 } from "./copy.js";
-import { ensureProjectCliSpecifier, type CliDependencyResult } from "./cli-dep.js";
+import {
+  detectRootPackageManager,
+  installProjectCli,
+  skillsOnlyCliResult,
+  verifyProjectCliHandshake,
+  type CliDependencyResult,
+} from "./cli-dep.js";
+import type { RunCommandFn } from "./exec.js";
 import {
   collectInstallDetections,
   defaultDetectedProviders,
@@ -46,10 +53,13 @@ export interface InstallOptions {
   providers?: string;
   scope?: string;
   yes?: boolean;
+  skillsOnly?: boolean;
   home?: string;
   pathEnv?: string;
   interactive?: boolean;
   ask?: AskFn;
+  runCommand?: RunCommandFn;
+  installCli?: boolean;
 }
 
 export interface InstallResult {
@@ -94,6 +104,13 @@ export async function runInstall(
 
   const adoption = await chooseAdoption(root, home, detections, options);
   let cli: CliDependencyResult | undefined;
+  if (adoption?.scope === "project") {
+    if (shouldInstallProjectCli(options)) {
+      cli = await installProjectCli(root, projectCliOptions(options));
+    } else if (options.skillsOnly === true) {
+      cli = skillsOnlyCliResult(root, await detectRootPackageManager(root));
+    }
+  }
   if (adoption) {
     const pkg = packageRoot();
     for (const provider of adoption.providers) {
@@ -101,9 +118,10 @@ export async function runInstall(
         actions.push(rel(adoption.installRoot, action));
       }
     }
-    if (adoption.scope === "project") {
-      cli = await ensureProjectCliSpecifier(root);
+    if (cli && !cli.skillsOnly) {
       actions.push(rel(root, cli.action));
+      await verifyProjectCliHandshake(root, projectCliOptions(options));
+      cli = { ...cli, handshakeVerified: true };
     }
   }
   return {
@@ -116,7 +134,12 @@ export async function runInstall(
   };
 }
 
-export const runUpdate = runInstall;
+export async function runUpdate(
+  root: string,
+  options: InstallOptions = {},
+): Promise<InstallResult> {
+  return runInstall(root, { ...options, installCli: false });
+}
 
 export function renderInstall(title: string, result: InstallResult): string {
   const lines = [title];
@@ -137,14 +160,20 @@ export function renderInstall(title: string, result: InstallResult): string {
     lines.push(`  ${action.action} ${action.path}${extra}`);
   }
   if (result.adoption?.scope === "project" && result.cli) {
-    lines.push(`  project CLI specifier: ${result.cli.specifier}`);
-    if (!result.cli.alreadyPresent && result.cli.action.action !== "skipped") {
-      lines.push(`  add the CLI with: ${result.cli.addCommand}`);
+    if (result.cli.skillsOnly) {
+      lines.push("  skills only; the project CLI was not installed");
+      lines.push(`  add it later with: ${result.cli.addCommand}`);
+    } else {
+      const verb = result.cli.alreadyPresent ? "ensured" : "installed";
+      lines.push(`  ${verb} github:sethmgibson/coherent with ${result.cli.resolvedManager}`);
+      if (result.cli.handshakeVerified) {
+        lines.push("  verified project-local CLI handshake");
+      }
     }
   }
   if (result.adoption?.scope === "global") {
     lines.push("  global skill files do not install the Coherent CLI or put it on PATH");
-    lines.push(`  add ${result.cli?.specifier ?? "github:sethmgibson/coherent"} to each project, or run commands through`);
+    lines.push("  add github:sethmgibson/coherent to each project, or run commands through");
     lines.push(`  ${PUBLIC_NPM_EXEC_INSTALL.replace(/ install$/, " <command>")}`);
   }
   if (result.adoption !== undefined || result.actions.some((action) => action.action === "wrote" || action.action === "updated")) {
@@ -185,6 +214,14 @@ async function chooseAdoption(
     scope = await promptScope(root, formatPathForDisplay(home, home), options.ask);
   }
   return { providers, scope, installRoot: scope === "global" ? home : root };
+}
+
+function shouldInstallProjectCli(options: InstallOptions): boolean {
+  return options.installCli !== false && options.skillsOnly !== true;
+}
+
+function projectCliOptions(options: InstallOptions): { runCommand?: RunCommandFn } {
+  return options.runCommand === undefined ? {} : { runCommand: options.runCommand };
 }
 
 function hasExplicitIntegrations(options: InstallOptions): boolean {

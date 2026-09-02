@@ -16,6 +16,13 @@ import {
   parseProviderList,
   parseProvidersOption,
 } from "../src/install/providers.js";
+import {
+  GITHUB_PACKAGE_SPEC,
+  addCliCommand,
+  cliInstallArgv,
+  isSameCoherentPackageSpec,
+  resolveInstallManager,
+} from "../src/install/spec.js";
 
 describe("install provider and scope parsing", () => {
   it("parses aliases, trims spaces, and rejects unknown names", () => {
@@ -38,6 +45,39 @@ describe("install provider and scope parsing", () => {
     expect(normalizeInstallScope("home")).toBe("global");
     expect(normalizeInstallScope("cloud")).toBeUndefined();
     expect(() => parseInstallScope("cloud")).toThrow(/--scope=project or --scope=global/);
+  });
+});
+
+describe("install CLI specifier argv", () => {
+  it("builds fixed argv for each supported manager and defaults unknown to npm", () => {
+    expect(cliInstallArgv("pnpm")).toEqual({
+      command: "pnpm",
+      args: ["add", "--save-dev", GITHUB_PACKAGE_SPEC],
+    });
+    expect(cliInstallArgv("npm")).toEqual({
+      command: "npm",
+      args: ["install", "--save-dev", GITHUB_PACKAGE_SPEC],
+    });
+    expect(cliInstallArgv("yarn")).toEqual({
+      command: "yarn",
+      args: ["add", "--dev", GITHUB_PACKAGE_SPEC],
+    });
+    expect(cliInstallArgv("bun")).toEqual({
+      command: "bun",
+      args: ["add", "--dev", GITHUB_PACKAGE_SPEC],
+    });
+    expect(resolveInstallManager("unknown")).toBe("npm");
+    expect(cliInstallArgv("unknown")).toEqual(cliInstallArgv("npm"));
+    expect(addCliCommand("pnpm")).toBe(`pnpm add --save-dev ${GITHUB_PACKAGE_SPEC}`);
+  });
+
+  it("treats the same GitHub package as compatible and other specs as conflicts", () => {
+    expect(isSameCoherentPackageSpec(GITHUB_PACKAGE_SPEC)).toBe(true);
+    expect(isSameCoherentPackageSpec("github:sethmgibson/coherent#abc123")).toBe(true);
+    expect(isSameCoherentPackageSpec("git+https://github.com/sethmgibson/coherent.git")).toBe(true);
+    expect(isSameCoherentPackageSpec("^1.0.0")).toBe(false);
+    expect(isSameCoherentPackageSpec("github:other/coherent")).toBe(false);
+    expect(isSameCoherentPackageSpec("file:../coherent.tgz")).toBe(false);
   });
 });
 

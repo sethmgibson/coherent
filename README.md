@@ -28,9 +28,13 @@ npx --yes --package github:sethmgibson/coherent -- coherent install --providers=
 ```
 
 Project scope copies the packaged skill tree (so `reference/` links keep
-working) and records `github:sethmgibson/coherent` as a devDependency specifier.
-Add that Git dependency with your package manager when CI and containers can
-fetch GitHub; see the [adoption preflight](skills/coherent/reference/install.md#adoption-preflight).
+working) and installs `github:sethmgibson/coherent` with the detected package
+manager (`pnpm`, `npm`, `yarn`, or `bun`) so `package.json`, the lockfile, and
+`node_modules` are updated in that same command. It then verifies the
+project-local `coherent version` handshake. See the
+[adoption preflight](skills/coherent/reference/install.md#adoption-preflight)
+before CI or containers fetch GitHub. Unusual CI or global-CLI setups can pass
+`--skills-only` to copy skill files without installing the project CLI.
 Global scope copies skill files under your home directory and does not put
 the CLI on `PATH`.
 
@@ -216,8 +220,9 @@ Coherent stays conservative around dependency injection, decorators, reflection,
 The unscoped `coherent` name on npm belongs to another project, so the public
 installer and the CLI dependency use this GitHub repository until Coherent has
 a dedicated published package name. The one-command flow is
-`npx --yes --package github:sethmgibson/coherent -- coherent install`, then
-`$coherent init` or `/coherent init` after a reload.
+`npx --yes --package github:sethmgibson/coherent -- coherent install`. After it
+exits, the project CLI is installed locally; reload Codex or Cursor and run
+`$coherent init` or `/coherent init`.
 
 ## Development
 

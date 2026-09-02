@@ -188,10 +188,10 @@ skill in `skills/coherent/`. `.agents/skills/coherent` and
 `.cursor/skills/coherent` are thin Codex and Cursor discovery adapters in this
 repository. `.cursor/skills/backend` is an alias. `coherent install` adopts
 Codex and Cursor only: it copies the packaged skill tree into `.agents` and
-`.cursor` (or the matching user-home paths) and records the GitHub CLI
-specifier for project scope. Explicit `--adapter`, `--alias`, `--rule`,
-`--cursor-hook`, and `--git-hook` flags stay opt-in. There is no generic
-provider plugin pipeline.
+`.cursor` (or the matching user-home paths) and, for project scope, installs
+the GitHub CLI package through the detected package manager. Explicit
+`--adapter`, `--alias`, `--rule`, `--cursor-hook`, `--git-hook`, and
+`--skills-only` flags stay opt-in. There is no generic provider plugin pipeline.
 
 ## Persistence boundaries
 
@@ -251,7 +251,7 @@ None. The CLI is synchronous process work. No queues, cron, or subscriptions.
 - `coherent fix next [root]` selects one unlocked `ready` node and prints a work brief with reviewed finding fingerprints, exact locations, and evidence from the same scan. JSON exposes selected `findings`; `inspect` exposes them as `nextFindings`, keeping raw audit status separate. An empty reviewed plan is a successful clean terminal; remaining blocked or review-only nodes are not.
 - `coherent check [root]` compares a fresh audit to the baseline, classifies new debt, and reports gate status separately from drift and review disposition. `--changed` uses lossless target-relative Git paths (including both rename sides) and TypeScript-resolved transitive importers, respects inventory ignores, does not treat unscoped baseline findings as resolved, and conservatively requires a full scan for identity-only review matches. Full `check` remains necessary for repository-wide conclusions and config-only changes.
 - JSON output stays parseable on stdout when combined with explicit `--output`; write acknowledgements go to stderr.
-- `coherent install [root]` and `update` write nothing on a non-TTY without `--yes`, `--providers`, `--scope`, or an explicit adapter, rule, Cursor hook, or Git hook flag. TTY `install` can prompt for Codex/Cursor and project vs global. Project adoption copies the packaged skill tree and records `github:sethmgibson/coherent` in `package.json`. Global adoption copies skill files only and does not claim the CLI is on `PATH`. `update` refreshes those files only and explicitly does not update the CLI dependency.
+- `coherent install [root]` and `update` write nothing on a non-TTY without `--yes`, `--providers`, `--scope`, or an explicit adapter, rule, Cursor hook, or Git hook flag. TTY `install` can prompt for Codex/Cursor and project vs global. Project adoption installs `github:sethmgibson/coherent` through the detected package manager, copies the packaged skill tree, and verifies the project-local `coherent version` handshake. A failed CLI install does not copy skills or report success. A different existing `coherent` specifier or malformed `package.json` fails project adoption. `--skills-only` copies skill files without installing the CLI. Global adoption copies skill files only and does not claim the CLI is on `PATH`. `update` refreshes those files only and explicitly does not update the CLI dependency.
 - `coherent doctor [root]` checks stale discovery, decision integrity, stale review revisions, baseline/decision revision coupling, compatibility review lifecycles, baseline integrity when present, and leftover `.backend/` state without auditing; `--deep` adds orphan and current-finding review validation through one full audit while retaining baseline-backed resolved reviews whose lifecycle remains current. `--staged` exports the Git index and `--ref` exports a committed tree to a temporary snapshot so the exact artifact is validated without modifying the target repository.
 - `pnpm test` covers catalog integrity, inventory fixtures, init, detectors, fingerprints, baseline/check, planner, review merge, and CLI behavior.
 - `pnpm validate` runs zero-warning type-aware ESLint, dependency hygiene/security checks, tests, typecheck, packed-package validation (including the prepack build), generated skill-doc consistency, and committed fingerprint uniqueness. CI runs the same gates plus Coherent check and deep doctor. `pnpm check:package` applies strict publint to the tarball and tests installed CLI aliases and public exports in an isolated runtime-only consumer. ESLint uses `tsconfig.typecheck.json` for source, tests, scripts, and the Vitest configuration while excluding generated output and intentionally problematic fixtures. `pnpm generate:skill-docs` owns the generated catalog and runtime references.

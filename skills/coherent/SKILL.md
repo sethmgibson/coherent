@@ -39,7 +39,7 @@ A high-confidence dead-code deletion can outrank a higher-severity semantic issu
 2. If `.coherent/ARCHITECTURE.md` exists, read it before changing structure. If only `.backend/` exists, rename it to `.coherent/`.
 3. Load only the playbook that owns this request. The Commands table is the index.
 4. Prefer `coherent <command>` for mechanical work. When the CLI is installed as a project dependency, use `pnpm coherent <command>`. `backend` remains a compatibility alias.
-5. When adopting Coherent, read [reference/install.md](reference/install.md). The public launcher is `npx --yes --package github:sethmgibson/coherent -- coherent install` (the unscoped npm name is a different package). Check private-repository access in CI and containers before adding the Git CLI dependency. Prefer the installed package's canonical skill when a global copy differs; do not mix workflow versions or create redundant editor copies.
+5. When adopting Coherent, read [reference/install.md](reference/install.md). The public launcher is `npx --yes --package github:sethmgibson/coherent -- coherent install` (the unscoped npm name is a different package). That command installs the project CLI; do not add a second package-manager step. Check private-repository access in CI and containers before adding the Git CLI dependency. Prefer the installed package's canonical skill when a global copy differs; do not mix workflow versions or create redundant editor copies.
 
 ## Before adding anything
 
@@ -75,7 +75,7 @@ missing evidence or prerequisite and when to reconsider.
 | `plan` | Build the cleanup DAG in memory from findings and decisions | [reference/cleanup-planning.md](reference/cleanup-planning.md), [reference/plan.md](reference/plan.md) |
 | `fix next` | Select one unlocked cleanup node and print its work brief | [reference/fix-safety.md](reference/fix-safety.md), [reference/fix.md](reference/fix.md) |
 | `check` | Compare a fresh audit to the baseline; `--changed` scopes to the git diff | [reference/check.md](reference/check.md), [reference/prevention.md](reference/prevention.md) |
-| `install` | Install Codex/Cursor skill files (TTY prompts or `--providers` / `--scope` / `--yes`) and only the explicitly selected Cursor or Git integrations | [reference/install.md](reference/install.md) |
+| `install` | Install Codex/Cursor skill files (TTY prompts or `--providers` / `--scope` / `--yes`) and the project CLI; optional Cursor or Git integrations stay explicit | [reference/install.md](reference/install.md) |
 | `update` | Refresh those copied files without overwriting user edits | [reference/install.md](reference/install.md) |
 | `doctor` | Read-only worktree, staged-index, or Git-ref state check; use `--deep` when current-finding review validation is needed | [reference/semantic-audits.md](reference/semantic-audits.md) |
 

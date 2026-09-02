@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { cp, mkdir, mkdtemp, readFile, readdir, realpath, rm, writeFile } from "node:fs/promises";
+import { access, cp, mkdir, mkdtemp, readFile, readdir, realpath, rm, writeFile, chmod } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { dirname, isAbsolute, join, relative } from "node:path";
+import { delimiter, dirname, isAbsolute, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { publint } from "publint";
 import { formatMessage } from "publint/utils";
@@ -77,6 +77,7 @@ try {
   assert.match(installHelp, /--providers/);
   assert.match(installHelp, /--scope/);
   assert.match(installHelp, /--yes/);
+  assert.match(installHelp, /--skills-only/);
   assert.match(installHelp, /github:sethmgibson\/coherent/);
   assert.doesNotMatch(installHelp, /npx coherent install/);
   const versionReport = JSON.parse(run(coherent, ["version", consumer, "--json"], consumer)) as {
@@ -117,18 +118,51 @@ try {
 
   const smoke = join(temporaryRoot, "smoke repo");
   const smokeHome = join(temporaryRoot, "smoke home");
+  const stubDir = join(temporaryRoot, "pm-stub");
   await mkdir(smoke);
   await mkdir(smokeHome);
+  await mkdir(stubDir);
   await writeFile(join(smoke, "package.json"), `${JSON.stringify({ name: "coherent-smoke", private: true }, null, 2)}\n`);
   run("git", ["init", "-b", "main"], smoke);
-  const smokeEnv = { ...process.env, HOME: smokeHome, NODE_PATH: "", NODE_OPTIONS: "" };
+  const realNpm = spawnSync("which", ["npm"], { encoding: "utf8" });
+  if (realNpm.status !== 0 || !realNpm.stdout.trim()) {
+    throw new Error("npm is required for the packed install smoke");
+  }
+  await writeFile(
+    join(stubDir, "npm"),
+    `#!/usr/bin/env node
+const { spawnSync } = require("node:child_process");
+const args = process.argv.slice(2);
+const tarball = process.env.COHERENT_PACKED_TARBALL;
+const rewritten = args.map((arg) => (
+  arg === "github:sethmgibson/coherent" && tarball ? tarball : arg
+));
+const result = spawnSync(process.env.COHERENT_REAL_NPM ?? "npm", rewritten, {
+  stdio: "inherit",
+  cwd: process.cwd(),
+  env: process.env,
+});
+process.exit(result.status ?? 1);
+`,
+    "utf8",
+  );
+  await chmod(join(stubDir, "npm"), 0o755);
+  const smokeEnv = {
+    ...process.env,
+    HOME: smokeHome,
+    NODE_PATH: "",
+    NODE_OPTIONS: "",
+    PATH: `${stubDir}${delimiter}${process.env.PATH ?? ""}`,
+    COHERENT_REAL_NPM: realNpm.stdout.trim(),
+    COHERENT_PACKED_TARBALL: `file:${tarball}`,
+  };
   const smokeResult = spawnSync("npm", [
     "exec", "--yes", "--package", tarball, "--",
     "coherent", "install", smoke, "--providers=codex,cursor", "--scope=project", "--yes",
   ], {
     cwd: smoke,
     encoding: "utf8",
-    timeout: 120_000,
+    timeout: 180_000,
     maxBuffer: 10 * 1024 * 1024,
     env: smokeEnv,
   });
@@ -139,6 +173,8 @@ try {
     );
   }
   assert.match(smokeResult.stdout, /\$coherent init|\/coherent init/);
+  assert.match(smokeResult.stdout, /verified project-local CLI handshake/);
+  assert.doesNotMatch(smokeResult.stdout, /add the CLI with/);
   const smokeSkill = join(smoke, ".agents", "skills", "coherent", "SKILL.md");
   const smokeTaxonomy = join(smoke, ".agents", "skills", "coherent", "reference", "taxonomy.md");
   const smokeCursor = join(smoke, ".cursor", "skills", "coherent", "SKILL.md");
@@ -148,7 +184,8 @@ try {
   const smokeManifest = JSON.parse(await readFile(join(smoke, "package.json"), "utf8")) as {
     devDependencies?: { coherent?: string };
   };
-  assert.equal(smokeManifest.devDependencies?.coherent, "github:sethmgibson/coherent");
+  assert.equal(typeof smokeManifest.devDependencies?.coherent, "string");
+  await access(join(smoke, "node_modules", ".bin", "coherent"));
   const homeEntries = await readdir(smokeHome);
   assert.ok(
     homeEntries.every((name) => name === ".npm" || name === ".local" || name === "Library"),
