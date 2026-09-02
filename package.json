@@ -62,7 +62,7 @@
     "knip": "6.33.0",
     "publint": "0.3.24",
     "tsx": "^4.20.5",
-    "typescript": "^5.9.2",
+    "typescript": "^6.0.3",
     "typescript-eslint": "^8.68.0",
     "vitest": "^3.2.4"
   }
