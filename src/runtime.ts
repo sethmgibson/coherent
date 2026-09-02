@@ -17,6 +17,7 @@ export const RUNTIME_CAPABILITIES = [
   "review-aware-check",
   "review-queue",
   "self-describing-json",
+  "python-ast",
 ] as const;
 
 export type RuntimeCapability = (typeof RUNTIME_CAPABILITIES)[number];

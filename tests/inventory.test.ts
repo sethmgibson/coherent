@@ -109,5 +109,7 @@ describe("repository inventory", () => {
     expect(inventory.packages.map((pkg) => pkg.name)).toEqual(["coherent"]);
     expect(inventory.frameworks).toEqual([]);
     expect(inventory.packageJsonFiles).toEqual(["package.json"]);
+    expect(inventory.languages).toEqual(["JavaScript", "TypeScript"]);
+    expect(inventory.pythonManifests).toEqual([]);
   });
 });

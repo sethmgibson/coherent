@@ -2,12 +2,11 @@ import { readFile } from "node:fs/promises";
 import { relative } from "node:path";
 import { ts } from "ts-morph";
 import { createModuleResolver } from "../analysis/context.js";
+import { expandPythonImporters } from "../analysis/python.js";
 import type { CoherentConfig } from "../config.js";
 import { collectInventory } from "../inventory.js";
-import { extensionOf } from "../inventory-scan.js";
+import { isTsLikeSource } from "../inventory-scan.js";
 import { toPosix, walkFiles } from "../inventory-walk.js";
-
-const TS_LIKE = new Set([".ts", ".tsx", ".mts", ".cts"]);
 
 /** Include transitive importers so every scoped export retains its callers. */
 export async function expandWithImporters(
@@ -22,9 +21,7 @@ export async function expandWithImporters(
     collectInventory(root, config),
   ]);
   const resolver = createModuleResolver(root, inventory);
-  const sources = walked.filter((file) =>
-    TS_LIKE.has(extensionOf(file.name)) && !file.name.endsWith(".d.ts"),
-  );
+  const sources = walked.filter((file) => isTsLikeSource(file.relativePath));
   const sourcePaths = new Set(sources.map((file) => file.relativePath));
   const byTarget = new Map<string, Set<string>>();
   for (const file of sources) {
@@ -48,5 +45,6 @@ export async function expandWithImporters(
       pending.push(caller);
     }
   }
-  return [...importers].sort();
+  const pythonImporters = await expandPythonImporters(root, changed, config);
+  return [...new Set([...importers, ...pythonImporters])].sort();
 }

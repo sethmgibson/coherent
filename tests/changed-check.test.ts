@@ -184,6 +184,53 @@ function unusedInUsed(): number { return 2; }
     }
   });
 
+  it("includes changed Python files and their importers in scoped check", { timeout: 20_000 }, async () => {
+    const root = await mkdtemp(join(tmpdir(), "coherent-changed-python-"));
+    try {
+      await mkdir(join(root, "src", "billing"), { recursive: true });
+      await writeFile(join(root, "src", "billing", "used.py"), "def shared_used():\n    return 'ok'\n", "utf8");
+      await writeFile(
+        join(root, "src", "billing", "user.py"),
+        "from billing.used import shared_used\n\ndef call_shared():\n    return shared_used()\n",
+        "utf8",
+      );
+      await writeFile(join(root, "src", "keep.py"), "def unused_keep():\n    return 1\n    return 2\n", "utf8");
+      await gitInitCommit(root, "init");
+      await runBaseline(root);
+
+      await writeFile(
+        join(root, "src", "billing", "used.py"),
+        "def shared_used():\n    return 'changed'\n    return 'dead'\n",
+        "utf8",
+      );
+
+      const scoped = await expandWithImporters(root, ["src/billing/used.py"]);
+      expect(scoped).toEqual(expect.arrayContaining(["src/billing/used.py", "src/billing/user.py"]));
+      expect(scoped).not.toContain("src/keep.py");
+
+      const result = await runCheck(root, { changed: true });
+      expect(result.scopedFiles).toEqual(expect.arrayContaining(["src/billing/used.py", "src/billing/user.py"]));
+      expect(result.scopedFiles).not.toContain("src/keep.py");
+      expect(result.newFindings.some((item) => item.identity.includes("return 'dead'"))).toBe(true);
+      expect(result.resolvedFindings.some((item) => item.identity.includes("src/keep.py"))).toBe(false);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it("preserves Python paths with spaces from git", async () => {
+    const root = await mkdtemp(join(tmpdir(), "coherent-changed-py-space-"));
+    try {
+      await writeFile(join(root, "README.md"), "fixture\n");
+      await gitInitCommit(root, "init");
+      await mkdir(join(root, "with space"), { recursive: true });
+      await writeFile(join(root, "with space", "mod.py"), "x = 1\n");
+      expect((await listChangedSourceFiles(root)).existing).toEqual(["with space/mod.py"]);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
   it("requires a git work tree", async () => {
     const root = await mkdtemp(join(tmpdir(), "coherent-nogit-"));
     try {

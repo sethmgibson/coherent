@@ -1,6 +1,7 @@
 import { stat } from "node:fs/promises";
 import { join } from "node:path";
 import { createAnalysisContext } from "../analysis/context.js";
+import { collectPythonFindings } from "../analysis/python.js";
 import { ARCHITECTURE_FILE, PORTABLE_ROOT, loadConfig } from "../config.js";
 import { resolveStateDir } from "../state-dir.js";
 import { collectInventory, type Inventory } from "../inventory.js";
@@ -93,8 +94,8 @@ export async function runAudit(
   const findings =
     options.include && options.include.length === 0
       ? []
-      : mergeFindingsByFingerprint(
-          collectFindings(
+      : mergeFindingsByFingerprint([
+          ...collectFindings(
             await createAnalysisContext(
               root,
               inventory,
@@ -102,7 +103,8 @@ export async function runAudit(
               options.include ? { include: options.include } : {},
             ),
           ),
-        );
+          ...await collectPythonFindings(root, config, options.include),
+        ]);
   assertUniqueFingerprints(findings);
   const durationMs = Date.now() - started;
   const confirmed = findings.filter((finding) => finding.status === "confirmed");

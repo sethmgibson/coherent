@@ -18,12 +18,30 @@ const SKIP_DIR_NAMES = new Set([
   "out",
   "tmp",
   "node_modules",
+  "__pycache__",
+  ".venv",
+  "venv",
+  ".mypy_cache",
+  ".pytest_cache",
+  ".ruff_cache",
+  ".tox",
+  ".nox",
+  "htmlcov",
 ]);
 
 export interface WalkedFile {
   relativePath: string;
   absolutePath: string;
   name: string;
+}
+
+export function shouldSkipDirectory(name: string): boolean {
+  return (
+    SKIP_DIR_NAMES.has(name) ||
+    name.endsWith(".egg-info") ||
+    name === "site-packages" ||
+    name.endsWith("venv")
+  );
 }
 
 export function toPosix(path: string): string {
@@ -50,7 +68,7 @@ export async function walkFiles(
     }
 
     for (const entry of entries) {
-      if (extraIgnore.has(entry.name) || SKIP_DIR_NAMES.has(entry.name)) {
+      if (extraIgnore.has(entry.name) || shouldSkipDirectory(entry.name)) {
         continue;
       }
       const absolutePath = join(current, entry.name);

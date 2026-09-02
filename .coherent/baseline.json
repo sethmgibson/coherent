@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "coherentVersion": "0.2.0",
   "fingerprintVersion": 2,
-  "detectorRevision": 9,
+  "detectorRevision": 10,
   "ruleDetectorRevisions": {
     "A01": 8,
     "A02": 8,
@@ -11,21 +11,21 @@
     "A05": 8,
     "A06": 9,
     "A07": 8,
-    "A08": 8,
+    "A08": 9,
     "B01": 8,
     "B02": 8,
     "B03": 9,
-    "B04": 9,
+    "B04": 10,
     "B05": 8,
     "B06": 8,
     "C01": 8,
     "C02": 8,
-    "C03": 8,
+    "C03": 9,
     "C04": 9,
     "C05": 8,
     "D01": 8,
     "D02": 8,
-    "D03": 9,
+    "D03": 10,
     "D04": 8,
     "D05": 8,
     "E01": 8,
@@ -35,7 +35,7 @@
     "E05": 8,
     "E06": 8
   },
-  "createdAt": "2026-09-01T18:10:49.791Z",
+  "createdAt": "2026-09-02T05:32:07.397Z",
   "findings": [
     {
       "fingerprint": "20ff585611cc01ae46baddc5585ed07a0543d116aa738d659793b21d1b90acea",
@@ -203,18 +203,18 @@
       ]
     },
     {
-      "fingerprint": "0de916e3dae35f4d466447e98364a73d27e2fc4ca52b02bbd0f7ca29138b8e30",
+      "fingerprint": "b6470bbd7ec32af41b1c00d6ced9effa3300a5ad0e542dc5eaae2bc43de8ff2c",
       "ruleId": "A08",
-      "identity": "test-only:src/catalog/rules.ts:CATEGORIES_BY_ID",
+      "identity": "test-only:src/domain/finding.ts:serializeFinding",
       "title": "Only referenced by tests",
       "detectionMode": "deterministic",
       "status": "candidate",
       "severity": "medium",
       "files": [
-        "src/catalog/rules.ts"
+        "src/domain/finding.ts"
       ],
       "symbols": [
-        "CATEGORIES_BY_ID"
+        "serializeFinding"
       ]
     },
     {
@@ -233,18 +233,18 @@
       ]
     },
     {
-      "fingerprint": "b6470bbd7ec32af41b1c00d6ced9effa3300a5ad0e542dc5eaae2bc43de8ff2c",
+      "fingerprint": "0de916e3dae35f4d466447e98364a73d27e2fc4ca52b02bbd0f7ca29138b8e30",
       "ruleId": "A08",
-      "identity": "test-only:src/domain/finding.ts:serializeFinding",
+      "identity": "test-only:src/catalog/rules.ts:CATEGORIES_BY_ID",
       "title": "Only referenced by tests",
       "detectionMode": "deterministic",
       "status": "candidate",
       "severity": "medium",
       "files": [
-        "src/domain/finding.ts"
+        "src/catalog/rules.ts"
       ],
       "symbols": [
-        "serializeFinding"
+        "CATEGORIES_BY_ID"
       ]
     },
     {

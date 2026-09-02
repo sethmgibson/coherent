@@ -97,23 +97,40 @@ try {
   assert.deepEqual(versionReport.issues, []);
   assert.equal(runtime.coherentVersion, manifest.version);
   assert.equal(runtime.workflowRevision, 2);
-  assert.equal(runtime.detectorRevision, 9);
-  assert(Array.isArray(runtime.capabilities) && runtime.capabilities.length > 0);
+  assert.equal(runtime.detectorRevision, 10);
+  assert(Array.isArray(runtime.capabilities) && runtime.capabilities.includes("python-ast"));
+  assert.equal(
+    await realpath(join(installed, "python", "analyze.py")).then((path) => path.endsWith("analyze.py")),
+    true,
+  );
   assert.equal(await realpath(runtime.packageRoot), installed);
   assert.equal(
     await realpath(runtime.skillPath),
     await realpath(join(installed, "skills", "coherent", "SKILL.md")),
   );
   const target = join(temporaryRoot, "audit-target");
-  await mkdir(target);
+  await mkdir(join(target, "with space"), { recursive: true });
   await writeFile(join(target, "index.ts"), "export const answer = 42;\n");
+  await writeFile(
+    join(target, "with space", "mod.py"),
+    "def after_return(flag: bool) -> int:\n    if flag:\n        return 1\n        return 2\n    return 0\n",
+  );
   const audit = JSON.parse(run(coherent, ["audit", target, "--json"], consumer)) as {
-    findings: unknown;
+    findings: Array<{ ruleId: string; identity: string; locations: Array<{ file: string }> }>;
     runtime?: { coherentVersion?: unknown; workflowRevision?: unknown };
   };
   assert(Array.isArray(audit.findings), "Installed CLI did not return findings JSON");
   assert.equal(audit.runtime?.coherentVersion, manifest.version);
   assert.equal(audit.runtime?.workflowRevision, 2);
+  assert(
+    audit.findings.some(
+      (finding) =>
+        finding.ruleId === "A08" &&
+        finding.identity.includes("return 2") &&
+        finding.locations.some((location) => location.file === "with space/mod.py"),
+    ),
+    "Packed CLI did not analyze a Python path containing spaces",
+  );
   console.log("Installed CLI aliases, runtime identity, and audit passed.");
 
   const smoke = join(temporaryRoot, "smoke repo");

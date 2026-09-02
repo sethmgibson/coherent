@@ -1,0 +1,5 @@
+{
+  "name": "mixed-app",
+  "private": true,
+  "type": "module"
+}

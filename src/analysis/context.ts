@@ -8,11 +8,9 @@ import {
 } from "ts-morph";
 import type { SourceFile } from "ts-morph";
 import type { CoherentConfig } from "../config.js";
-import { SOURCE_EXTENSIONS, extensionOf } from "../inventory-scan.js";
+import { SOURCE_EXTENSIONS, extensionOf, isTsLikeSource } from "../inventory-scan.js";
 import { walkFiles, toPosix, type WalkedFile } from "../inventory-walk.js";
 import type { Inventory } from "../inventory.js";
-
-const TS_LIKE = new Set([".ts", ".tsx", ".mts", ".cts"]);
 
 export interface AnalysisContext {
   root: string;
@@ -56,7 +54,7 @@ export async function createAnalysisContext(
   const sourceFiles: SourceFile[] = [];
   for (const file of walked) {
     const ext = extensionOf(file.name);
-    if (!TS_LIKE.has(ext) || file.name.endsWith(".d.ts")) continue;
+    if (!isTsLikeSource(file.relativePath) || file.name.endsWith(".d.ts")) continue;
     if (!SOURCE_EXTENSIONS.has(ext)) continue;
     try {
       sourceFiles.push(project.addSourceFileAtPath(file.absolutePath));

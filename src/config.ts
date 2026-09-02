@@ -21,7 +21,7 @@ export const ARTIFACT_SCHEMA_VERSION = 1;
 /** Bump when the fingerprint hash payload changes. Identity match still applies if detectorRevision matches. */
 export const FINGERPRINT_VERSION = 2;
 /** Portable release-wide detector contract used by the skill/runtime handshake. */
-export const DETECTOR_REVISION = 9;
+export const DETECTOR_REVISION = 10;
 /**
  * Detector reviews are invalidated per rule. Entries that are not bumped
  * retain their prior contract, so an unrelated detector change does not erase
@@ -35,21 +35,21 @@ export const RULE_DETECTOR_REVISIONS: Readonly<Record<RuleId, number>> = {
   A05: 8,
   A06: 9,
   A07: 8,
-  A08: 8,
+  A08: 9,
   B01: 8,
   B02: 8,
   B03: 9,
-  B04: 9,
+  B04: 10,
   B05: 8,
   B06: 8,
   C01: 8,
   C02: 8,
-  C03: 8,
+  C03: 9,
   C04: 9,
   C05: 8,
   D01: 8,
   D02: 8,
-  D03: 9,
+  D03: 10,
   D04: 8,
   D05: 8,
   E01: 8,
@@ -78,6 +78,8 @@ export function artifactVersions() {
 export interface CoherentConfig {
   /** Extra directory or file names to skip during inventory. */
   ignore?: string[];
+  /** Optional Python interpreter. Auto-detected `python3` / `python` when omitted. */
+  python?: string;
 }
 
 export async function loadConfig(root: string): Promise<CoherentConfig> {
@@ -90,6 +92,9 @@ export async function loadConfig(root: string): Promise<CoherentConfig> {
     }
     if (parsed.ignore !== undefined && !Array.isArray(parsed.ignore)) {
       throw new Error(`${path} field "ignore" must be an array of strings`);
+    }
+    if (parsed.python !== undefined && (typeof parsed.python !== "string" || parsed.python.length === 0)) {
+      throw new Error(`${path} field "python" must be a non-empty string`);
     }
     return parsed;
   } catch (error) {

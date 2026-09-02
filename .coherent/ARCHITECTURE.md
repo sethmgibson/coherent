@@ -32,6 +32,10 @@ Packages:
 
 - `coherent` (`package.json`)
 
+Python manifests:
+
+- None discovered.
+
 Detected frameworks:
 
 - None detected from package dependencies.
@@ -39,7 +43,6 @@ Detected frameworks:
 Languages: JavaScript, TypeScript
 
 Approximate size: 186 files, 17641 source lines.
-
 Dependencies: 2 runtime, 9 development.
 <!-- /coherent:discovered -->
 
@@ -59,7 +62,7 @@ generic tiers:
 
 - `src/catalog` — rule and phase source of truth; `types.ts` is a public barrel derived from those catalogs
 - `src/domain` — Finding
-- `src/analysis` — one in-memory ts-morph project per scan; helpers current detectors need. `createModuleResolver` shares parsed repository tsconfigs, inherited compiler options, path aliases, and owning child configs between full analysis and scoped importer discovery without generating files or caches.
+- `src/analysis` — one in-memory ts-morph project per scan for TypeScript; helpers current detectors need. `createModuleResolver` shares parsed repository tsconfigs, inherited compiler options, path aliases, and owning child configs between full analysis and scoped importer discovery without generating files or caches. Python uses an explicit stdlib-`ast` sidecar (`python/analyze.py`) spawned by the Node CLI host; there is no plugin registry and no third-party Python runtime dependency.
 - `src/detectors` — one function per implemented rule, called explicitly
 - `src/analysis/nest-reachability.ts` — bounded static Nest module/provider resolution and evidence for exact port calls, HTTP handlers, and lifecycle methods. It uses the current analysis context, respects module visibility, and leaves opaque or ambiguous bindings unresolved; it does not execute Nest or infer bindings from type shapes.
 - `src/audit`, `src/baseline`, `src/check` — CLI workflows and on-disk snapshots
@@ -69,7 +72,7 @@ generic tiers:
 - `src/inspect.ts` — one read-only audit snapshot feeding the reviewed plan and next-node selection
 - `src/doctor` — read-only integrity checks
 - `src/runtime.ts` — portable workflow/detector/capability identity plus diagnostic package and lock revision evidence
-- `src/inventory.ts`, `src/inventory-walk.ts`, `src/inventory-scan.ts` — repository inventory
+- `src/inventory.ts`, `src/inventory-walk.ts`, `src/inventory-scan.ts`, `src/inventory-python.ts` — repository inventory, including `.py` files and pyproject/requirements signals
 - `src/init` — ARCHITECTURE.md generation and fenced refresh
 - `src/install` — Codex/Cursor skill-tree adoption, Cursor adapter copy, prevention rule, and `check --changed` hooks. `InstallOptions` is the install/update command flag bag plus test seams, not a request-context object.
 - `src/cli.ts` — Commander entry
@@ -176,7 +179,7 @@ Observed top-level modules:
 - Taxonomy ID order is not cleanup execution order. The cleanup DAG is authoritative.
 - `prerequisiteFindingIds` names current finding fingerprints. The planner maps them through finding groups, ignores same-node references, treats absent fingerprints as satisfied, and preserves explicit `unlocks` text in work briefs.
 - Analysis-only prerequisite matching requires a genuinely shared concept, not merely two non-empty concept names. Work briefs preserve all explicit `changeRisk` warnings; high confidence does not imply a low-risk edit.
-- Dead-code (A08) is re-scanned after A07, after canonicalization, and after architecture collapse.
+- Dead-code (A08) is re-scanned after A07, after canonicalization, and after architecture collapse. Python dead-code reports only mechanically certain unreachable statements; unused functions, classes, and imports stay unreported because dynamic reachability, decorators, public/module exports, `__all__`, framework registration, reflection, and unknown imports are not deletion evidence.
 - Analysis parses repository tsconfigs and uses the owning config for each containing file, so inherited options, path aliases, and child project-reference configs participate in module resolution.
 
 ## Provider/external boundaries
@@ -243,13 +246,13 @@ None. The CLI is synchronous process work. No queues, cron, or subscriptions.
 - `coherent init [root]` keeps inventory in memory and writes architecture context.
 - `coherent refresh [root]` updates fenced discovered facts only.
 - `coherent version [root]` reports portable runtime identity, resolved package/source evidence, and target lock revision; expectation flags fail closed when the active skill and CLI are incompatible.
-- `coherent audit [root]` parses TypeScript once and runs implemented detectors without writing metadata; `--output` is explicit and includes portable runtime identity.
+- `coherent audit [root]` parses TypeScript once and, when `.py` files are in scope, runs the packaged Python stdlib-`ast` sidecar in one subprocess. It fails closed if those files are in scope and no supported interpreter exists, and it identifies Python syntax errors by file and line. `--output` is explicit and includes portable runtime identity. Inventory skips `__pycache__`, `site-packages`, and local virtualenv directories. The sidecar writes no pycache or other caches.
 - `coherent inspect [root]` uses one audit snapshot for compact findings, the reviewed cleanup DAG, terminal-state classification, and next-node selection without writing metadata.
 - `coherent review dismiss|confirm|defer <fingerprint>` writes one decision to `.coherent/decisions.json`; dismissed or deferred live A07 reviews require a future expiry or named removal milestone, expiry reopens the finding, and reviewed false signals are explicitly marked `notCompatibility`. Deferred reviews require `missingEvidence` or `reconsiderWhen`. `review apply` validates a JSON batch against one audit before one locked write, persists supported judgment fields, rejects unknown fields, and accepts `--dry-run` plus a JSON receipt. `review queue` is a read-only item-level view of unreviewed, deferred, and ready findings. `review prune` previews stale, expired, and orphaned records and writes only with `--write`, retaining baseline-backed resolved history only while its lifecycle is current. Review writes use a cross-process lock and atomic replacement. Identity fallback is refused when more than one current finding shares the identity.
 - `coherent baseline [root]` snapshots finding fingerprints with portable schema versions and leaves an equivalent existing file byte-for-byte unchanged.
 - `coherent plan [root]` builds a cleanup DAG from a fresh audit merged with reviews and semantic findings.
 - `coherent fix next [root]` selects one unlocked `ready` node and prints a work brief with reviewed finding fingerprints, exact locations, and evidence from the same scan. JSON exposes selected `findings`; `inspect` exposes them as `nextFindings`, keeping raw audit status separate. An empty reviewed plan is a successful clean terminal; remaining blocked or review-only nodes are not.
-- `coherent check [root]` compares a fresh audit to the baseline, classifies new debt, and reports gate status separately from drift and review disposition. `--changed` uses lossless target-relative Git paths (including both rename sides) and TypeScript-resolved transitive importers, respects inventory ignores, does not treat unscoped baseline findings as resolved, and conservatively requires a full scan for identity-only review matches. Full `check` remains necessary for repository-wide conclusions and config-only changes.
+- `coherent check [root]` compares a fresh audit to the baseline, classifies new debt, and reports gate status separately from drift and review disposition. `--changed` uses lossless target-relative Git paths (including both rename sides) plus TypeScript-resolved and Python-ast transitive importers, respects inventory ignores, does not treat unscoped baseline findings as resolved, and conservatively requires a full scan for identity-only review matches. Full `check` remains necessary for repository-wide conclusions and config-only changes.
 - JSON output stays parseable on stdout when combined with explicit `--output`; write acknowledgements go to stderr.
 - `coherent install [root]` and `update` write nothing on a non-TTY without `--yes`, `--providers`, `--scope`, or an explicit adapter, rule, Cursor hook, or Git hook flag. TTY `install` can prompt for Codex/Cursor and project vs global. Project adoption installs `github:sethmgibson/coherent` through the detected package manager, verifies the project-local `coherent version` handshake, then copies the packaged skill tree. A failed CLI install or handshake does not copy skills or report success. A different existing `coherent` specifier or malformed `package.json` fails project adoption; a same-repo pin is kept and not rewritten to the unpinned GitHub spec. `--adapter` together with project Cursor adoption writes the skill tree, not a handshake adapter that would block it. `--skills-only` copies skill files without installing the CLI. Global adoption copies skill files only and does not claim the CLI is on `PATH`. `update` refreshes those files only and explicitly does not update the CLI dependency.
 - `coherent doctor [root]` checks stale discovery, decision integrity, stale review revisions, baseline/decision revision coupling, compatibility review lifecycles, baseline integrity when present, and leftover `.backend/` state without auditing; `--deep` adds orphan and current-finding review validation through one full audit while retaining baseline-backed resolved reviews whose lifecycle remains current. `--staged` exports the Git index and `--ref` exports a committed tree to a temporary snapshot so the exact artifact is validated without modifying the target repository.
@@ -271,7 +274,7 @@ other compatibility shims, plugin hosts, or provider generators "for later."
 - The catalog must not import inventory, init, analysis, detectors, or the CLI.
 - Findings must not import inventory or CLI.
 - Inventory must not import the catalog or Finding.
-- Do not add a generic plugin, registry, pipeline, or executor layer. Detectors are ordinary functions called from `runAudit`.
+- Do not add a generic plugin, registry, pipeline, or executor layer. Detectors are ordinary functions called from `runAudit`. Python analysis is an explicit sidecar call, not a language-plugin host.
 - Plan is ordinary functions over findings. Do not add a workflow engine.
 
 ## Testing philosophy

@@ -12,7 +12,7 @@ const FENCE_RE = new RegExp(
 );
 
 const DISCOVERED_PREFIX =
-  /^(Package manager:|Packages:|Detected frameworks:|Languages:|Approximate size:|Dependencies:|Observed |Declared entrypoints|Probable entrypoint)/;
+  /^(Package manager:|Packages:|Python manifests:|Detected frameworks:|Languages:|Approximate size:|Dependencies:|Observed |Declared entrypoints|Probable entrypoint)/;
 
 export function hasDiscoveredFences(markdown: string): boolean {
   FENCE_RE.lastIndex = 0;

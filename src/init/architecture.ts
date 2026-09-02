@@ -12,6 +12,7 @@ export function generateArchitectureMarkdown(inventory: Inventory): string {
   const packages = inventory.packages
     .map((pkg) => `- \`${pkg.name}\` (\`${pkg.path}\`)`)
     .join("\n");
+  const pythonManifests = bulletOrNone(inventory.pythonManifests);
   const frameworks =
     inventory.frameworks.length > 0
       ? inventory.frameworks.map((name) => `- ${name}`).join("\n")
@@ -48,6 +49,10 @@ ${wrapDiscovered(`Package manager: \`${inventory.packageManager}\`
 Packages:
 
 ${packages || "- No package.json files found."}
+
+Python manifests:
+
+${pythonManifests}
 
 Detected frameworks:
 

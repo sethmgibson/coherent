@@ -24,11 +24,12 @@ Default exit policy:
   performance work is in scope.
 - Resolved findings are reported.
 
-`--changed` parses TypeScript files in the git diff (unstaged, staged, and
+`--changed` parses TypeScript and Python files in the git diff (unstaged, staged, and
 untracked), plus their transitive importers so A08 can still see callers. Git
 paths are relative to the requested target, including nested package roots;
 renames include both old and new paths. Import discovery shares full analysis's
-TypeScript resolver, including aliases and owning child configs. Inventory
+TypeScript resolver, including aliases and owning child configs, and uses the
+Python sidecar for `.py` importers. Inventory
 ignores still apply. Findings outside that scope are not reported as RESOLVED.
 Neither scoped nor full checks write Coherent metadata.
 

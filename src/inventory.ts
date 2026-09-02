@@ -16,6 +16,12 @@ import {
   mergeDependencies,
   readPackages,
 } from "./inventory-scan.js";
+import {
+  pythonFrameworks,
+  pythonManifestPaths,
+  pythonPersistence,
+  readPythonDependencySignals,
+} from "./inventory-python.js";
 import { walkFiles } from "./inventory-walk.js";
 
 export type PackageManager = "pnpm" | "npm" | "yarn" | "bun" | "unknown";
@@ -35,6 +41,7 @@ export interface Inventory {
   packageManager: PackageManager;
   languages: string[];
   packageJsonFiles: string[];
+  pythonManifests: string[];
   workspace: { kind: string; patterns: string[]; packages: string[] } | null;
   tsconfigFiles: string[];
   sourceDirectories: string[];
@@ -65,9 +72,11 @@ export async function collectInventory(
     .sort();
 
   const packages = await readPackages(root, packageJsonFiles);
+  const pythonManifests = pythonManifestPaths(files);
+  const pythonDependencies = await readPythonDependencySignals(root, pythonManifests);
   const sourceDirectories = detectSourceDirectories(files);
   const { dependencies, devDependencies } = mergeDependencies(packages);
-  const allDeps = { ...dependencies, ...devDependencies };
+  const allDeps = { ...dependencies, ...devDependencies, ...pythonDependencies };
 
   let lineCount = 0;
   for (const file of files) {
@@ -80,6 +89,7 @@ export async function collectInventory(
     packageManager: detectPackageManager(files),
     languages: detectLanguages(files),
     packageJsonFiles,
+    pythonManifests,
     workspace: await detectWorkspace(root, packages),
     tsconfigFiles,
     sourceDirectories,
@@ -91,9 +101,19 @@ export async function collectInventory(
     devDependencies,
     fileCount: files.length,
     lineCount,
-    frameworks: FRAMEWORKS.filter((framework) =>
-      framework.packages.some((pkg) => pkg in allDeps),
-    ).map((framework) => framework.name),
-    persistenceLibraries: PERSISTENCE_PACKAGES.filter((pkg) => pkg in allDeps),
+    frameworks: uniqueSorted([
+      ...FRAMEWORKS.filter((framework) =>
+        framework.packages.some((pkg) => pkg in allDeps),
+      ).map((framework) => framework.name),
+      ...pythonFrameworks(pythonDependencies),
+    ]),
+    persistenceLibraries: uniqueSorted([
+      ...PERSISTENCE_PACKAGES.filter((pkg) => pkg in allDeps),
+      ...pythonPersistence(pythonDependencies),
+    ]),
   };
+}
+
+function uniqueSorted(values: string[]): string[] {
+  return [...new Set(values)].sort();
 }

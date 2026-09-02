@@ -3,6 +3,10 @@ import { dirname, join } from "node:path";
 import type { Inventory, PackageInfo, PackageManager } from "./inventory.js";
 import { toPosix, type WalkedFile } from "./inventory-walk.js";
 
+export const TS_LIKE_EXTENSIONS = new Set([".ts", ".tsx", ".mts", ".cts"]);
+
+export const PYTHON_EXTENSIONS = new Set([".py"]);
+
 export const SOURCE_EXTENSIONS = new Set([
   ".ts",
   ".tsx",
@@ -12,6 +16,7 @@ export const SOURCE_EXTENSIONS = new Set([
   ".cjs",
   ".mts",
   ".cts",
+  ".py",
 ]);
 
 const LANGUAGE_BY_EXTENSION: Record<string, string> = {
@@ -23,12 +28,16 @@ const LANGUAGE_BY_EXTENSION: Record<string, string> = {
   ".jsx": "JavaScript",
   ".mjs": "JavaScript",
   ".cjs": "JavaScript",
+  ".py": "Python",
 };
 
 export const FRAMEWORKS: { name: string; packages: string[] }[] = [
   { name: "NestJS", packages: ["@nestjs/core"] },
   { name: "Next.js", packages: ["next"] },
   { name: "Express", packages: ["express"] },
+  { name: "Django", packages: ["django"] },
+  { name: "FastAPI", packages: ["fastapi"] },
+  { name: "Flask", packages: ["flask"] },
 ];
 
 export const PERSISTENCE_PACKAGES = [
@@ -39,6 +48,11 @@ export const PERSISTENCE_PACKAGES = [
   "sequelize",
   "mongoose",
   "knex",
+  "sqlalchemy",
+  "psycopg",
+  "psycopg2",
+  "asyncpg",
+  "pymongo",
 ];
 
 const ENTRYPOINT_BASENAMES = new Set([
@@ -53,6 +67,12 @@ const ENTRYPOINT_BASENAMES = new Set([
   "server.ts",
   "server.js",
   "app.module.ts",
+  "__main__.py",
+  "main.py",
+  "app.py",
+  "manage.py",
+  "wsgi.py",
+  "asgi.py",
 ]);
 
 export async function readPackages(
@@ -144,6 +164,18 @@ export function detectSourceDirectories(files: WalkedFile[]): string[] {
     if (pkgSrc !== -1) {
       dirs.add(parts.slice(0, pkgSrc + 1).join("/"));
     }
+    const top = parts[0];
+    if (
+      isPythonSource(file.name) &&
+      !isTestPath(file.relativePath) &&
+      parts.length >= 2 &&
+      top &&
+      top !== "src" &&
+      top !== "lib" &&
+      top !== "app"
+    ) {
+      dirs.add(top);
+    }
   }
   return [...dirs].sort();
 }
@@ -184,7 +216,9 @@ export function detectEntrypoints(
         dir === "." ||
         dir === "src" ||
         dir.endsWith("/src") ||
-        file.name === "app.module.ts"
+        file.name === "app.module.ts" ||
+        file.name === "manage.py" ||
+        file.name === "__main__.py"
       ) {
         found.add(file.relativePath);
       }
@@ -229,6 +263,22 @@ export function mergeDependencies(packages: PackageInfo[]): {
 export function extensionOf(name: string): string {
   const index = name.lastIndexOf(".");
   return index === -1 ? "" : name.slice(index);
+}
+
+export function isTsLikeSource(relative: string): boolean {
+  if (relative.endsWith(".d.ts")) return false;
+  return TS_LIKE_EXTENSIONS.has(extensionOf(relative));
+}
+
+export function isPythonSource(relative: string): boolean {
+  return PYTHON_EXTENSIONS.has(extensionOf(relative));
+}
+
+export function isPythonManifest(relativePath: string, name: string): boolean {
+  if (name === "pyproject.toml" || name === "setup.py" || name === "setup.cfg" || name === "Pipfile") {
+    return true;
+  }
+  return /^requirements(.*)?\.txt$/.test(name) || /(^|\/)requirements\/.+\.txt$/.test(relativePath);
 }
 
 export function countLines(text: string): number {

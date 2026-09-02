@@ -1,5 +1,5 @@
 import { execFile, spawn } from "node:child_process";
-import { cp, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -184,6 +184,7 @@ describe("CLI", () => {
     const root = await mkdtemp(join(tmpdir(), "coherent-inspect-"));
     await cp(scannerFixture, root, { recursive: true });
     try {
+      await mkdir(join(root, ".coherent"), { recursive: true });
       const stateBefore = await readdir(join(root, ".coherent"));
       const result = await runCli(["inspect", root, "--json"]);
       expect(result.code).toBe(0);

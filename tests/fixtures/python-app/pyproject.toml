@@ -1,0 +1,7 @@
+[project]
+name = "python-app"
+version = "1.0.0"
+dependencies = [
+  "fastapi>=0.115.0",
+  "sqlalchemy>=2.0.0",
+]

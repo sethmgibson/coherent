@@ -191,7 +191,7 @@ means the prevention gate passed, not that drift is absent or semantic review
 is complete. `inspect` exposes a separate terminal state so deferred-only work
 cannot be confused with an empty reviewed plan.
 
-TypeScript analysis reads repository tsconfigs, including inherited compiler options, path aliases, and the owning child config in project-reference workspaces. Resolution stays in memory; Coherent does not generate a synthetic tsconfig or cache.
+TypeScript analysis reads repository tsconfigs, including inherited compiler options, path aliases, and the owning child config in project-reference workspaces. Resolution stays in memory; Coherent does not generate a synthetic tsconfig or cache. Python analysis is a first-class sidecar: the Node CLI host spawns packaged `python/analyze.py`, which uses only the standard-library `ast` module. There is no third-party Python dependency and no plugin registry. If `.py` files are in scope and no supported interpreter exists, the scan fails closed with the files and lookup paths. Syntax errors are reported by file and line. Inventory skips `__pycache__`, `site-packages`, and local virtualenv directories. The sidecar does not write pycache.
 
 Optional Cursor and Git integrations remain zero-install unless you pass
 `--adapter`, `--alias`, `--rule`, `--cursor-hook`, or `--git-hook`.

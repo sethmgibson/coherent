@@ -2,11 +2,10 @@ import { execFile } from "node:child_process";
 import { access } from "node:fs/promises";
 import { join } from "node:path";
 import { promisify } from "node:util";
-import { extensionOf } from "../inventory-scan.js";
+import { isPythonSource, isTsLikeSource } from "../inventory-scan.js";
 import { toPosix } from "../inventory-walk.js";
 
 const execFileAsync = promisify(execFile);
-const TS_LIKE = new Set([".ts", ".tsx", ".mts", ".cts"]);
 
 export interface ChangedSourceFiles {
   existing: string[];
@@ -20,16 +19,11 @@ export async function listChangedSourceFiles(root: string): Promise<ChangedSourc
   const deleted: string[] = [];
   for (const name of names) {
     const relative = toPosix(name);
-    if (!isTsLikeSource(relative)) continue;
+    if (!isTsLikeSource(relative) && !isPythonSource(relative)) continue;
     if (await pathExists(join(root, relative))) existing.push(relative);
     else deleted.push(relative);
   }
   return { existing, deleted };
-}
-
-function isTsLikeSource(relative: string): boolean {
-  if (relative.endsWith(".d.ts")) return false;
-  return TS_LIKE.has(extensionOf(relative));
 }
 
 async function listChangedNames(root: string): Promise<string[]> {
