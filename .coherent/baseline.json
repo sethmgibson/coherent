@@ -35,173 +35,8 @@
     "E05": 8,
     "E06": 8
   },
-  "createdAt": "2026-09-02T05:59:06.893Z",
+  "createdAt": "2026-09-02T06:08:31.504Z",
   "findings": [
-    {
-      "fingerprint": "20ff585611cc01ae46baddc5585ed07a0543d116aa738d659793b21d1b90acea",
-      "ruleId": "A07",
-      "identity": "compat:branch:src/cli.ts:result.legacyWarning",
-      "title": "Likely compatibility path",
-      "detectionMode": "hybrid",
-      "status": "candidate",
-      "severity": "medium",
-      "files": [
-        "src/cli.ts"
-      ],
-      "symbols": [
-        "result.legacyWarning"
-      ]
-    },
-    {
-      "fingerprint": "9a9c02f0992965fb43e975fb063d68ac579ae944898cd08b247487b3cb5d7d51",
-      "ruleId": "A07",
-      "identity": "compat:branch:src/state-dir.ts:hasLegacy",
-      "title": "Likely compatibility path",
-      "detectionMode": "hybrid",
-      "status": "candidate",
-      "severity": "medium",
-      "files": [
-        "src/state-dir.ts"
-      ],
-      "symbols": [
-        "hasLegacy"
-      ]
-    },
-    {
-      "fingerprint": "0a181a259ae6901e130531eceeb205c37a3d31910ec82da8a9f6b6dd634f660d",
-      "ruleId": "A07",
-      "identity": "compat:branch:src/state-dir.ts:resolved.leftoverLegacy",
-      "title": "Likely compatibility path",
-      "detectionMode": "hybrid",
-      "status": "candidate",
-      "severity": "medium",
-      "files": [
-        "src/state-dir.ts"
-      ],
-      "symbols": [
-        "resolved.leftoverLegacy"
-      ]
-    },
-    {
-      "fingerprint": "0e8455bd9ea4cd81e0e631e7bb323733e8b95bd86c51235933346d29fdc62499",
-      "ruleId": "A07",
-      "identity": "compat:branch:src/state-dir.ts:resolved.name === LEGACY_BACKEND_DIR",
-      "title": "Likely compatibility path",
-      "detectionMode": "hybrid",
-      "status": "candidate",
-      "severity": "medium",
-      "files": [
-        "src/state-dir.ts"
-      ],
-      "symbols": [
-        "resolved.name === LEGACY_BACKEND_DIR"
-      ]
-    },
-    {
-      "fingerprint": "013df5acfd5b3f871e7cb8e12e67f8c90832423907b4458cf93870b748aa461d",
-      "ruleId": "A07",
-      "identity": "compat:comment:src/config.ts:deprecated",
-      "title": "Likely compatibility path",
-      "detectionMode": "hybrid",
-      "status": "candidate",
-      "severity": "medium",
-      "files": [
-        "src/config.ts"
-      ],
-      "symbols": [
-        "deprecated"
-      ]
-    },
-    {
-      "fingerprint": "2ef3134954857d5882756fa6716778ba9ebc44edec5426812b89ebcfebce96af",
-      "ruleId": "A07",
-      "identity": "compat:name:scripts/check-package.ts:temporaryRoot",
-      "title": "Likely compatibility path",
-      "detectionMode": "hybrid",
-      "status": "candidate",
-      "severity": "medium",
-      "files": [
-        "scripts/check-package.ts"
-      ],
-      "symbols": [
-        "temporaryRoot"
-      ]
-    },
-    {
-      "fingerprint": "bc1f3b4c6f403a70586fa19102660bc87ba6c9a61027bf1d2df0727985978f1d",
-      "ruleId": "A07",
-      "identity": "compat:name:src/config.ts:LEGACY_BACKEND_DIR",
-      "title": "Likely compatibility path",
-      "detectionMode": "hybrid",
-      "status": "candidate",
-      "severity": "medium",
-      "files": [
-        "src/config.ts"
-      ],
-      "symbols": [
-        "LEGACY_BACKEND_DIR"
-      ]
-    },
-    {
-      "fingerprint": "91d8afda88fbdbbd6f6078d6b3c2e37df03cc9076cb513d303ba68a85cccba9f",
-      "ruleId": "A07",
-      "identity": "compat:name:src/review/store.ts:legacyReviewsPath",
-      "title": "Likely compatibility path",
-      "detectionMode": "hybrid",
-      "status": "candidate",
-      "severity": "medium",
-      "files": [
-        "src/review/store.ts"
-      ],
-      "symbols": [
-        "legacyReviewsPath"
-      ]
-    },
-    {
-      "fingerprint": "41c16a568710d8be67fa67dec5d84a2303fb5c8fd6259f4c04f774548554595f",
-      "ruleId": "A07",
-      "identity": "compat:name:src/review/store.ts:legacySemanticFindingsPath",
-      "title": "Likely compatibility path",
-      "detectionMode": "hybrid",
-      "status": "candidate",
-      "severity": "medium",
-      "files": [
-        "src/review/store.ts"
-      ],
-      "symbols": [
-        "legacySemanticFindingsPath"
-      ]
-    },
-    {
-      "fingerprint": "528345e360c565fffe3e50e3380c1d3e441aabd3255ff621ad3d7beaec2dbb89",
-      "ruleId": "A07",
-      "identity": "compat:name:src/state-dir.ts:legacy",
-      "title": "Likely compatibility path",
-      "detectionMode": "hybrid",
-      "status": "candidate",
-      "severity": "medium",
-      "files": [
-        "src/state-dir.ts"
-      ],
-      "symbols": [
-        "legacy"
-      ]
-    },
-    {
-      "fingerprint": "3fbfc0cba4121ad8fdd0a33b34adc71a59bf9ac122163da58dc6c562006b7c67",
-      "ruleId": "A07",
-      "identity": "compat:name:src/state-dir.ts:legacyStateDirWarning",
-      "title": "Likely compatibility path",
-      "detectionMode": "hybrid",
-      "status": "candidate",
-      "severity": "medium",
-      "files": [
-        "src/state-dir.ts"
-      ],
-      "symbols": [
-        "legacyStateDirWarning"
-      ]
-    },
     {
       "fingerprint": "b6470bbd7ec32af41b1c00d6ced9effa3300a5ad0e542dc5eaae2bc43de8ff2c",
       "ruleId": "A08",
@@ -248,48 +83,264 @@
       ]
     },
     {
-      "fingerprint": "034df4528bc50a04bafbc1b4362034754569b1b51d372c517f33471758710fae",
-      "ruleId": "E05",
-      "identity": "await-in-loop:src/check/changed-files.ts:listChangedSourceFiles",
-      "title": "Await inside a loop",
+      "fingerprint": "20ff585611cc01ae46baddc5585ed07a0543d116aa738d659793b21d1b90acea",
+      "ruleId": "A07",
+      "identity": "compat:branch:src/cli.ts:result.legacyWarning",
+      "title": "Likely compatibility path",
       "detectionMode": "hybrid",
       "status": "candidate",
       "severity": "medium",
       "files": [
-        "src/check/changed-files.ts"
+        "src/cli.ts"
       ],
       "symbols": [
-        "listChangedSourceFiles"
+        "result.legacyWarning"
       ]
     },
     {
-      "fingerprint": "3bad6c90fbb69f05e3e27cba3dee5aad9374a8bd3d43672d245629d7fdbe25c4",
-      "ruleId": "E05",
-      "identity": "await-in-loop:src/check/importers.ts:expandWithImporters",
-      "title": "Await inside a loop",
+      "fingerprint": "bc1f3b4c6f403a70586fa19102660bc87ba6c9a61027bf1d2df0727985978f1d",
+      "ruleId": "A07",
+      "identity": "compat:name:src/config.ts:LEGACY_BACKEND_DIR",
+      "title": "Likely compatibility path",
       "detectionMode": "hybrid",
       "status": "candidate",
       "severity": "medium",
       "files": [
-        "src/check/importers.ts"
+        "src/config.ts"
       ],
       "symbols": [
-        "expandWithImporters"
+        "LEGACY_BACKEND_DIR"
       ]
     },
     {
-      "fingerprint": "9faab7f82c2571955710975fb9acd7006db30a505e4565dd212b27550635c244",
-      "ruleId": "E05",
-      "identity": "await-in-loop:src/install/run.ts:runInstall",
-      "title": "Await inside a loop",
+      "fingerprint": "013df5acfd5b3f871e7cb8e12e67f8c90832423907b4458cf93870b748aa461d",
+      "ruleId": "A07",
+      "identity": "compat:comment:src/config.ts:deprecated",
+      "title": "Likely compatibility path",
       "detectionMode": "hybrid",
       "status": "candidate",
       "severity": "medium",
+      "files": [
+        "src/config.ts"
+      ],
+      "symbols": [
+        "deprecated"
+      ]
+    },
+    {
+      "fingerprint": "528345e360c565fffe3e50e3380c1d3e441aabd3255ff621ad3d7beaec2dbb89",
+      "ruleId": "A07",
+      "identity": "compat:name:src/state-dir.ts:legacy",
+      "title": "Likely compatibility path",
+      "detectionMode": "hybrid",
+      "status": "candidate",
+      "severity": "medium",
+      "files": [
+        "src/state-dir.ts"
+      ],
+      "symbols": [
+        "legacy"
+      ]
+    },
+    {
+      "fingerprint": "9a9c02f0992965fb43e975fb063d68ac579ae944898cd08b247487b3cb5d7d51",
+      "ruleId": "A07",
+      "identity": "compat:branch:src/state-dir.ts:hasLegacy",
+      "title": "Likely compatibility path",
+      "detectionMode": "hybrid",
+      "status": "candidate",
+      "severity": "medium",
+      "files": [
+        "src/state-dir.ts"
+      ],
+      "symbols": [
+        "hasLegacy"
+      ]
+    },
+    {
+      "fingerprint": "3fbfc0cba4121ad8fdd0a33b34adc71a59bf9ac122163da58dc6c562006b7c67",
+      "ruleId": "A07",
+      "identity": "compat:name:src/state-dir.ts:legacyStateDirWarning",
+      "title": "Likely compatibility path",
+      "detectionMode": "hybrid",
+      "status": "candidate",
+      "severity": "medium",
+      "files": [
+        "src/state-dir.ts"
+      ],
+      "symbols": [
+        "legacyStateDirWarning"
+      ]
+    },
+    {
+      "fingerprint": "0e8455bd9ea4cd81e0e631e7bb323733e8b95bd86c51235933346d29fdc62499",
+      "ruleId": "A07",
+      "identity": "compat:branch:src/state-dir.ts:resolved.name === LEGACY_BACKEND_DIR",
+      "title": "Likely compatibility path",
+      "detectionMode": "hybrid",
+      "status": "candidate",
+      "severity": "medium",
+      "files": [
+        "src/state-dir.ts"
+      ],
+      "symbols": [
+        "resolved.name === LEGACY_BACKEND_DIR"
+      ]
+    },
+    {
+      "fingerprint": "0a181a259ae6901e130531eceeb205c37a3d31910ec82da8a9f6b6dd634f660d",
+      "ruleId": "A07",
+      "identity": "compat:branch:src/state-dir.ts:resolved.leftoverLegacy",
+      "title": "Likely compatibility path",
+      "detectionMode": "hybrid",
+      "status": "candidate",
+      "severity": "medium",
+      "files": [
+        "src/state-dir.ts"
+      ],
+      "symbols": [
+        "resolved.leftoverLegacy"
+      ]
+    },
+    {
+      "fingerprint": "91d8afda88fbdbbd6f6078d6b3c2e37df03cc9076cb513d303ba68a85cccba9f",
+      "ruleId": "A07",
+      "identity": "compat:name:src/review/store.ts:legacyReviewsPath",
+      "title": "Likely compatibility path",
+      "detectionMode": "hybrid",
+      "status": "candidate",
+      "severity": "medium",
+      "files": [
+        "src/review/store.ts"
+      ],
+      "symbols": [
+        "legacyReviewsPath"
+      ]
+    },
+    {
+      "fingerprint": "41c16a568710d8be67fa67dec5d84a2303fb5c8fd6259f4c04f774548554595f",
+      "ruleId": "A07",
+      "identity": "compat:name:src/review/store.ts:legacySemanticFindingsPath",
+      "title": "Likely compatibility path",
+      "detectionMode": "hybrid",
+      "status": "candidate",
+      "severity": "medium",
+      "files": [
+        "src/review/store.ts"
+      ],
+      "symbols": [
+        "legacySemanticFindingsPath"
+      ]
+    },
+    {
+      "fingerprint": "836bdca2a307d5e6dbcc07b11bccd2ea17a43612b0d73139f007330a9cc2e601",
+      "ruleId": "A07",
+      "identity": "compat:branch:src/install/cli-dep.ts:parsed.compatible !== true",
+      "title": "Likely compatibility path",
+      "detectionMode": "hybrid",
+      "status": "candidate",
+      "severity": "medium",
+      "files": [
+        "src/install/cli-dep.ts"
+      ],
+      "symbols": [
+        "parsed.compatible !== true"
+      ]
+    },
+    {
+      "fingerprint": "2ef3134954857d5882756fa6716778ba9ebc44edec5426812b89ebcfebce96af",
+      "ruleId": "A07",
+      "identity": "compat:name:scripts/check-package.ts:temporaryRoot",
+      "title": "Likely compatibility path",
+      "detectionMode": "hybrid",
+      "status": "candidate",
+      "severity": "medium",
+      "files": [
+        "scripts/check-package.ts"
+      ],
+      "symbols": [
+        "temporaryRoot"
+      ]
+    },
+    {
+      "fingerprint": "f7b1e3bc503991a4cf73e7a111f42831571f058abd18dffb6d7aede73c083d1b",
+      "ruleId": "C04",
+      "identity": "context-object:src/install/run.ts:InstallOptions",
+      "title": "Large context / options object",
+      "detectionMode": "hybrid",
+      "status": "candidate",
+      "severity": "high",
       "files": [
         "src/install/run.ts"
       ],
       "symbols": [
-        "runInstall"
+        "InstallOptions",
+        "chooseAdoption",
+        "hasExplicitIntegrations",
+        "projectCliOptions",
+        "runInstall",
+        "runUpdate",
+        "shouldInstallProjectCli"
+      ]
+    },
+    {
+      "fingerprint": "fd96f8a75a72b71418afe83cf07892095a142f6265454501bf3fbd11eb7a966b",
+      "ruleId": "D03",
+      "identity": "swallowed-empty:src/install/detect.ts:commandOnPath",
+      "title": "Swallowed error",
+      "detectionMode": "hybrid",
+      "status": "confirmed",
+      "severity": "high",
+      "files": [
+        "src/install/detect.ts"
+      ],
+      "symbols": [
+        "commandOnPath"
+      ]
+    },
+    {
+      "fingerprint": "a9039f9ffa04bb23eb6aaddd39b8d6f0588216710c5cf62eb48465195c81f655",
+      "ruleId": "D03",
+      "identity": "swallowed-empty:src/install/skill-tree.ts:readIfExists",
+      "title": "Possible boundary fallback",
+      "detectionMode": "hybrid",
+      "status": "candidate",
+      "severity": "medium",
+      "files": [
+        "src/install/skill-tree.ts"
+      ],
+      "symbols": [
+        "readIfExists"
+      ]
+    },
+    {
+      "fingerprint": "a15f1d7414e012a63842b2d7a09974adc3555b645a08c41c7d6eacea51ee098d",
+      "ruleId": "E05",
+      "identity": "await-in-loop:src/inventory-python.ts:readPythonDependencySignals",
+      "title": "Await inside a loop",
+      "detectionMode": "hybrid",
+      "status": "candidate",
+      "severity": "medium",
+      "files": [
+        "src/inventory-python.ts"
+      ],
+      "symbols": [
+        "readPythonDependencySignals"
+      ]
+    },
+    {
+      "fingerprint": "049c0fdbb3a1548523e670517f72aa4a9d23a52aca97b82ce803aa0761cad6a4",
+      "ruleId": "E05",
+      "identity": "await-in-loop:src/inventory-python.ts:pythonScriptEntrypoints",
+      "title": "Await inside a loop",
+      "detectionMode": "hybrid",
+      "status": "candidate",
+      "severity": "medium",
+      "files": [
+        "src/inventory-python.ts"
+      ],
+      "symbols": [
+        "pythonScriptEntrypoints"
       ]
     },
     {
@@ -338,51 +389,6 @@
       ]
     },
     {
-      "fingerprint": "accb574f41c909cdcd353dcc7c44d5346384e202b17eaa473283f67daa4f09af",
-      "ruleId": "E05",
-      "identity": "await-in-loop:src/review/lock.ts:withFileLock",
-      "title": "Await inside a loop",
-      "detectionMode": "hybrid",
-      "status": "candidate",
-      "severity": "medium",
-      "files": [
-        "src/review/lock.ts"
-      ],
-      "symbols": [
-        "withFileLock"
-      ]
-    },
-    {
-      "fingerprint": "2ae8fce8d55a51a764c8cd34d3eeae649cc8746acd814e6802ef3954cf18a0e1",
-      "ruleId": "E05",
-      "identity": "seq-await:src/baseline/run.ts:runBaseline",
-      "title": "Sequential awaits",
-      "detectionMode": "hybrid",
-      "status": "candidate",
-      "severity": "medium",
-      "files": [
-        "src/baseline/run.ts"
-      ],
-      "symbols": [
-        "runBaseline"
-      ]
-    },
-    {
-      "fingerprint": "1a3de982157806a46c1ee7bf69a27b90b777a1ce18897d0b825af4b0bd88fd7a",
-      "ruleId": "E05",
-      "identity": "seq-await:src/check/changed-files.ts:listChangedSourceFiles",
-      "title": "Sequential awaits",
-      "detectionMode": "hybrid",
-      "status": "candidate",
-      "severity": "medium",
-      "files": [
-        "src/check/changed-files.ts"
-      ],
-      "symbols": [
-        "listChangedSourceFiles"
-      ]
-    },
-    {
       "fingerprint": "cc28b882224055b4755f43130d7920e69d8e7c52b8b440d388cb6b439cb4c366",
       "ruleId": "E05",
       "identity": "seq-await:src/review/cli.ts:registerReviewCommands",
@@ -395,6 +401,21 @@
       ],
       "symbols": [
         "registerReviewCommands"
+      ]
+    },
+    {
+      "fingerprint": "accb574f41c909cdcd353dcc7c44d5346384e202b17eaa473283f67daa4f09af",
+      "ruleId": "E05",
+      "identity": "await-in-loop:src/review/lock.ts:withFileLock",
+      "title": "Await inside a loop",
+      "detectionMode": "hybrid",
+      "status": "candidate",
+      "severity": "medium",
+      "files": [
+        "src/review/lock.ts"
+      ],
+      "symbols": [
+        "withFileLock"
       ]
     },
     {
@@ -413,21 +434,6 @@
       ]
     },
     {
-      "fingerprint": "ba8c70d72717f948d6ff9cab4369bd4e39d111799612ba8d10e1612eafbaa51a",
-      "ruleId": "E05",
-      "identity": "seq-await:src/review/store.ts:updateDecisions",
-      "title": "Sequential awaits",
-      "detectionMode": "hybrid",
-      "status": "candidate",
-      "severity": "medium",
-      "files": [
-        "src/review/store.ts"
-      ],
-      "symbols": [
-        "updateDecisions"
-      ]
-    },
-    {
       "fingerprint": "b719addca1b24de1dcf0ad9015bd2b837b84c46f9307571b42046ba575d791d2",
       "ruleId": "E05",
       "identity": "seq-await:src/review/store.ts:writeDecisions",
@@ -443,19 +449,309 @@
       ]
     },
     {
-      "fingerprint": "a122541d1267b5e19c981d011ab27e73ebd6f052d84e65ba0ce201cec698f777",
+      "fingerprint": "ba8c70d72717f948d6ff9cab4369bd4e39d111799612ba8d10e1612eafbaa51a",
+      "ruleId": "E05",
+      "identity": "seq-await:src/review/store.ts:updateDecisions",
+      "title": "Sequential awaits",
+      "detectionMode": "hybrid",
+      "status": "candidate",
+      "severity": "medium",
+      "files": [
+        "src/review/store.ts"
+      ],
+      "symbols": [
+        "updateDecisions"
+      ]
+    },
+    {
+      "fingerprint": "cee74cebff6c5ea04af6eaae425da02e310cf6ee91d4200fc68491f7b81099d9",
+      "ruleId": "E05",
+      "identity": "await-in-loop:src/install/prompt.ts:promptProviders",
+      "title": "Await inside a loop",
+      "detectionMode": "hybrid",
+      "status": "candidate",
+      "severity": "medium",
+      "files": [
+        "src/install/prompt.ts"
+      ],
+      "symbols": [
+        "promptProviders"
+      ]
+    },
+    {
+      "fingerprint": "9faab7f82c2571955710975fb9acd7006db30a505e4565dd212b27550635c244",
+      "ruleId": "E05",
+      "identity": "await-in-loop:src/install/run.ts:runInstall",
+      "title": "Await inside a loop",
+      "detectionMode": "hybrid",
+      "status": "candidate",
+      "severity": "medium",
+      "files": [
+        "src/install/run.ts"
+      ],
+      "symbols": [
+        "runInstall"
+      ]
+    },
+    {
+      "fingerprint": "7ac873028653548935a1675b5bb0eaf87a33bd4ee21de0d67f0afb06bcf27429",
+      "ruleId": "E05",
+      "identity": "await-in-loop:src/install/skill-tree.ts:copySkillTree",
+      "title": "Await inside a loop",
+      "detectionMode": "hybrid",
+      "status": "candidate",
+      "severity": "medium",
+      "files": [
+        "src/install/skill-tree.ts"
+      ],
+      "symbols": [
+        "copySkillTree"
+      ]
+    },
+    {
+      "fingerprint": "b3c57bbb2853b5c913c7bf0ced24a5bd268ae3771fa829005b3ae348f648b9e5",
+      "ruleId": "E05",
+      "identity": "await-in-loop:src/install/skill-tree.ts:listFiles",
+      "title": "Await inside a loop",
+      "detectionMode": "hybrid",
+      "status": "candidate",
+      "severity": "medium",
+      "files": [
+        "src/install/skill-tree.ts"
+      ],
+      "symbols": [
+        "listFiles"
+      ]
+    },
+    {
+      "fingerprint": "034df4528bc50a04bafbc1b4362034754569b1b51d372c517f33471758710fae",
+      "ruleId": "E05",
+      "identity": "await-in-loop:src/check/changed-files.ts:listChangedSourceFiles",
+      "title": "Await inside a loop",
+      "detectionMode": "hybrid",
+      "status": "candidate",
+      "severity": "medium",
+      "files": [
+        "src/check/changed-files.ts"
+      ],
+      "symbols": [
+        "listChangedSourceFiles"
+      ]
+    },
+    {
+      "fingerprint": "1a3de982157806a46c1ee7bf69a27b90b777a1ce18897d0b825af4b0bd88fd7a",
+      "ruleId": "E05",
+      "identity": "seq-await:src/check/changed-files.ts:listChangedSourceFiles",
+      "title": "Sequential awaits",
+      "detectionMode": "hybrid",
+      "status": "candidate",
+      "severity": "medium",
+      "files": [
+        "src/check/changed-files.ts"
+      ],
+      "symbols": [
+        "listChangedSourceFiles"
+      ]
+    },
+    {
+      "fingerprint": "3bad6c90fbb69f05e3e27cba3dee5aad9374a8bd3d43672d245629d7fdbe25c4",
+      "ruleId": "E05",
+      "identity": "await-in-loop:src/check/importers.ts:expandWithImporters",
+      "title": "Await inside a loop",
+      "detectionMode": "hybrid",
+      "status": "candidate",
+      "severity": "medium",
+      "files": [
+        "src/check/importers.ts"
+      ],
+      "symbols": [
+        "expandWithImporters"
+      ]
+    },
+    {
+      "fingerprint": "2ae8fce8d55a51a764c8cd34d3eeae649cc8746acd814e6802ef3954cf18a0e1",
+      "ruleId": "E05",
+      "identity": "seq-await:src/baseline/run.ts:runBaseline",
+      "title": "Sequential awaits",
+      "detectionMode": "hybrid",
+      "status": "candidate",
+      "severity": "medium",
+      "files": [
+        "src/baseline/run.ts"
+      ],
+      "symbols": [
+        "runBaseline"
+      ]
+    },
+    {
+      "fingerprint": "846cfe4e71faa7e30449f747afe96a3612c0778f94fa3824cc29079f118524cf",
+      "ruleId": "E05",
+      "identity": "await-in-loop:src/analysis/python.ts:resolvePythonInterpreter",
+      "title": "Await inside a loop",
+      "detectionMode": "hybrid",
+      "status": "candidate",
+      "severity": "medium",
+      "files": [
+        "src/analysis/python.ts"
+      ],
+      "symbols": [
+        "resolvePythonInterpreter"
+      ]
+    },
+    {
+      "fingerprint": "7814e3a920e3a771f497d2c3c5f3a9cad8d4e5f7b62b7ce8c7967fb1261c78d2",
       "ruleId": "E06",
-      "identity": "loop-filter:src/audit/render.ts:renderAudit",
+      "identity": "nested-loop:src/inventory-python.ts:pythonScriptEntrypoints",
+      "title": "Nested collection iteration",
+      "detectionMode": "hybrid",
+      "status": "candidate",
+      "severity": "medium",
+      "files": [
+        "src/inventory-python.ts"
+      ],
+      "symbols": [
+        "pythonScriptEntrypoints"
+      ]
+    },
+    {
+      "fingerprint": "98624c09d4d219efb05d16603a9ae51c4f88f7cb56473371f55a310d25416a2e",
+      "ruleId": "E06",
+      "identity": "loop-find:src/review/run.ts:prepareReviews",
+      "title": "Collection .find() inside a loop",
+      "detectionMode": "hybrid",
+      "status": "candidate",
+      "severity": "medium",
+      "files": [
+        "src/review/run.ts"
+      ],
+      "symbols": [
+        "find",
+        "prepareReviews"
+      ]
+    },
+    {
+      "fingerprint": "2a5c37d355e11f2ab7f3429d13c83cdbe4aebab792e39bf517f2168eea32d684",
+      "ruleId": "E06",
+      "identity": "loop-sort:src/review/run.ts:prepareReviews",
+      "title": "Collection .sort() inside a loop",
+      "detectionMode": "hybrid",
+      "status": "candidate",
+      "severity": "medium",
+      "files": [
+        "src/review/run.ts"
+      ],
+      "symbols": [
+        "prepareReviews",
+        "sort"
+      ]
+    },
+    {
+      "fingerprint": "336faf7272b8f7ab90c5affdff9b8c0c8ae229e6ec5ee080d2065995fe288603",
+      "ruleId": "E06",
+      "identity": "nested-loop:src/plan/build.ts:prerequisiteMap",
+      "title": "Nested collection iteration",
+      "detectionMode": "hybrid",
+      "status": "candidate",
+      "severity": "medium",
+      "files": [
+        "src/plan/build.ts"
+      ],
+      "symbols": [
+        "prerequisiteMap"
+      ]
+    },
+    {
+      "fingerprint": "bafd9961af0d4f44a35d51fa64e73bce7c0746e208c7b3937b8a7516ec84c311",
+      "ruleId": "E06",
+      "identity": "loop-some:src/plan/build.ts:prerequisiteMap",
+      "title": "Collection .some() inside a loop",
+      "detectionMode": "hybrid",
+      "status": "candidate",
+      "severity": "medium",
+      "files": [
+        "src/plan/build.ts"
+      ],
+      "symbols": [
+        "prerequisiteMap",
+        "some"
+      ]
+    },
+    {
+      "fingerprint": "d74c201954358b322f297a95d50d3a1bf34a4cc07f4fb4b0a5733718207c7a56",
+      "ruleId": "E06",
+      "identity": "nested-loop:src/plan/build.ts:indirectMap",
+      "title": "Nested collection iteration",
+      "detectionMode": "hybrid",
+      "status": "candidate",
+      "severity": "medium",
+      "files": [
+        "src/plan/build.ts"
+      ],
+      "symbols": [
+        "indirectMap"
+      ]
+    },
+    {
+      "fingerprint": "0a99af09174370d6537e1af360acba3264825cab825431fcd5ac062e44f24128",
+      "ruleId": "E06",
+      "identity": "loop-some:src/plan/build.ts:indirectMap",
+      "title": "Collection .some() inside a loop",
+      "detectionMode": "hybrid",
+      "status": "candidate",
+      "severity": "medium",
+      "files": [
+        "src/plan/build.ts"
+      ],
+      "symbols": [
+        "indirectMap",
+        "some"
+      ]
+    },
+    {
+      "fingerprint": "e26b727bba54adc54bb6458aa888cd669cc93537b693e5bfbc4fdc5b6e8e2649",
+      "ruleId": "E06",
+      "identity": "nested-loop:src/install/detect.ts:commandOnPath",
+      "title": "Nested collection iteration",
+      "detectionMode": "hybrid",
+      "status": "candidate",
+      "severity": "medium",
+      "files": [
+        "src/install/detect.ts"
+      ],
+      "symbols": [
+        "commandOnPath"
+      ]
+    },
+    {
+      "fingerprint": "a344dea62935fb6ffcfd9a6708a8fc4d86162c32255096d7503840892bdeb787",
+      "ruleId": "E06",
+      "identity": "loop-filter:src/install/providers.ts:parseProviderList",
       "title": "Collection .filter() inside a loop",
       "detectionMode": "hybrid",
       "status": "candidate",
       "severity": "medium",
       "files": [
-        "src/audit/render.ts"
+        "src/install/providers.ts"
       ],
       "symbols": [
         "filter",
-        "renderAudit"
+        "parseProviderList"
+      ]
+    },
+    {
+      "fingerprint": "cf92ab953260a1c62bec2c401d19eedf7ccf7614202ee31effa3d12425281d6c",
+      "ruleId": "E06",
+      "identity": "loop-sort:src/detectors/boolean-explosion.ts:detectBooleanExplosion",
+      "title": "Collection .sort() inside a loop",
+      "detectionMode": "hybrid",
+      "status": "candidate",
+      "severity": "medium",
+      "files": [
+        "src/detectors/boolean-explosion.ts"
+      ],
+      "symbols": [
+        "detectBooleanExplosion",
+        "sort"
       ]
     },
     {
@@ -475,6 +771,22 @@
       ]
     },
     {
+      "fingerprint": "4ebf01cee3eea6de9fc66984050291386b506e63b1ac234d186591247e61056a",
+      "ruleId": "E06",
+      "identity": "loop-includes:src/detectors/context-explosion.ts:findConsumers",
+      "title": "Collection .includes() inside a loop",
+      "detectionMode": "hybrid",
+      "status": "candidate",
+      "severity": "medium",
+      "files": [
+        "src/detectors/context-explosion.ts"
+      ],
+      "symbols": [
+        "findConsumers",
+        "includes"
+      ]
+    },
+    {
       "fingerprint": "e8b86680901f951b2ce39ce2c72f0e654c3ad9181ae733e4c970833186ebbc8b",
       "ruleId": "E06",
       "identity": "loop-filter:src/detectors/dependency-creep.ts:detectDependencyCreep",
@@ -491,6 +803,22 @@
       ]
     },
     {
+      "fingerprint": "4a2e83dcbeee84e747f154775f3ce429b9d5b42f3107fc35613d959eeddaeae8",
+      "ruleId": "E06",
+      "identity": "loop-sort:src/detectors/dependency-creep.ts:detectDependencyCreep",
+      "title": "Collection .sort() inside a loop",
+      "detectionMode": "hybrid",
+      "status": "candidate",
+      "severity": "medium",
+      "files": [
+        "src/detectors/dependency-creep.ts"
+      ],
+      "symbols": [
+        "detectDependencyCreep",
+        "sort"
+      ]
+    },
+    {
       "fingerprint": "5f6fb9398b86f63121a8a992f6a1db71527d7fd3356a3fad08585cbddd80f27b",
       "ruleId": "E06",
       "identity": "loop-filter:src/detectors/duplicate-reps.ts:detectDuplicateRepresentations",
@@ -504,6 +832,69 @@
       "symbols": [
         "detectDuplicateRepresentations",
         "filter"
+      ]
+    },
+    {
+      "fingerprint": "889f0299e44ae5fda71a381819aeca1aae0e29cfd453b302719fe9fdc554a843",
+      "ruleId": "E06",
+      "identity": "loop-includes:src/detectors/duplicate-reps.ts:detectDuplicateRepresentations",
+      "title": "Collection .includes() inside a loop",
+      "detectionMode": "hybrid",
+      "status": "candidate",
+      "severity": "medium",
+      "files": [
+        "src/detectors/duplicate-reps.ts"
+      ],
+      "symbols": [
+        "detectDuplicateRepresentations",
+        "includes"
+      ]
+    },
+    {
+      "fingerprint": "89b2f78e99e6c9201f67a21a695f4e39850fbe00ed9aeab59188fed85c1438a6",
+      "ruleId": "E06",
+      "identity": "loop-sort:src/detectors/duplicate-reps.ts:detectDuplicateRepresentations",
+      "title": "Collection .sort() inside a loop",
+      "detectionMode": "hybrid",
+      "status": "candidate",
+      "severity": "medium",
+      "files": [
+        "src/detectors/duplicate-reps.ts"
+      ],
+      "symbols": [
+        "detectDuplicateRepresentations",
+        "sort"
+      ]
+    },
+    {
+      "fingerprint": "f8dbb95acbffc055beac0415637fd04a82f2043fba950c89438127e083c60c0e",
+      "ruleId": "E06",
+      "identity": "loop-some:src/detectors/duplicate-reps.ts:detectDuplicateRepresentations",
+      "title": "Collection .some() inside a loop",
+      "detectionMode": "hybrid",
+      "status": "candidate",
+      "severity": "medium",
+      "files": [
+        "src/detectors/duplicate-reps.ts"
+      ],
+      "symbols": [
+        "detectDuplicateRepresentations",
+        "some"
+      ]
+    },
+    {
+      "fingerprint": "5fb39b9d4360f90928dff5c2aa02b312e45c558239ecd333ea765a70e4221579",
+      "ruleId": "E06",
+      "identity": "nested-loop:src/detectors/duplicate-reps.ts:overlappingPairs",
+      "title": "Nested collection iteration",
+      "detectionMode": "hybrid",
+      "status": "candidate",
+      "severity": "medium",
+      "files": [
+        "src/detectors/duplicate-reps.ts"
+      ],
+      "symbols": [
+        "overlappingPairs"
       ]
     },
     {
@@ -539,99 +930,18 @@
       ]
     },
     {
-      "fingerprint": "7d591aad50bac4db6d2686e54fa696c6bccba643a8cfeb20b635ab44040216ca",
+      "fingerprint": "c07a6231664c5f6d26ba2c5755044620b0b1cc365a08c1e4135d3cca0e7b0766",
       "ruleId": "E06",
-      "identity": "loop-filter:src/detectors/stale-compat.ts:detectStaleCompatibility",
-      "title": "Collection .filter() inside a loop",
+      "identity": "nested-loop:src/detectors/redundant-db.ts:detectRedundantDbAccess",
+      "title": "Nested collection iteration",
       "detectionMode": "hybrid",
       "status": "candidate",
       "severity": "medium",
       "files": [
-        "src/detectors/stale-compat.ts"
+        "src/detectors/redundant-db.ts"
       ],
       "symbols": [
-        "detectStaleCompatibility",
-        "filter"
-      ]
-    },
-    {
-      "fingerprint": "98624c09d4d219efb05d16603a9ae51c4f88f7cb56473371f55a310d25416a2e",
-      "ruleId": "E06",
-      "identity": "loop-find:src/review/run.ts:prepareReviews",
-      "title": "Collection .find() inside a loop",
-      "detectionMode": "hybrid",
-      "status": "candidate",
-      "severity": "medium",
-      "files": [
-        "src/review/run.ts"
-      ],
-      "symbols": [
-        "find",
-        "prepareReviews"
-      ]
-    },
-    {
-      "fingerprint": "4ebf01cee3eea6de9fc66984050291386b506e63b1ac234d186591247e61056a",
-      "ruleId": "E06",
-      "identity": "loop-includes:src/detectors/context-explosion.ts:findConsumers",
-      "title": "Collection .includes() inside a loop",
-      "detectionMode": "hybrid",
-      "status": "candidate",
-      "severity": "medium",
-      "files": [
-        "src/detectors/context-explosion.ts"
-      ],
-      "symbols": [
-        "findConsumers",
-        "includes"
-      ]
-    },
-    {
-      "fingerprint": "889f0299e44ae5fda71a381819aeca1aae0e29cfd453b302719fe9fdc554a843",
-      "ruleId": "E06",
-      "identity": "loop-includes:src/detectors/duplicate-reps.ts:detectDuplicateRepresentations",
-      "title": "Collection .includes() inside a loop",
-      "detectionMode": "hybrid",
-      "status": "candidate",
-      "severity": "medium",
-      "files": [
-        "src/detectors/duplicate-reps.ts"
-      ],
-      "symbols": [
-        "detectDuplicateRepresentations",
-        "includes"
-      ]
-    },
-    {
-      "fingerprint": "587ce5fda4c1469b424793f2d888bbe1ed8e3f0902f1878209739ef3635cce15",
-      "ruleId": "E06",
-      "identity": "loop-some:src/analysis/nest-reachability.ts:collectReachable",
-      "title": "Collection .some() inside a loop",
-      "detectionMode": "hybrid",
-      "status": "candidate",
-      "severity": "medium",
-      "files": [
-        "src/analysis/nest-reachability.ts"
-      ],
-      "symbols": [
-        "collectReachable",
-        "some"
-      ]
-    },
-    {
-      "fingerprint": "f8dbb95acbffc055beac0415637fd04a82f2043fba950c89438127e083c60c0e",
-      "ruleId": "E06",
-      "identity": "loop-some:src/detectors/duplicate-reps.ts:detectDuplicateRepresentations",
-      "title": "Collection .some() inside a loop",
-      "detectionMode": "hybrid",
-      "status": "candidate",
-      "severity": "medium",
-      "files": [
-        "src/detectors/duplicate-reps.ts"
-      ],
-      "symbols": [
-        "detectDuplicateRepresentations",
-        "some"
+        "detectRedundantDbAccess"
       ]
     },
     {
@@ -651,35 +961,50 @@
       ]
     },
     {
-      "fingerprint": "0a99af09174370d6537e1af360acba3264825cab825431fcd5ac062e44f24128",
+      "fingerprint": "7d591aad50bac4db6d2686e54fa696c6bccba643a8cfeb20b635ab44040216ca",
       "ruleId": "E06",
-      "identity": "loop-some:src/plan/build.ts:indirectMap",
-      "title": "Collection .some() inside a loop",
+      "identity": "loop-filter:src/detectors/stale-compat.ts:detectStaleCompatibility",
+      "title": "Collection .filter() inside a loop",
       "detectionMode": "hybrid",
       "status": "candidate",
       "severity": "medium",
       "files": [
-        "src/plan/build.ts"
+        "src/detectors/stale-compat.ts"
       ],
       "symbols": [
-        "indirectMap",
-        "some"
+        "detectStaleCompatibility",
+        "filter"
       ]
     },
     {
-      "fingerprint": "bafd9961af0d4f44a35d51fa64e73bce7c0746e208c7b3937b8a7516ec84c311",
+      "fingerprint": "260571651f62f56dacc6cf8232b7e992690dc8c01484cf45945565261524d29c",
       "ruleId": "E06",
-      "identity": "loop-some:src/plan/build.ts:prerequisiteMap",
-      "title": "Collection .some() inside a loop",
+      "identity": "nested-loop:src/check/importers.ts:expandWithImporters",
+      "title": "Nested collection iteration",
       "detectionMode": "hybrid",
       "status": "candidate",
       "severity": "medium",
       "files": [
-        "src/plan/build.ts"
+        "src/check/importers.ts"
       ],
       "symbols": [
-        "prerequisiteMap",
-        "some"
+        "expandWithImporters"
+      ]
+    },
+    {
+      "fingerprint": "176b759da260441be31801665a14e3a7f23de8c2bfb819537999cf52b39e5afe",
+      "ruleId": "E06",
+      "identity": "loop-includes:src/baseline/run.ts:parseRuleDetectorRevisions",
+      "title": "Collection .includes() inside a loop",
+      "detectionMode": "hybrid",
+      "status": "candidate",
+      "severity": "medium",
+      "files": [
+        "src/baseline/run.ts"
+      ],
+      "symbols": [
+        "includes",
+        "parseRuleDetectorRevisions"
       ]
     },
     {
@@ -699,126 +1024,50 @@
       ]
     },
     {
-      "fingerprint": "cf92ab953260a1c62bec2c401d19eedf7ccf7614202ee31effa3d12425281d6c",
+      "fingerprint": "a122541d1267b5e19c981d011ab27e73ebd6f052d84e65ba0ce201cec698f777",
       "ruleId": "E06",
-      "identity": "loop-sort:src/detectors/boolean-explosion.ts:detectBooleanExplosion",
-      "title": "Collection .sort() inside a loop",
+      "identity": "loop-filter:src/audit/render.ts:renderAudit",
+      "title": "Collection .filter() inside a loop",
       "detectionMode": "hybrid",
       "status": "candidate",
       "severity": "medium",
       "files": [
-        "src/detectors/boolean-explosion.ts"
+        "src/audit/render.ts"
       ],
       "symbols": [
-        "detectBooleanExplosion",
-        "sort"
+        "filter",
+        "renderAudit"
       ]
     },
     {
-      "fingerprint": "4a2e83dcbeee84e747f154775f3ce429b9d5b42f3107fc35613d959eeddaeae8",
+      "fingerprint": "587ce5fda4c1469b424793f2d888bbe1ed8e3f0902f1878209739ef3635cce15",
       "ruleId": "E06",
-      "identity": "loop-sort:src/detectors/dependency-creep.ts:detectDependencyCreep",
-      "title": "Collection .sort() inside a loop",
+      "identity": "loop-some:src/analysis/nest-reachability.ts:collectReachable",
+      "title": "Collection .some() inside a loop",
       "detectionMode": "hybrid",
       "status": "candidate",
       "severity": "medium",
       "files": [
-        "src/detectors/dependency-creep.ts"
+        "src/analysis/nest-reachability.ts"
       ],
       "symbols": [
-        "detectDependencyCreep",
-        "sort"
+        "collectReachable",
+        "some"
       ]
     },
     {
-      "fingerprint": "89b2f78e99e6c9201f67a21a695f4e39850fbe00ed9aeab59188fed85c1438a6",
+      "fingerprint": "0f02649df01786aff3f8a3aa0f409787e48c607157a3aeb0b3e689900453371e",
       "ruleId": "E06",
-      "identity": "loop-sort:src/detectors/duplicate-reps.ts:detectDuplicateRepresentations",
-      "title": "Collection .sort() inside a loop",
-      "detectionMode": "hybrid",
-      "status": "candidate",
-      "severity": "medium",
-      "files": [
-        "src/detectors/duplicate-reps.ts"
-      ],
-      "symbols": [
-        "detectDuplicateRepresentations",
-        "sort"
-      ]
-    },
-    {
-      "fingerprint": "260571651f62f56dacc6cf8232b7e992690dc8c01484cf45945565261524d29c",
-      "ruleId": "E06",
-      "identity": "nested-loop:src/check/importers.ts:expandWithImporters",
+      "identity": "nested-loop:src/analysis/python.ts:expandPythonImporters",
       "title": "Nested collection iteration",
       "detectionMode": "hybrid",
       "status": "candidate",
       "severity": "medium",
       "files": [
-        "src/check/importers.ts"
+        "src/analysis/python.ts"
       ],
       "symbols": [
-        "expandWithImporters"
-      ]
-    },
-    {
-      "fingerprint": "5fb39b9d4360f90928dff5c2aa02b312e45c558239ecd333ea765a70e4221579",
-      "ruleId": "E06",
-      "identity": "nested-loop:src/detectors/duplicate-reps.ts:overlappingPairs",
-      "title": "Nested collection iteration",
-      "detectionMode": "hybrid",
-      "status": "candidate",
-      "severity": "medium",
-      "files": [
-        "src/detectors/duplicate-reps.ts"
-      ],
-      "symbols": [
-        "overlappingPairs"
-      ]
-    },
-    {
-      "fingerprint": "c07a6231664c5f6d26ba2c5755044620b0b1cc365a08c1e4135d3cca0e7b0766",
-      "ruleId": "E06",
-      "identity": "nested-loop:src/detectors/redundant-db.ts:detectRedundantDbAccess",
-      "title": "Nested collection iteration",
-      "detectionMode": "hybrid",
-      "status": "candidate",
-      "severity": "medium",
-      "files": [
-        "src/detectors/redundant-db.ts"
-      ],
-      "symbols": [
-        "detectRedundantDbAccess"
-      ]
-    },
-    {
-      "fingerprint": "d74c201954358b322f297a95d50d3a1bf34a4cc07f4fb4b0a5733718207c7a56",
-      "ruleId": "E06",
-      "identity": "nested-loop:src/plan/build.ts:indirectMap",
-      "title": "Nested collection iteration",
-      "detectionMode": "hybrid",
-      "status": "candidate",
-      "severity": "medium",
-      "files": [
-        "src/plan/build.ts"
-      ],
-      "symbols": [
-        "indirectMap"
-      ]
-    },
-    {
-      "fingerprint": "336faf7272b8f7ab90c5affdff9b8c0c8ae229e6ec5ee080d2065995fe288603",
-      "ruleId": "E06",
-      "identity": "nested-loop:src/plan/build.ts:prerequisiteMap",
-      "title": "Nested collection iteration",
-      "detectionMode": "hybrid",
-      "status": "candidate",
-      "severity": "medium",
-      "files": [
-        "src/plan/build.ts"
-      ],
-      "symbols": [
-        "prerequisiteMap"
+        "expandPythonImporters"
       ]
     }
   ]

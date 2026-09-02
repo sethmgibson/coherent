@@ -433,36 +433,6 @@
       "notCompatibility": true
     },
     {
-      "fingerprint": "b6470bbd7ec32af41b1c00d6ced9effa3300a5ad0e542dc5eaae2bc43de8ff2c",
-      "ruleId": "A08",
-      "identity": "test-only:src/domain/finding.ts:serializeFinding",
-      "decision": "dismissed",
-      "reason": "Intentional public API: package.json exposes coherent/finding from dist/domain/finding.js. serializeFinding is the serialization counterpart to parseFinding. tests/fixtures/packed-package/consumer.ts now imports both through the installed tarball and verifies round-trip behavior; pnpm check:package passed strict consumer types and runtime assertions. Internal test-only usage is expected for this externally exported library surface.",
-      "reviewedAt": "2026-09-01T02:31:32.187Z",
-      "fingerprintVersion": 2,
-      "detectorRevision": 8
-    },
-    {
-      "fingerprint": "af80668ee019691516e0e821ef068e97ee870ee3ddced08a53619af7507269e9",
-      "ruleId": "A08",
-      "identity": "test-only:src/domain/finding.ts:parseFinding",
-      "decision": "dismissed",
-      "reason": "Intentional public API: package.json exposes coherent/finding from dist/domain/finding.js. parseFinding validates persisted serialized findings, including their canonical fingerprint. The packed-package consumer imports it through the public export and round-trips serializeFinding output; pnpm check:package passed strict types and runtime assertions. Preserve this public boundary even though internal production paths accept input through parseFindingInput.",
-      "reviewedAt": "2026-09-01T02:31:32.187Z",
-      "fingerprintVersion": 2,
-      "detectorRevision": 8
-    },
-    {
-      "fingerprint": "0de916e3dae35f4d466447e98364a73d27e2fc4ca52b02bbd0f7ca29138b8e30",
-      "ruleId": "A08",
-      "identity": "test-only:src/catalog/rules.ts:CATEGORIES_BY_ID",
-      "decision": "dismissed",
-      "reason": "Intentional catalog API: package.json exposes coherent/catalog/rules, including CATEGORIES_BY_ID alongside RULES_BY_ID and RULE_CATEGORIES. The installed packed-package consumer now verifies category lookup for A08, with strict typechecking and runtime assertions passing. This derived lookup is intentionally available to package consumers; internal test-only references do not make it obsolete.",
-      "reviewedAt": "2026-09-01T02:31:32.187Z",
-      "fingerprintVersion": 2,
-      "detectorRevision": 8
-    },
-    {
       "fingerprint": "587ce5fda4c1469b424793f2d888bbe1ed8e3f0902f1878209739ef3635cce15",
       "ruleId": "E06",
       "identity": "loop-some:src/analysis/nest-reachability.ts:collectReachable",
@@ -535,28 +505,6 @@
       "notCompatibility": true
     },
     {
-      "fingerprint": "fd96f8a75a72b71418afe83cf07892095a142f6265454501bf3fbd11eb7a966b",
-      "ruleId": "D03",
-      "identity": "swallowed-empty:src/install/detect.ts:commandOnPath",
-      "decision": "dismissed",
-      "reason": "commandOnPath probes PATH entries with stat/access. A failed probe means that candidate is not a usable executable and the search continues. This is the absence protocol for PATH lookup, not a swallowed operational error.",
-      "reviewedAt": "2026-09-02T05:58:41.419Z",
-      "fingerprintVersion": 2,
-      "detectorRevision": 9,
-      "ruleDetectorRevision": 9
-    },
-    {
-      "fingerprint": "a9039f9ffa04bb23eb6aaddd39b8d6f0588216710c5cf62eb48465195c81f655",
-      "ruleId": "D03",
-      "identity": "swallowed-empty:src/install/skill-tree.ts:readIfExists",
-      "decision": "dismissed",
-      "reason": "readIfExists returns undefined only on ENOENT and rethrows every other error. That is the same absence protocol writeManagedFile already uses, not a boundary fallback that hides failures.",
-      "reviewedAt": "2026-09-02T05:58:41.419Z",
-      "fingerprintVersion": 2,
-      "detectorRevision": 9,
-      "ruleDetectorRevision": 9
-    },
-    {
       "fingerprint": "f7b1e3bc503991a4cf73e7a111f42831571f058abd18dffb6d7aede73c083d1b",
       "ruleId": "C04",
       "identity": "context-object:src/install/run.ts:InstallOptions",
@@ -567,6 +515,61 @@
       "detectorRevision": 9,
       "ruleDetectorRevision": 9,
       "authoritativeConcept": "install command options"
+    },
+    {
+      "fingerprint": "b6470bbd7ec32af41b1c00d6ced9effa3300a5ad0e542dc5eaae2bc43de8ff2c",
+      "ruleId": "A08",
+      "identity": "test-only:src/domain/finding.ts:serializeFinding",
+      "decision": "dismissed",
+      "reason": "Intentional public API: package.json exposes coherent/finding from dist/domain/finding.js. serializeFinding is the serialization counterpart to parseFinding. tests/fixtures/packed-package/consumer.ts imports both through the installed tarball and verifies round-trip behavior; pnpm check:package passed strict consumer types and runtime assertions. Internal test-only usage is expected for this externally exported library surface. Re-validated after the Python A08 detector revision: TypeScript public-export evidence is unchanged.",
+      "reviewedAt": "2026-09-02T06:08:07.786Z",
+      "fingerprintVersion": 2,
+      "detectorRevision": 10,
+      "ruleDetectorRevision": 9
+    },
+    {
+      "fingerprint": "af80668ee019691516e0e821ef068e97ee870ee3ddced08a53619af7507269e9",
+      "ruleId": "A08",
+      "identity": "test-only:src/domain/finding.ts:parseFinding",
+      "decision": "dismissed",
+      "reason": "Intentional public API: package.json exposes coherent/finding from dist/domain/finding.js. parseFinding validates persisted serialized findings, including their canonical fingerprint. The packed-package consumer imports it through the public export and round-trips serializeFinding output; pnpm check:package passed strict types and runtime assertions. Preserve this public boundary even though internal production paths accept input through parseFindingInput. Re-validated after the Python A08 detector revision: TypeScript public-export evidence is unchanged.",
+      "reviewedAt": "2026-09-02T06:08:07.786Z",
+      "fingerprintVersion": 2,
+      "detectorRevision": 10,
+      "ruleDetectorRevision": 9
+    },
+    {
+      "fingerprint": "0de916e3dae35f4d466447e98364a73d27e2fc4ca52b02bbd0f7ca29138b8e30",
+      "ruleId": "A08",
+      "identity": "test-only:src/catalog/rules.ts:CATEGORIES_BY_ID",
+      "decision": "dismissed",
+      "reason": "Intentional catalog API: package.json exposes coherent/catalog/rules, including CATEGORIES_BY_ID alongside RULES_BY_ID and RULE_CATEGORIES. The installed packed-package consumer verifies category lookup for A08, with strict typechecking and runtime assertions passing. This derived lookup is intentionally available to package consumers; internal test-only references do not make it obsolete. Re-validated after the Python A08 detector revision: TypeScript public-export evidence is unchanged.",
+      "reviewedAt": "2026-09-02T06:08:07.786Z",
+      "fingerprintVersion": 2,
+      "detectorRevision": 10,
+      "ruleDetectorRevision": 9
+    },
+    {
+      "fingerprint": "fd96f8a75a72b71418afe83cf07892095a142f6265454501bf3fbd11eb7a966b",
+      "ruleId": "D03",
+      "identity": "swallowed-empty:src/install/detect.ts:commandOnPath",
+      "decision": "dismissed",
+      "reason": "commandOnPath probes PATH entries with stat/access. A failed probe means that candidate is not a usable executable and the search continues. This is the absence protocol for PATH lookup, not a swallowed operational error. Re-validated after the Python D03 detector revision: the TypeScript catch still only continues the PATH search.",
+      "reviewedAt": "2026-09-02T06:08:07.786Z",
+      "fingerprintVersion": 2,
+      "detectorRevision": 10,
+      "ruleDetectorRevision": 11
+    },
+    {
+      "fingerprint": "a9039f9ffa04bb23eb6aaddd39b8d6f0588216710c5cf62eb48465195c81f655",
+      "ruleId": "D03",
+      "identity": "swallowed-empty:src/install/skill-tree.ts:readIfExists",
+      "decision": "dismissed",
+      "reason": "readIfExists returns undefined only on ENOENT and rethrows every other error. That is the same absence protocol writeManagedFile already uses, not a boundary fallback that hides failures. Re-validated after the Python D03 detector revision: the TypeScript ENOENT-only catch is unchanged.",
+      "reviewedAt": "2026-09-02T06:08:07.786Z",
+      "fingerprintVersion": 2,
+      "detectorRevision": 10,
+      "ruleDetectorRevision": 11
     }
   ],
   "findings": []
