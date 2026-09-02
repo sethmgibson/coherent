@@ -29,6 +29,8 @@ export interface FindingReview extends ReviewLifecycle {
   fingerprintVersion?: number;
   /** Detector semantics this decision was made under. Required for identity fallback. */
   detectorRevision?: number;
+  /** Rule-specific detector semantics. Preferred over the release-wide revision. */
+  ruleDetectorRevision?: number;
   semanticEquivalence?: string;
   authoritativeConcept?: string;
 }
@@ -60,6 +62,14 @@ export interface ReviewTarget {
   identity: string;
   ruleId: RuleId;
   title: string;
+  reviewGroupKey: string;
+}
+
+export interface ReviewGroupReceipt {
+  reviewGroupKey: string;
+  ruleId: RuleId;
+  count: number;
+  files: string[];
 }
 
 export interface ReviewReplacement {
@@ -74,6 +84,7 @@ export interface ReviewApplyReceipt {
   decisionsPath: string;
   wrote: boolean;
   targets: ReviewTarget[];
+  groups: ReviewGroupReceipt[];
   replacements: ReviewReplacement[];
   conflicts: string[];
   reviews: FindingReview[];

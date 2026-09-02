@@ -29,8 +29,11 @@ after build use `node dist/cli.js <command>`.
 2. Inspect candidates by finding group and actual workflow. Do not bulk-dismiss
    heterogeneous findings merely to reach zero nodes; defer when evidence is
    incomplete.
-3. `review apply` accepts either `fingerprint` or `fingerprints` on each batch
-   item so one evidence-backed conclusion can cover a genuine finding group.
+3. The default `review queue` groups by the narrow evidence boundary used for
+   safe batch decisions. `review apply --input path/to/reviews.json` accepts
+   either `fingerprint` or `fingerprints` on each item; a multi-fingerprint
+   item is rejected when its targets cross evidence groups. `--group-by rule`
+   is a navigation view, not permission to share one conclusion.
 4. All candidates, including unused exports, require an evidence-backed
    `review confirm` before `fix next` can select them. Confirming a finding is
    an agent review decision, not a request for another user approval. When no
@@ -52,6 +55,11 @@ after build use `node dist/cli.js <command>`.
    with outstanding reviews is not a clean repository. `fix next` exits
    successfully only for an empty plan or a selected ready node.
 
+E01, E05, and E06 heuristics are advisory during an ordinary cleanup. They do
+not prevent a clean terminal state unless the user requested performance work;
+use `inspect --performance`, `plan --performance`, and `fix next --performance`
+for that scope. Evidence-backed non-performance findings remain mandatory.
+
 Mechanical findings disappear on rescan. Semantic-only findings do not:
 after tests and source inspection prove one fixed, remove that exact entry
 from the active `findings` array in `decisions.json`. Preserve unrelated
@@ -62,7 +70,8 @@ Reviews for findings proven by the baseline but absent from the current audit
 are resolved history, not doctor errors. Keep them so a recurrence remains
 reviewed. A review absent from both current findings and the current baseline
 is still an orphan that needs investigation. After a detector-revision change,
-use `coherent review prune` to preview obsolete records and
+only reviews for affected rules become stale. Use `coherent review prune` to
+preview obsolete records and
 `coherent review prune --write` only after the preview is correct.
 
 ## Finish

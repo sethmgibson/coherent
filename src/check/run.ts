@@ -3,11 +3,12 @@ import {
   baselinePath,
   isBaselineStale,
   readBaseline,
+  staleBaselineRuleIds,
   type BaselineEntry,
   type BaselineFile,
   toBaselineEntry,
 } from "../baseline/run.js";
-import { RULES_BY_ID } from "../catalog/rules.js";
+import { isAdvisoryRule, RULES_BY_ID } from "../catalog/rules.js";
 import { loadConfig } from "../config.js";
 import type { Finding } from "../domain/finding.js";
 import { listChangedSourceFiles } from "./changed-files.js";
@@ -26,7 +27,7 @@ import { portableRuntimeIdentity, renderRuntimeIdentity, type PortableRuntimeIde
 
 export type DriftKind = "NEW" | "EXISTING" | "RESOLVED";
 
-export type CheckReviewState = FindingReviewState | "requires_full_scan";
+export type CheckReviewState = FindingReviewState | "requires_full_scan" | "advisory";
 
 export type DriftItem = BaselineEntry & {
   kind: DriftKind;
@@ -69,7 +70,13 @@ export async function runCheck(
   }
   if (isBaselineStale(baseline)) {
     throw new Error(
-      `Baseline is stale (schema, fingerprint, or detector version mismatch). Re-run \`coherent baseline\`.`,
+      `Baseline is stale (schema or fingerprint version mismatch). Re-run \`coherent baseline\`.`,
+    );
+  }
+  const staleRules = staleBaselineRuleIds(baseline);
+  if (staleRules.length > 0) {
+    throw new Error(
+      `Baseline has stale detector rules (${staleRules.join(", ")}). Re-run \`coherent baseline\` to refresh only those rules.`,
     );
   }
   let include: string[] | undefined;
@@ -129,7 +136,10 @@ export async function runCheck(
       item.status === "confirmed" &&
       (item.severity === "critical" || item.severity === "high"),
   );
-  const newDebt = classifyNewDebt(newFindings);
+  const actionableNewFindings = newFindings.filter(
+    (finding) => finding.reviewState !== "advisory",
+  );
+  const newDebt = classifyNewDebt(actionableNewFindings);
   const reviewSummary = emptyReviewSummary();
   for (const item of newFindings) {
     reviewSummary[item.reviewState ?? "unreviewed"] += 1;
@@ -145,7 +155,7 @@ export async function runCheck(
     resolvedFindings,
     failing,
     newDebt,
-    conceptualHardness: conceptualHardness(newFindings, newDebt),
+    conceptualHardness: conceptualHardness(actionableNewFindings, newDebt),
     gateStatus: exitCode === 0 ? "passed" : "failed",
     driftStatus: newFindings.length === 0 && resolvedFindings.length === 0 ? "none" : "present",
     reviewSummary,
@@ -163,7 +173,7 @@ export function renderCheck(result: CheckResult): string {
       : []),
     `Gate: ${result.gateStatus.toUpperCase()}  Drift: ${result.driftStatus.toUpperCase()}`,
     `NEW ${result.newFindings.length}  EXISTING ${result.existingFindings.length}  RESOLVED ${result.resolvedFindings.length}`,
-    `NEW review state — Ready: ${result.reviewSummary.ready}  Unreviewed: ${result.reviewSummary.unreviewed}  Deferred: ${result.reviewSummary.deferred}  Dismissed: ${result.reviewSummary.dismissed}  Requires full scan: ${result.reviewSummary.requires_full_scan}`,
+    `NEW review state — Ready: ${result.reviewSummary.ready}  Unreviewed: ${result.reviewSummary.unreviewed}  Deferred: ${result.reviewSummary.deferred}  Dismissed: ${result.reviewSummary.dismissed}  Advisory: ${result.reviewSummary.advisory}  Requires full scan: ${result.reviewSummary.requires_full_scan}`,
     "",
   ];
   for (const item of result.newFindings) {
@@ -232,7 +242,9 @@ function itemFromFinding(
     ...entry,
     reviewState: requiresFullScan
       ? "requires_full_scan"
-      : findingReviewState(finding, match?.review),
+      : !match && isAdvisoryRule(finding.ruleId)
+        ? "advisory"
+        : findingReviewState(finding, match?.review),
     ...(match?.review.decision ? { reviewDecision: match.review.decision } : {}),
     ...(match ? { reviewMatch: match.kind } : {}),
     ...(match?.review.reason ? { reviewReason: match.review.reason } : {}),
@@ -245,6 +257,7 @@ function emptyReviewSummary(): Record<CheckReviewState, number> {
     unreviewed: 0,
     deferred: 0,
     dismissed: 0,
+    advisory: 0,
     requires_full_scan: 0,
   };
 }

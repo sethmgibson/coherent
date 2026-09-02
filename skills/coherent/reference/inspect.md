@@ -5,11 +5,14 @@ Inspect the current cleanup state with one audit snapshot.
 ```bash
 coherent inspect
 coherent inspect --json
+coherent inspect --performance
 ```
 
 The command runs one audit, reads durable decisions in parallel, applies those
 reviews to the exact audit findings, builds the cleanup DAG, and selects the
-next ready node. It does not write Coherent metadata.
+next ready node. It does not write Coherent metadata. E01, E05, and E06 stay
+advisory unless `--performance` is set. It warns when the selected node's
+likely files already have uncommitted Git changes.
 
 Text includes exact finding locations and evidence for the selected node.
 JSON also includes `nextFindings`, the selected findings after review, so

@@ -5,7 +5,12 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import { describe, expect, it } from "vitest";
-import { artifactVersions, DETECTOR_REVISION, FINGERPRINT_VERSION } from "../src/config.js";
+import {
+  artifactVersions,
+  DETECTOR_REVISION,
+  detectorRevisionForRule,
+  FINGERPRINT_VERSION,
+} from "../src/config.js";
 import { runDoctor } from "../src/doctor/run.js";
 import { runInit } from "../src/init/run.js";
 
@@ -37,6 +42,10 @@ describe("doctor Git snapshots", () => {
       const oldBaseline = {
         ...artifactVersions(),
         detectorRevision: DETECTOR_REVISION - 1,
+        ruleDetectorRevisions: {
+          ...artifactVersions().ruleDetectorRevisions,
+          A06: detectorRevisionForRule("A06") - 1,
+        },
         createdAt: "2026-09-01T00:00:00.000Z",
         findings: [],
       };
@@ -54,6 +63,7 @@ describe("doctor Git snapshots", () => {
         reviewedAt: "2026-09-01T00:01:00.000Z",
         fingerprintVersion: FINGERPRINT_VERSION,
         detectorRevision: DETECTOR_REVISION,
+        ruleDetectorRevision: detectorRevisionForRule("A06"),
       };
       await writeFile(
         join(state, "decisions.json"),

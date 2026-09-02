@@ -5,17 +5,31 @@ import { runPlan } from "../plan/run.js";
 import type { CleanupNode, CleanupPlan } from "../plan/types.js";
 import { selectNextNode } from "./select.js";
 import { renderRuntimeIdentity } from "../runtime.js";
+import type { PlanOptions } from "../plan/run.js";
+import { inspectWorktreeTargets } from "./worktree.js";
 
 export interface FixNextResult {
   plan: CleanupPlan;
   node: CleanupNode | undefined;
   findings: Finding[];
+  dirtyTargetFiles: string[];
+  worktreeInspectionWarning?: string;
 }
 
-export async function runFixNext(root: string): Promise<FixNextResult> {
-  const { plan, findings } = await runPlan(root);
+export async function runFixNext(
+  root: string,
+  options: PlanOptions = {},
+): Promise<FixNextResult> {
+  const { plan, findings } = await runPlan(root, options);
   const node = selectNextNode(plan);
-  return { plan, node, findings: findingsForNode(node, findings) };
+  const inspection = await inspectWorktreeTargets(root, node?.likelyFiles ?? []);
+  return {
+    plan,
+    node,
+    findings: findingsForNode(node, findings),
+    dirtyTargetFiles: inspection.dirtyFiles,
+    ...(inspection.warning ? { worktreeInspectionWarning: inspection.warning } : {}),
+  };
 }
 
 export function findingsForNode(node: CleanupNode | undefined, findings: Finding[]): Finding[] {
@@ -44,6 +58,8 @@ export function renderFixNext(
   return `${workBrief(
     result.node,
     result.findings,
+    result.dirtyTargetFiles,
+    result.worktreeInspectionWarning,
     options.includeRuntime === false ? undefined : result.plan.runtime,
   )}\n`;
 }
@@ -51,6 +67,8 @@ export function renderFixNext(
 function workBrief(
   node: CleanupNode,
   findings: Finding[],
+  dirtyTargetFiles: string[],
+  worktreeInspectionWarning?: string,
   runtime?: CleanupPlan["runtime"],
 ): string {
   const findingNames = node.ruleIds.map((id) => RULES_BY_ID[id].title);
@@ -65,6 +83,17 @@ function workBrief(
     `Cleanup stage: ${phase.title} (tie-break only)  ${node.status} ${node.confidence}`,
     `Files: ${node.likelyFiles.join(", ") || "(none)"}`,
     `Symbols: ${node.concepts.join(", ") || "(none)"}`,
+    ...(dirtyTargetFiles.length > 0
+      ? [
+          "",
+          `WARNING: ${dirtyTargetFiles.length} target file(s) already have uncommitted changes:`,
+          ...dirtyTargetFiles.map((file) => `  ${file}`),
+          "Preserve and reconcile those edits before applying this cleanup.",
+        ]
+      : []),
+    ...(worktreeInspectionWarning
+      ? ["", `WARNING: ${worktreeInspectionWarning}`]
+      : []),
     "",
     "Finding evidence (from this scan):",
     ...findings.flatMap((finding) => [

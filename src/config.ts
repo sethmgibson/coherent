@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
+import type { RuleId } from "./catalog/types.js";
 import { COHERENT_VERSION } from "./version.js";
 
 export { COHERENT_VERSION } from "./version.js";
@@ -19,9 +20,50 @@ export const SEMANTIC_FINDINGS_FILE = "semantic-findings.json";
 export const ARTIFACT_SCHEMA_VERSION = 1;
 /** Bump when the fingerprint hash payload changes. Identity match still applies if detectorRevision matches. */
 export const FINGERPRINT_VERSION = 2;
-/** Bump when detector meaning or evidence changes. Identity match requires this to match. */
-export const DETECTOR_REVISION = 8;
+/** Portable release-wide detector contract used by the skill/runtime handshake. */
+export const DETECTOR_REVISION = 9;
+/**
+ * Detector reviews are invalidated per rule. Entries that are not bumped
+ * retain their prior contract, so an unrelated detector change does not erase
+ * reviewed history.
+ */
+export const RULE_DETECTOR_REVISIONS: Readonly<Record<RuleId, number>> = {
+  A01: 8,
+  A02: 8,
+  A03: 9,
+  A04: 8,
+  A05: 8,
+  A06: 9,
+  A07: 8,
+  A08: 8,
+  B01: 8,
+  B02: 8,
+  B03: 9,
+  B04: 9,
+  B05: 8,
+  B06: 8,
+  C01: 8,
+  C02: 8,
+  C03: 8,
+  C04: 9,
+  C05: 8,
+  D01: 8,
+  D02: 8,
+  D03: 9,
+  D04: 8,
+  D05: 8,
+  E01: 8,
+  E02: 8,
+  E03: 8,
+  E04: 8,
+  E05: 8,
+  E06: 8,
+};
 export const PORTABLE_ROOT = ".";
+
+export function detectorRevisionForRule(ruleId: RuleId): number {
+  return RULE_DETECTOR_REVISIONS[ruleId];
+}
 
 export function artifactVersions() {
   return {
@@ -29,6 +71,7 @@ export function artifactVersions() {
     coherentVersion: COHERENT_VERSION,
     fingerprintVersion: FINGERPRINT_VERSION,
     detectorRevision: DETECTOR_REVISION,
+    ruleDetectorRevisions: { ...RULE_DETECTOR_REVISIONS },
   };
 }
 

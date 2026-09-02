@@ -4,9 +4,11 @@ import type { Finding } from "../domain/finding.js";
 import { findingReviewState, matchReview } from "./apply.js";
 import { readDecisions } from "./store.js";
 import type { FindingReview, ReviewDecision } from "./types.js";
+import { reviewGroupKey, type ReviewQueueGroupBy } from "./group.js";
 import { portableRuntimeIdentity, renderRuntimeIdentity, type PortableRuntimeIdentity } from "../runtime.js";
+import { isAdvisoryRule } from "../catalog/rules.js";
 
-export type ReviewQueueState = "unreviewed" | "deferred" | "ready" | "dismissed";
+export type ReviewQueueState = "unreviewed" | "deferred" | "ready" | "dismissed" | "advisory";
 
 export interface ReviewQueueItem {
   state: ReviewQueueState;
@@ -20,6 +22,7 @@ export interface ReviewQueueItem {
   reason?: string;
   missingEvidence?: string;
   reconsiderWhen?: string;
+  reviewGroupKey: string;
 }
 
 export interface ReviewQueueGroup {
@@ -29,6 +32,7 @@ export interface ReviewQueueGroup {
   total: number;
   shown: number;
   truncated: boolean;
+  groupBy: ReviewQueueGroupBy;
   items: ReviewQueueItem[];
 }
 
@@ -42,6 +46,7 @@ export interface ReviewQueueOptions {
   rule?: string;
   state?: ReviewQueueState | "all";
   limit?: number;
+  groupBy?: ReviewQueueGroupBy;
 }
 
 export async function runReviewQueue(
@@ -64,12 +69,13 @@ export async function runReviewQueue(
     if (options.state && options.state !== "all" && item.state !== options.state) return false;
     return true;
   });
-  const groups = groupItems(filtered, limit);
+  const groups = groupItems(filtered, limit, options.groupBy ?? "evidence");
   const counts = {
     unreviewed: items.filter((item) => item.state === "unreviewed").length,
     deferred: items.filter((item) => item.state === "deferred").length,
     ready: items.filter((item) => item.state === "ready").length,
     dismissed: items.filter((item) => item.state === "dismissed").length,
+    advisory: items.filter((item) => item.state === "advisory").length,
   };
   return { runtime: portableRuntimeIdentity(), groups, counts };
 }
@@ -78,7 +84,7 @@ export function renderReviewQueue(queue: ReviewQueue): string {
   const lines = [
     "Coherent review queue",
     renderRuntimeIdentity(queue.runtime),
-    `Unreviewed: ${queue.counts.unreviewed}  Deferred: ${queue.counts.deferred}  Ready: ${queue.counts.ready}  Dismissed: ${queue.counts.dismissed}`,
+    `Unreviewed: ${queue.counts.unreviewed}  Deferred: ${queue.counts.deferred}  Ready: ${queue.counts.ready}  Dismissed: ${queue.counts.dismissed}  Advisory: ${queue.counts.advisory}`,
     "",
   ];
   if (queue.groups.length === 0) {
@@ -88,6 +94,7 @@ export function renderReviewQueue(queue: ReviewQueue): string {
   for (const group of queue.groups) {
     const shown = group.truncated ? `; showing ${group.shown}` : "";
     lines.push(`${group.state.toUpperCase()}  ${group.ruleId}  ${group.total} item(s)${shown}`);
+    lines.push(`  evidence group: ${group.id}`);
     for (const item of group.items) {
       lines.push(`  ${item.fingerprint}`);
       lines.push(`    ${item.title}  ${item.identity}`);
@@ -106,13 +113,18 @@ export function renderReviewQueue(queue: ReviewQueue): string {
 
 function toItem(finding: Finding, review: FindingReview | undefined): ReviewQueueItem {
   return {
-    state: findingReviewState(finding, review),
+    state: review
+      ? findingReviewState(finding, review)
+      : isAdvisoryRule(finding.ruleId)
+        ? "advisory"
+        : findingReviewState(finding, review),
     fingerprint: finding.fingerprint,
     ruleId: finding.ruleId,
     identity: finding.identity,
     title: finding.title,
     evidence: finding.evidence,
     locations: finding.locations,
+    reviewGroupKey: reviewGroupKey(finding),
     ...(review?.decision ? { decision: review.decision } : {}),
     ...(review?.reason ? { reason: review.reason } : {}),
     ...(review?.missingEvidence ? { missingEvidence: review.missingEvidence } : {}),
@@ -120,10 +132,19 @@ function toItem(finding: Finding, review: FindingReview | undefined): ReviewQueu
   };
 }
 
-function groupItems(items: ReviewQueueItem[], limit: number): ReviewQueueGroup[] {
+function groupItems(
+  items: ReviewQueueItem[],
+  limit: number,
+  groupBy: ReviewQueueGroupBy,
+): ReviewQueueGroup[] {
   const clusters = new Map<string, ReviewQueueItem[]>();
   for (const item of items) {
-    const key = `${item.state}:${item.ruleId}`;
+    const file = item.locations[0]?.file ?? "unknown";
+    const key = groupBy === "rule"
+      ? `${item.state}:${item.ruleId}`
+      : groupBy === "file"
+        ? `${item.state}:${item.ruleId}:${file}`
+        : `${item.state}:${item.reviewGroupKey}`;
     const list = clusters.get(key) ?? [];
     list.push(item);
     clusters.set(key, list);
@@ -135,8 +156,9 @@ function groupItems(items: ReviewQueueItem[], limit: number): ReviewQueueGroup[]
     total: group.length,
     shown: Math.min(group.length, limit),
     truncated: group.length > limit,
+    groupBy,
     items: group.slice(0, limit),
-  }));
+  })).sort((left, right) => left.id.localeCompare(right.id));
 }
 
 function uniqueFindings(findings: Finding[]): Finding[] {

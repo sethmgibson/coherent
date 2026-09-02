@@ -30,7 +30,7 @@
     "lint": "eslint . --max-warnings 0",
     "test": "vitest run",
     "generate:skill-docs": "tsx scripts/generate-skill-docs.ts",
-    "check:skill-docs": "pnpm generate:skill-docs && git diff --exit-code -- skills/coherent/reference/taxonomy.md skills/coherent/reference/cleanup-phases.md skills/coherent/reference/runtime.md",
+    "check:skill-docs": "tsx scripts/generate-skill-docs.ts --check",
     "check:unique-fingerprints": "tsx scripts/check-unique-fingerprints.ts",
     "check:dependencies": "knip --dependencies && knip --dependencies --production --strict",
     "check:security": "pnpm audit --audit-level high",

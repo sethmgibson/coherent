@@ -47,9 +47,11 @@ lockfile. They share the same safe copy rules when an integration is explicitly 
 
 Hooks run `coherent check --changed` only after a baseline exists. Full `audit` stays explicit.
 
-The Cursor adapter is not a second methodology. Load
-`skills/coherent/SKILL.md` from the installed package. The checked-in Codex
-adapter at `.agents/skills/coherent/SKILL.md` follows the same rule.
+The Cursor adapter is not a second methodology. It runs
+`coherent version . --json` and loads the exact canonical file reported at
+`runtime.skillPath`; it does not assume the target repository has a source
+checkout under `skills/coherent`. The checked-in Codex adapter at
+`.agents/skills/coherent/SKILL.md` follows the same canonical methodology.
 
 The packaged Cursor adapter source is
 `skills/coherent/adapters/cursor/skill-template.md`, intentionally not named

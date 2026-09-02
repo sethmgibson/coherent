@@ -1,4 +1,10 @@
-import { Node, type CallExpression, type FunctionDeclaration, type MethodDeclaration } from "ts-morph";
+import {
+  Node,
+  SyntaxKind,
+  type CallExpression,
+  type FunctionDeclaration,
+  type MethodDeclaration,
+} from "ts-morph";
 import type { AnalysisContext } from "../analysis/context.js";
 import { locationOf } from "../analysis/inspect.js";
 import { makeFinding } from "../audit/finding-factory.js";
@@ -28,6 +34,7 @@ function consider(
 ): void {
   const name = fn.getName();
   if (!name || MEANINGFUL.test(name)) return;
+  if (isFrameworkSurface(fn)) return;
   const returnType = fn.getReturnTypeNode();
   if (returnType && Node.isTypePredicate(returnType)) return;
   const params = fn.getParameters();
@@ -48,14 +55,15 @@ function consider(
   if (MEANINGFUL.test(callee) || MEANINGFUL.test(fn.getText()) || STDLIB.test(callee)) return;
   const relative = ctx.relativePath(fn.getSourceFile());
   const mechanical = Node.isIdentifier(calleeExpr);
+  const confirmed = mechanical && isPrivateImplementation(fn);
   findings.push(
     makeFinding({
       ruleId: "B04",
       identity: `forwarding:${relative}:${name}`,
       title: "Forwarding wrapper",
       severity: "medium",
-      confidence: mechanical ? "high" : "medium",
-      status: mechanical ? "confirmed" : "candidate",
+      confidence: confirmed ? "high" : "medium",
+      status: confirmed ? "confirmed" : "candidate",
       explanation: `'${name}' accepts arguments, calls one downstream operation with the same values, and adds no visible domain behavior.`,
       evidence: {
         summary: `${name} forwards to ${callee}.`,
@@ -69,6 +77,24 @@ function consider(
       affectedSymbols: [name, callee],
     }),
   );
+}
+
+function isFrameworkSurface(
+  fn: FunctionDeclaration | MethodDeclaration,
+): boolean {
+  if (!Node.isMethodDeclaration(fn)) return false;
+  if (fn.getDecorators().length > 0) return true;
+  const cls = fn.getParentIfKind(SyntaxKind.ClassDeclaration);
+  if (!cls) return false;
+  if (cls.getDecorators().length > 0) return true;
+  return /(Controller|Resolver|Gateway|Module)$/.test(cls.getName() ?? "");
+}
+
+function isPrivateImplementation(
+  fn: FunctionDeclaration | MethodDeclaration,
+): boolean {
+  if (Node.isFunctionDeclaration(fn)) return !fn.isExported();
+  return fn.hasModifier(SyntaxKind.PrivateKeyword);
 }
 
 function isBuilderChain(call: CallExpression): boolean {

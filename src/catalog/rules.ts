@@ -416,6 +416,7 @@ export const RULES = [
     workKind: "both",
     prerequisites: [],
     rescanAfter: [],
+    advisoryByDefault: true,
   },
   {
     id: "E02",
@@ -476,6 +477,7 @@ export const RULES = [
     workKind: "both",
     prerequisites: [],
     rescanAfter: [],
+    advisoryByDefault: true,
   },
   {
     id: "E06",
@@ -491,12 +493,18 @@ export const RULES = [
     workKind: "both",
     prerequisites: [],
     rescanAfter: [],
+    advisoryByDefault: true,
   },
 ] as const satisfies readonly RuleDefinition<CategoryId>[];
 
 export type RuleId = (typeof RULES)[number]["id"];
 export type Rule = (typeof RULES)[number];
 export const RULE_IDS = RULES.map((rule) => rule.id) as readonly RuleId[];
+
+export function isAdvisoryRule(ruleId: RuleId): boolean {
+  return "advisoryByDefault" in RULES_BY_ID[ruleId]
+    && RULES_BY_ID[ruleId].advisoryByDefault === true;
+}
 
 export const RULES_BY_ID: { readonly [K in RuleId]: Rule } = Object.fromEntries(
   RULES.map((rule) => [rule.id, rule]),

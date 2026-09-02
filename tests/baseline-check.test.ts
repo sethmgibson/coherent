@@ -3,7 +3,11 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { DETECTOR_REVISION, FINGERPRINT_VERSION } from "../src/config.js";
+import {
+  DETECTOR_REVISION,
+  detectorRevisionForRule,
+  FINGERPRINT_VERSION,
+} from "../src/config.js";
 import { runAudit } from "../src/audit/run.js";
 import { readBaseline, runBaseline } from "../src/baseline/run.js";
 import { renderCheck, runCheck } from "../src/check/run.js";
@@ -75,10 +79,40 @@ describe("fingerprints, baseline, and check", () => {
     try {
       await runBaseline(root);
       const path = join(root, ".coherent", "baseline.json");
-      const baseline = JSON.parse(await readFile(path, "utf8")) as { detectorRevision: number };
-      baseline.detectorRevision = 99;
+      const baseline = JSON.parse(await readFile(path, "utf8")) as {
+        ruleDetectorRevisions: Record<string, number>;
+      };
+      baseline.ruleDetectorRevisions.A03 = detectorRevisionForRule("A03") - 1;
       await writeFile(path, `${JSON.stringify(baseline, null, 2)}\n`, "utf8");
       await expect(runCheck(root)).rejects.toThrow(/Re-run `coherent baseline`/);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it("refreshes only baseline entries from detector rules that changed", async () => {
+    const root = await mkdtemp(join(tmpdir(), "coherent-baseline-rules-"));
+    await cp(scannerFixture, root, { recursive: true });
+    try {
+      const first = await runBaseline(root);
+      const raw = JSON.parse(await readFile(first.baselinePath, "utf8")) as {
+        ruleDetectorRevisions: Record<string, number>;
+        findings: Array<{ ruleId: string; title: string }>;
+      };
+      const preserved = raw.findings.find((entry) => entry.ruleId === "A08");
+      expect(preserved).toBeDefined();
+      preserved!.title = "Preserved unrelated detector history";
+      raw.ruleDetectorRevisions.A03 = detectorRevisionForRule("A03") - 1;
+      await writeFile(first.baselinePath, `${JSON.stringify(raw, null, 2)}\n`);
+
+      const refreshed = await runBaseline(root);
+      expect(refreshed.wroteBaseline).toBe(true);
+      expect(refreshed.baseline.ruleDetectorRevisions?.A03).toBe(
+        detectorRevisionForRule("A03"),
+      );
+      expect(refreshed.baseline.findings.some(
+        (entry) => entry.title === "Preserved unrelated detector history",
+      )).toBe(true);
     } finally {
       await rm(root, { recursive: true, force: true });
     }

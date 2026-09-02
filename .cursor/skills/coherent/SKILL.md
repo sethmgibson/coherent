@@ -5,11 +5,11 @@ argument-hint: "[init|refresh|audit|inspect|review|baseline|check|plan|fix|docto
 ---
 
 <!-- coherent:adapter -->
-This is a Cursor adapter. The canonical, provider-neutral skill is:
-
-`skills/coherent/SKILL.md`
-
-Load that file and the playbook it names. Do not invent a second methodology here.
+This is a Cursor bootstrap adapter, not a second methodology. Run
+`coherent version . --json`, then load the exact canonical file reported at
+`runtime.skillPath` and follow its references. If the command,
+`canonical-skill-path` capability, or reported file is unavailable, stop and
+repair the CLI/skill installation before auditing or writing Coherent state.
 
 In chat: `/coherent init`, `/coherent refresh`, `/coherent audit`, `/coherent inspect`, `/coherent review`, `/coherent baseline`, `/coherent plan`, `/coherent fix next`, `/coherent check`, `/coherent doctor`, `/coherent install`, `/coherent update`.
 

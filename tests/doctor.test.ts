@@ -4,7 +4,12 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { runDoctor } from "../src/doctor/run.js";
-import { artifactVersions, DETECTOR_REVISION, FINGERPRINT_VERSION } from "../src/config.js";
+import {
+  artifactVersions,
+  DETECTOR_REVISION,
+  detectorRevisionForRule,
+  FINGERPRINT_VERSION,
+} from "../src/config.js";
 import { createFinding } from "../src/domain/finding.js";
 import { runInit } from "../src/init/run.js";
 
@@ -67,7 +72,10 @@ describe("doctor", () => {
         join(backend, "baseline.json"),
         `${JSON.stringify({
           ...artifactVersions(),
-          detectorRevision: 99,
+          ruleDetectorRevisions: {
+            ...artifactVersions().ruleDetectorRevisions,
+            A06: 99,
+          },
           createdAt: "2026-01-01T00:00:00.000Z",
           root,
           findings: [
@@ -245,6 +253,7 @@ describe("doctor", () => {
             reviewedAt: "2026-01-01T00:00:00.000Z",
             fingerprintVersion: FINGERPRINT_VERSION,
             detectorRevision: DETECTOR_REVISION,
+            ruleDetectorRevision: detectorRevisionForRule("E06"),
           }],
           findings: [],
         }, null, 2)}\n`,

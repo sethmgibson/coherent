@@ -43,7 +43,7 @@ describe("install and update", () => {
       expect(paths).not.toContain(".git/hooks/pre-commit");
 
       const adapter = await readFile(join(root, ".cursor", "skills", "coherent", "SKILL.md"), "utf8");
-      expect(adapter).toContain("skills/coherent/SKILL.md");
+      expect(adapter).toContain("runtime.skillPath");
       expect(adapter).toContain("<!-- coherent:adapter -->");
 
       const alias = await readFile(join(root, ".cursor", "skills", "backend", "SKILL.md"), "utf8");

@@ -1,10 +1,11 @@
 import type { Finding } from "../domain/finding.js";
+import { reviewGroupKey } from "../review/group.js";
 import type { FindingGroup } from "./types.js";
 
 export function groupFindings(findings: Finding[]): FindingGroup[] {
   const clusters = new Map<string, Finding[]>();
   for (const finding of findings) {
-    const key = groupKey(finding);
+    const key = reviewGroupKey(finding);
     const list = clusters.get(key) ?? [];
     list.push(finding);
     clusters.set(key, list);
@@ -22,21 +23,6 @@ export function groupFindings(findings: Finding[]): FindingGroup[] {
       reason: groupingReason(group),
     };
   });
-}
-
-function groupKey(finding: Finding): string {
-  const file = finding.locations[0]?.file ?? "unknown";
-  if (finding.ruleId === "A08") {
-    return `${finding.ruleId}:${finding.status}:${file}`;
-  }
-  if (finding.ruleId === "A07") {
-    return `${finding.ruleId}:${file}`;
-  }
-  if (finding.ruleId === "E06" || finding.ruleId === "E05") {
-    const symbol = finding.affectedSymbols[0] ?? finding.identity;
-    return `${finding.ruleId}:${file}:${symbol}`;
-  }
-  return `${finding.ruleId}:${finding.identity}`;
 }
 
 function groupingReason(group: Finding[]): string {

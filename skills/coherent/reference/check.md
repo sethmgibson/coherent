@@ -19,6 +19,9 @@ Default exit policy:
 - Existing debt does not fail the check.
 - New confirmed high or critical **deterministic** findings fail.
 - Hybrid and candidate findings are printed and do not fail by default.
+- New E01, E05, and E06 heuristics are labeled `advisory` and are excluded
+  from the default conceptual-hardness/debt conclusion. Inspect them when
+  performance work is in scope.
 - Resolved findings are reported.
 
 `--changed` parses TypeScript files in the git diff (unstaged, staged, and
@@ -39,6 +42,6 @@ Use full `check` for repository-wide conclusions, particularly after changing
 package manifests, compiler configuration, or cross-file representations.
 No new mechanical findings is not proof of semantic architectural cleanliness.
 
-If `.coherent/baseline.json` is missing, the command exits non-zero and tells you to run `coherent baseline` first. If the baseline schema, fingerprint version, or detector revision does not match this CLI, the command tells you to re-run `coherent baseline` instead of reporting every finding as NEW.
+If `.coherent/baseline.json` is missing, the command exits non-zero and tells you to run `coherent baseline` first. If the baseline schema, fingerprint version, or any per-rule detector revision does not match this CLI, the command tells you to re-run `coherent baseline` instead of reporting every finding as NEW.
 
 Do not run a full deep legacy cleanup for every small feature. See [prevention.md](prevention.md).

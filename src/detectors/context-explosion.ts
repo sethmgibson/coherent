@@ -32,6 +32,7 @@ export function detectContextExplosion(ctx: AnalysisContext): Finding[] {
     const consumers = findConsumers(ctx, bag);
     const tiny = consumers.filter((consumer) => consumer.used.length > 0 && consumer.used.length <= 2);
     const mutations = consumers.filter((consumer) => consumer.mutates);
+    if (tiny.length === 0 && mutations.length === 0) continue;
     findings.push(
       makeFinding({
         ruleId: "C04",

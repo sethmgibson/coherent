@@ -1,10 +1,12 @@
 import { resolve } from "node:path";
+import { readFile } from "node:fs/promises";
 import type { Command } from "commander";
 import { RULES_BY_ID } from "../catalog/rules.js";
 import { renderReviewQueue, runReviewQueue, type ReviewQueueState } from "./queue.js";
 import { parseReviewRequests, runReview, runReviewBatch, runReviewPrune } from "./run.js";
 import type { ReviewApplyReceipt, ReviewDecision, ReviewLifecycle } from "./types.js";
 import { renderRuntimeIdentity } from "../runtime.js";
+import type { ReviewQueueGroupBy } from "./group.js";
 
 export function registerReviewCommands(program: Command, readStdin: () => Promise<string>): void {
   const review = program
@@ -13,21 +15,29 @@ export function registerReviewCommands(program: Command, readStdin: () => Promis
 
   review
     .command("queue")
-    .description("Read-only review queue with item-level unreviewed, deferred, and ready groups")
+    .description("Read-only review queue with item-level unreviewed, deferred, ready, and advisory groups")
     .argument("[root]", "repository root", ".")
     .option("--json", "print the queue as JSON", false)
     .option("--rule <id>", "limit to one rule ID")
-    .option("--state <state>", "unreviewed, deferred, ready, dismissed, or all", "all")
+    .option("--state <state>", "unreviewed, deferred, ready, dismissed, advisory, or all", "all")
+    .option("--group-by <mode>", "evidence, file, or rule", "evidence")
     .option("--limit <n>", "max items per group", (value) => Number.parseInt(value, 10), 8)
     .action(async (
       root: string,
-      options: { json: boolean; rule?: string; state: string; limit: number },
+      options: { json: boolean; rule?: string; state: string; groupBy: string; limit: number },
     ) => {
       try {
+        if (!isQueueGroupBy(options.groupBy)) {
+          throw new Error("review queue --group-by must be evidence, file, or rule");
+        }
+        if (!isQueueState(options.state)) {
+          throw new Error("review queue --state must be unreviewed, deferred, ready, dismissed, advisory, or all");
+        }
         const queue = await runReviewQueue(resolve(root), {
           ...(options.rule ? { rule: options.rule } : {}),
-          state: options.state as ReviewQueueState | "all",
+          state: options.state,
           limit: options.limit,
+          groupBy: options.groupBy,
         });
         if (options.json) console.log(JSON.stringify(queue, null, 2));
         else process.stdout.write(renderReviewQueue(queue));
@@ -39,17 +49,22 @@ export function registerReviewCommands(program: Command, readStdin: () => Promis
 
   review
     .command("apply")
-    .description("Atomically apply a JSON array of review decisions from stdin")
+    .description("Atomically apply a JSON array of review decisions from stdin or --input")
     .argument("[root]", "repository root", ".")
     .option("--dry-run", "validate and preview without writing", false)
     .option("--json", "print a receipt with targets, replacements, and persisted decisions", false)
-    .action(async (root: string, options: { dryRun: boolean; json: boolean }) => {
+    .option("--input <path>", "read batch JSON from a path relative to the repository")
+    .action(async (root: string, options: { dryRun: boolean; json: boolean; input?: string }) => {
       try {
-        if (process.stdin.isTTY) {
+        if (!options.input && process.stdin.isTTY) {
           throw new Error("Review batch JSON is required on stdin.");
         }
-        const requests = parseReviewRequests(JSON.parse(await readStdin()) as unknown);
-        const result = await runReviewBatch(resolve(root), requests, { dryRun: options.dryRun });
+        const resolved = resolve(root);
+        const input = options.input
+          ? await readFile(resolve(resolved, options.input), "utf8")
+          : await readStdin();
+        const requests = parseReviewRequests(JSON.parse(input) as unknown);
+        const result = await runReviewBatch(resolved, requests, { dryRun: options.dryRun });
         if (options.json) {
           console.log(JSON.stringify(result.receipt, null, 2));
           return;
@@ -156,6 +171,11 @@ export function renderReceipt(receipt: ReviewApplyReceipt): string {
   for (const target of receipt.targets) {
     lines.push(`  ${target.fingerprint}  ${target.ruleId}  ${target.identity}`);
   }
+  for (const group of receipt.groups) {
+    lines.push(
+      `  group ${group.reviewGroupKey}: ${group.count} target(s), ${group.files.length} file(s)`,
+    );
+  }
   for (const replacement of receipt.replacements) {
     lines.push(
       `  replaced ${replacement.fingerprint}: ${replacement.previousDecision} -> ${replacement.nextDecision}`,
@@ -168,6 +188,19 @@ export function renderReceipt(receipt: ReviewApplyReceipt): string {
     lines.push("No write performed.");
   }
   return `${lines.join("\n")}\n`;
+}
+
+function isQueueGroupBy(value: string): value is ReviewQueueGroupBy {
+  return value === "evidence" || value === "file" || value === "rule";
+}
+
+function isQueueState(value: string): value is ReviewQueueState | "all" {
+  return value === "all"
+    || value === "unreviewed"
+    || value === "deferred"
+    || value === "ready"
+    || value === "dismissed"
+    || value === "advisory";
 }
 
 async function printReview(

@@ -24,6 +24,7 @@ interface LiteralUse {
   node: Node;
   via: string;
   owner: string;
+  scope: string;
 }
 
 export function detectStringProtocols(ctx: AnalysisContext): Finding[] {
@@ -35,13 +36,20 @@ export function detectStringProtocols(ctx: AnalysisContext): Finding[] {
       const value = literal.getLiteralValue();
       if (!value || value.length < 2 || value.length > 40) continue;
       if (looksLikeProse(value) || looksLikePath(value)) continue;
-      const via = discriminantContext(literal);
-      if (!via) continue;
-      uses.push({ value, file: relative, node: literal, via, owner: protocolOwner(via) });
+      const context = discriminantContext(ctx, literal);
+      if (!context) continue;
+      uses.push({
+        value,
+        file: relative,
+        node: literal,
+        via: context.via,
+        owner: protocolOwner(context.via),
+        scope: context.scope,
+      });
     }
   }
 
-  const byExact = groupBy(uses, (use) => `${use.owner}\0${use.value}`);
+  const byExact = groupBy(uses, (use) => `${use.owner}\0${use.scope}\0${use.value}`);
   const findings: Finding[] = [];
   const reported = new Set<string>();
 
@@ -49,19 +57,24 @@ export function detectStringProtocols(ctx: AnalysisContext): Finding[] {
     if (group.length < 2) continue;
     const value = group[0]!.value;
     const owner = group[0]!.owner;
-    const identity = `string-protocol:${owner}:${value}`;
-    reported.add(`${owner}\0${normalize(value)}`);
+    const scope = group[0]!.scope;
+    const identity = `string-protocol:${owner}:${scope}:${value}`;
+    reported.add(`${owner}\0${scope}\0${normalize(value)}`);
     findings.push(protocolFinding(ctx, identity, value, group, []));
     void key;
   }
 
-  const byNorm = groupBy(uses, (use) => `${use.owner}\0${normalize(use.value)}`);
+  const byNorm = groupBy(
+    uses,
+    (use) => `${use.owner}\0${use.scope}\0${normalize(use.value)}`,
+  );
   for (const [key, group] of byNorm) {
     const variants = [...new Set(group.map((use) => use.value))];
     if (variants.length < 2) continue;
     if (reported.has(key)) continue;
     const owner = group[0]!.owner;
-    const identity = `string-protocol-variants:${owner}:${normalize(variants[0]!)}`;
+    const scope = group[0]!.scope;
+    const identity = `string-protocol-variants:${owner}:${scope}:${normalize(variants[0]!)}`;
     findings.push(protocolFinding(ctx, identity, variants.join(" | "), group, variants));
   }
 
@@ -116,11 +129,14 @@ function isTypedStringUnion(node: Node, value: string): boolean {
   }
 }
 
-function discriminantContext(literal: Node): string | undefined {
+function discriminantContext(
+  ctx: AnalysisContext,
+  literal: Node,
+): { via: string; scope: string } | undefined {
   const parent = literal.getParent();
   if (!parent) return undefined;
   if (Node.isCaseClause(parent) || Node.isSwitchStatement(parent)) {
-    return switchContext(literal, parent);
+    return switchContext(ctx, literal, parent);
   }
   if (
     Node.isBinaryExpression(parent) &&
@@ -130,13 +146,22 @@ function discriminantContext(literal: Node): string | undefined {
     const text = other.getText();
     if (isTypedStringUnion(other, valueOf(literal))) return undefined;
     const owner = propertyName(other) || bareName(text);
-    if (PROTOCOL_PROPS.has(owner)) return `compare-${owner}`;
+    if (PROTOCOL_PROPS.has(owner)) {
+      return {
+        via: `compare-${owner}`,
+        scope: discriminantScope(ctx, other, owner),
+      };
+    }
     return undefined;
   }
   return undefined;
 }
 
-function switchContext(literal: Node, parent: Node): string | undefined {
+function switchContext(
+  ctx: AnalysisContext,
+  literal: Node,
+  parent: Node,
+): { via: string; scope: string } | undefined {
   const sw = Node.isSwitchStatement(parent)
     ? parent
     : literal.getFirstAncestorByKind(SyntaxKind.SwitchStatement);
@@ -144,8 +169,38 @@ function switchContext(literal: Node, parent: Node): string | undefined {
   const discriminant = sw.getExpression();
   if (isTypedStringUnion(discriminant, valueOf(literal))) return undefined;
   const owner = propertyName(discriminant) || bareName(discriminant.getText());
-  if (PROTOCOL_PROPS.has(owner)) return `switch-${owner}`;
+  if (PROTOCOL_PROPS.has(owner)) {
+    return {
+      via: `switch-${owner}`,
+      scope: discriminantScope(ctx, discriminant, owner),
+    };
+  }
   return undefined;
+}
+
+function discriminantScope(
+  ctx: AnalysisContext,
+  discriminant: Node,
+  owner: string,
+): string {
+  const symbol = Node.isPropertyAccessExpression(discriminant)
+    ? discriminant.getNameNode().getSymbol()
+    : discriminant.getSymbol();
+  const declaration = symbol?.getAliasedSymbol()?.getDeclarations()[0]
+    ?? symbol?.getDeclarations()[0];
+  if (declaration) {
+    const container =
+      declaration.getFirstAncestorByKind(SyntaxKind.InterfaceDeclaration)?.getName() ??
+      declaration.getFirstAncestorByKind(SyntaxKind.ClassDeclaration)?.getName() ??
+      declaration.getFirstAncestorByKind(SyntaxKind.TypeAliasDeclaration)?.getName() ??
+      owner;
+    return `${ctx.relativePath(declaration.getSourceFile())}:${container}`;
+  }
+  const callable =
+    discriminant.getFirstAncestorByKind(SyntaxKind.FunctionDeclaration)?.getName() ??
+    discriminant.getFirstAncestorByKind(SyntaxKind.MethodDeclaration)?.getName() ??
+    "module";
+  return `${ctx.relativePath(discriminant.getSourceFile())}:${callable}:${owner}`;
 }
 
 function protocolOwner(via: string): string {

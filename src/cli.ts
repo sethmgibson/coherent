@@ -163,8 +163,9 @@ program
   .description("Audit once, build the reviewed plan, and show the next cleanup node")
   .argument("[root]", "repository root", ".")
   .option("--json", "print compact audit, plan, and next node as JSON", false)
-  .action(async (root: string, options: { json: boolean }) => {
-    const result = await runInspect(resolve(root));
+  .option("--performance", "include advisory performance heuristics in the cleanup DAG", false)
+  .action(async (root: string, options: { json: boolean; performance: boolean }) => {
+    const result = await runInspect(resolve(root), { includeAdvisory: options.performance });
     if (options.json) {
       console.log(JSON.stringify(inspectJson(result), null, 2));
     } else {
@@ -245,10 +246,11 @@ program
   .description("Build a cleanup DAG from current findings")
   .argument("[root]", "repository root", ".")
   .option("--json", "print the plan as JSON", false)
+  .option("--performance", "include advisory performance heuristics in the cleanup DAG", false)
   .option("--output <path>", "write JSON to an explicit path relative to the repository")
-  .action(async (root: string, options: { json: boolean; output?: string }) => {
+  .action(async (root: string, options: { json: boolean; performance: boolean; output?: string }) => {
     const resolved = resolve(root);
-    const result = await runPlan(resolved);
+    const result = await runPlan(resolved, { includeAdvisory: options.performance });
     if (options.json) {
       console.log(JSON.stringify(result.plan, null, 2));
     } else {
@@ -268,14 +270,17 @@ program
   .description("Select one unlocked cleanup node and print a work brief")
   .argument("[root]", "repository root", ".")
   .option("--json", "print the selected node and its finding evidence as JSON", false)
-  .action(async (root: string, options: { json: boolean }) => {
-    const result = await runFixNext(resolve(root));
+  .option("--performance", "include advisory performance heuristics in the cleanup DAG", false)
+  .action(async (root: string, options: { json: boolean; performance: boolean }) => {
+    const result = await runFixNext(resolve(root), { includeAdvisory: options.performance });
     if (options.json) {
       console.log(JSON.stringify({
         runtime: result.plan.runtime,
         terminalState: result.plan.terminalState,
         node: result.node ?? null,
         findings: result.findings,
+        dirtyTargetFiles: result.dirtyTargetFiles,
+        worktreeInspectionWarning: result.worktreeInspectionWarning,
         planReady: result.plan.readyNodeIds,
       }, null, 2));
     } else {

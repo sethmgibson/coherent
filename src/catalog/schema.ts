@@ -16,4 +16,6 @@ export interface RuleDefinition<Category extends string = string> {
   workKind: WorkKind;
   prerequisites: readonly string[];
   rescanAfter: readonly string[];
+  /** Exclude this heuristic from the cleanup DAG unless performance work is requested. */
+  advisoryByDefault?: true;
 }

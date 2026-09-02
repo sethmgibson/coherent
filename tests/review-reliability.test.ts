@@ -2,7 +2,11 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { DETECTOR_REVISION, FINGERPRINT_VERSION } from "../src/config.js";
+import {
+  DETECTOR_REVISION,
+  detectorRevisionForRule,
+  FINGERPRINT_VERSION,
+} from "../src/config.js";
 import { createFinding, type FindingInput } from "../src/domain/finding.js";
 import { applyReviews } from "../src/review/apply.js";
 import { parseReviewRequests, runReviewBatch } from "../src/review/run.js";
@@ -43,6 +47,7 @@ function review(
     reviewedAt: "2026-08-28T00:00:00.000Z",
     fingerprintVersion: FINGERPRINT_VERSION,
     detectorRevision: DETECTOR_REVISION,
+    ruleDetectorRevision: detectorRevisionForRule(target.ruleId),
   };
 }
 
@@ -216,6 +221,15 @@ describe("review persistence and identity", () => {
           identity: target.identity,
           ruleId: "A01",
           title: target.title,
+          reviewGroupKey: `A01:${target.identity}`,
+        },
+      ]);
+      expect(preview.receipt.groups).toEqual([
+        {
+          reviewGroupKey: `A01:${target.identity}`,
+          ruleId: "A01",
+          count: 1,
+          files: ["src/a.ts"],
         },
       ]);
       expect((await readDecisions(root)).reviews).toEqual([]);
@@ -352,7 +366,7 @@ describe("review queue", () => {
           findings: [unreviewed, unreviewedPeer, deferred, ready],
         }, null, 2)}\n`,
       );
-      const queue = await runReviewQueue(root, { limit: 1 });
+      const queue = await runReviewQueue(root, { limit: 1, groupBy: "rule" });
       expect(queue.counts.unreviewed).toBeGreaterThanOrEqual(1);
       expect(queue.counts.deferred).toBeGreaterThanOrEqual(1);
       expect(queue.counts.ready).toBeGreaterThanOrEqual(1);
@@ -363,6 +377,52 @@ describe("review queue", () => {
       );
       expect(group).toMatchObject({ total: 2, shown: 1, truncated: true });
       expect(group?.items).toHaveLength(1);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it("defaults to evidence groups and labels unreviewed performance heuristics advisory", async () => {
+    const root = await mkdtemp(join(tmpdir(), "coherent-review-queue-evidence-"));
+    try {
+      const state = join(root, ".coherent");
+      await mkdir(state, { recursive: true });
+      const first = finding({
+        ruleId: "A01",
+        identity: "fossil:One",
+        detectionMode: "semantic",
+      });
+      const second = finding({
+        ruleId: "A01",
+        identity: "fossil:Two",
+        detectionMode: "semantic",
+      });
+      const advisory = finding({
+        ruleId: "E06",
+        identity: "complexity:hot",
+        detectionMode: "hybrid",
+        locations: [{ file: "src/hot.ts", symbol: "scan" }],
+        affectedSymbols: ["scan"],
+      });
+      await writeFile(
+        join(state, "decisions.json"),
+        `${JSON.stringify({
+          schemaVersion: 1,
+          reviews: [],
+          findings: [first, second, advisory],
+        }, null, 2)}\n`,
+      );
+      const queue = await runReviewQueue(root);
+      expect(queue.counts.unreviewed).toBe(2);
+      expect(queue.counts.advisory).toBe(1);
+      expect(queue.groups.every((group) => group.groupBy === "evidence")).toBe(true);
+      expect(queue.groups.filter((group) => group.state === "unreviewed")).toHaveLength(2);
+      expect(queue.groups.find((group) => group.state === "advisory")?.items).toEqual([
+        expect.objectContaining({
+          fingerprint: advisory.fingerprint,
+          reviewGroupKey: "E06:src/hot.ts:scan",
+        }),
+      ]);
     } finally {
       await rm(root, { recursive: true, force: true });
     }

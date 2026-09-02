@@ -2,22 +2,20 @@ import { describe, expect, it } from "vitest";
 import { auditFixture, byRule, findingFor } from "./helpers/audit-fixture.js";
 
 describe("detector precision regressions", () => {
-  it("scopes B03 identities to the declaration file and matches implementations by symbol", async () => {
+  it("suppresses single-implementation abstractions at explicit system boundaries", async () => {
     const { findings } = await auditFixture();
     const abs = byRule(findings, "B03");
     const dashboards = abs.filter((finding) => finding.affectedSymbols.includes("DashboardReadModel"));
-    expect(dashboards).toHaveLength(1);
-    expect(dashboards[0]?.identity).toBe("single-impl:src/dashboard-a.ts:DashboardReadModel");
-    expect(dashboards.every((finding) => finding.identity.includes("src/"))).toBe(true);
+    expect(dashboards).toHaveLength(0);
     const gateway = findingFor(abs, "ChargeGateway");
-    expect(gateway?.identity).toBe("single-impl:src/gateway.ts:ChargeGateway");
+    expect(gateway).toBeUndefined();
   });
 
   it("keeps Refund and refund as distinct A03 identities and skips typed switches", async () => {
     const { findings } = await auditFixture();
     const strings = byRule(findings, "A03");
-    const refund = strings.find((finding) => finding.identity === "string-protocol:kind:Refund");
-    const refundLower = strings.find((finding) => finding.identity === "string-protocol:kind:refund");
+    const refund = strings.find((finding) => finding.identity.endsWith(":Refund"));
+    const refundLower = strings.find((finding) => finding.identity.endsWith(":refund"));
     expect(refund).toBeDefined();
     expect(refundLower).toBeDefined();
     expect(refund?.fingerprint).not.toBe(refundLower?.fingerprint);
@@ -45,14 +43,13 @@ describe("detector precision regressions", () => {
     expect(localeLine).toMatch(/localeIsOk uses /);
     expect(localeLine).not.toMatch(/mutate/i);
     const unused = findingFor(ctxs, "UnusedOptions");
-    expect(unused?.explanation).not.toMatch(/passed broadly/i);
-    expect(unused?.explanation).toMatch(/No typed consumers were observed/i);
+    expect(unused).toBeUndefined();
   });
 
   it("does not confirm a query-builder chain as a B04 forwarding wrapper", async () => {
     const { findings } = await auditFixture();
     const hops = byRule(findings, "B04");
     expect(findingFor(hops, "pageCharges")).toBeUndefined();
-    expect(findingFor(hops, "persistCharge")?.status).toBe("confirmed");
+    expect(findingFor(hops, "persistCharge")?.status).toBe("candidate");
   });
 });

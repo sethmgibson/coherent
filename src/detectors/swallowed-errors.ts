@@ -35,6 +35,7 @@ function classifyCatch(
   const empty = statements.length === 0;
   const returnsNullish =
     returnExpr === "null" || returnExpr === "undefined" || returnExpr === "void 0";
+  const allowsNullish = hasExplicitNullishReturn(clause);
   const returnsFallback = catchHasReturn(clause) && !returnsNullish;
   const silentlyExitsLoop =
     block.getDescendantsOfKind(SyntaxKind.ContinueStatement).length > 0 ||
@@ -42,18 +43,42 @@ function classifyCatch(
   const relative = ctx.relativePath(clause.getSourceFile());
   const owner = ownerName(clause);
 
-  if (empty || (returnsNullish && !logs)) {
+  if (empty) {
     findings.push(
       swallowFinding(ctx, clause, relative, owner, "confirmed", "high", "swallowed-empty", [
-        empty ? "Empty catch block swallows the error." : `Catch returns ${returnExpr} without rethrow or translation.`,
+        "Empty catch block swallows the error.",
       ]),
+    );
+    return;
+  }
+  if (returnsNullish && !logs) {
+    if (allowsNullish && looksLikeOptionalLookup(owner)) return;
+    findings.push(
+      swallowFinding(
+        ctx,
+        clause,
+        relative,
+        owner,
+        allowsNullish ? "candidate" : "confirmed",
+        allowsNullish ? "medium" : "high",
+        "swallowed-empty",
+        [
+          `Catch returns ${returnExpr} without rethrow or translation.`,
+          ...(allowsNullish
+            ? ["The callable explicitly permits a nullish result, so this may be an intentional absence protocol."]
+            : []),
+        ],
+      ),
     );
     return;
   }
   if (returnsNullish && logs) {
     findings.push(
-      swallowFinding(ctx, clause, relative, owner, "confirmed", "high", "swallowed-nullish", [
+      swallowFinding(ctx, clause, relative, owner, "candidate", "medium", "swallowed-nullish", [
         `Catch logs and returns ${returnExpr}. Callers cannot observe the failure.`,
+        ...(allowsNullish
+          ? ["The callable explicitly permits a nullish result."]
+          : []),
       ]),
     );
     return;
@@ -68,9 +93,16 @@ function classifyCatch(
     return;
   }
   if (silentlyExitsLoop) {
+    const onlyExitsLoop = statements.every(
+      (statement) =>
+        Node.isContinueStatement(statement) || Node.isBreakStatement(statement),
+    );
     findings.push(
-      swallowFinding(ctx, clause, relative, owner, "confirmed", "high", "swallowed-loop-exit", [
+      swallowFinding(ctx, clause, relative, owner, onlyExitsLoop ? "confirmed" : "candidate", onlyExitsLoop ? "high" : "medium", "swallowed-loop-exit", [
         "Catch skips the current loop work without rethrowing or exposing the failure to callers.",
+        ...(!onlyExitsLoop
+          ? ["The catch performs other work, so the loop exit may be an intentional recovery policy."]
+          : []),
       ]),
     );
     return;
@@ -82,6 +114,20 @@ function classifyCatch(
       ]),
     );
   }
+}
+
+function hasExplicitNullishReturn(clause: CatchClause): boolean {
+  const fn =
+    clause.getFirstAncestorByKind(SyntaxKind.FunctionDeclaration) ??
+    clause.getFirstAncestorByKind(SyntaxKind.MethodDeclaration) ??
+    clause.getFirstAncestorByKind(SyntaxKind.FunctionExpression) ??
+    clause.getFirstAncestorByKind(SyntaxKind.ArrowFunction);
+  const returnType = fn?.getReturnTypeNode()?.getText() ?? "";
+  return /(?:^|[|<,(\s])(null|undefined|void)(?:$|[|>,)\s])/.test(returnType);
+}
+
+function looksLikeOptionalLookup(owner: string): boolean {
+  return /^(try|maybe|find|parse|decode|optional)|OrUndefined$|OrNull$/i.test(owner);
 }
 
 function swallowFinding(

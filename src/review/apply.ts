@@ -1,4 +1,4 @@
-import { DETECTOR_REVISION } from "../config.js";
+import { detectorRevisionForRule } from "../config.js";
 import type { Finding } from "../domain/finding.js";
 import { reviewLifecycleState } from "./lifecycle.js";
 import type { FindingReview, MergedFindings } from "./types.js";
@@ -85,7 +85,10 @@ export function hasPotentialIdentityReview(
 }
 
 export function hasCurrentDetectorRevision(review: FindingReview): boolean {
-  return review.detectorRevision === DETECTOR_REVISION;
+  const expected = detectorRevisionForRule(review.ruleId);
+  return review.ruleDetectorRevision !== undefined
+    ? review.ruleDetectorRevision === expected
+    : review.detectorRevision === expected;
 }
 
 export function classifyReview(review: FindingReview, findings: Finding[]): ReviewMatch {

@@ -44,20 +44,19 @@ describe("hybrid detectors on scanner-app", () => {
     ).toHaveLength(1);
   });
 
-  it("B03 labels single implementations as hybrid candidates", async () => {
+  it("B03 does not treat explicit ports and repositories as premature abstractions", async () => {
     const { findings } = await auditFixture();
     const abs = byRule(findings, "B03");
     const gateway = findingFor(abs, "ChargeGateway");
-    expect(gateway?.detectionMode).toBe("hybrid");
-    expect(gateway?.status).toBe("candidate");
+    expect(gateway).toBeUndefined();
     const repo = findingFor(abs, "UserRepository");
-    expect(repo?.confidence).toBe("low");
+    expect(repo).toBeUndefined();
   });
 
   it("B04 flags pure forwards and skips auth/validation wrappers", async () => {
     const { findings } = await auditFixture();
     const hops = byRule(findings, "B04");
-    expect(findingFor(hops, "persistCharge")?.status).toBe("confirmed");
+    expect(findingFor(hops, "persistCharge")?.status).toBe("candidate");
     expect(findingFor(hops, "authorizeAndCharge")).toBeUndefined();
     expect(findingFor(hops, "validateThenWrite")).toBeUndefined();
     expect(findingFor(hops, "isChargeId")).toBeUndefined();
@@ -85,8 +84,8 @@ describe("hybrid detectors on scanner-app", () => {
   it("D03 distinguishes swallow, fallback, rethrow, and translation", async () => {
     const { findings } = await auditFixture();
     const errors = byRule(findings, "D03");
-    expect(findingFor(errors, "loadUser")?.status).toBe("confirmed");
-    expect(findingFor(errors, "loadProfile")?.status).toBe("confirmed");
+    expect(findingFor(errors, "loadUser")?.status).toBe("candidate");
+    expect(findingFor(errors, "loadProfile")?.status).toBe("candidate");
     expect(findingFor(errors, "loadOrLog")?.status).toBe("candidate");
     expect(findingFor(errors, "loadAndIgnore")?.status).toBe("confirmed");
     expect(findingFor(errors, "loadAll")?.status).toBe("confirmed");

@@ -166,6 +166,10 @@ function parseReview(raw: unknown): FindingReview {
   }
   const fingerprintVersion = optionalVersion(raw.fingerprintVersion, "fingerprintVersion");
   const detectorRevision = optionalVersion(raw.detectorRevision, "detectorRevision");
+  const ruleDetectorRevision = optionalVersion(
+    raw.ruleDetectorRevision,
+    "ruleDetectorRevision",
+  );
   const expiresAt = optionalReviewText(raw.expiresAt, "expiresAt");
   if (expiresAt !== undefined && !isReviewExpiry(expiresAt)) {
     throw new Error("Invalid review: expiresAt must be an ISO date or timestamp");
@@ -198,6 +202,7 @@ function parseReview(raw: unknown): FindingReview {
     reviewedAt: raw.reviewedAt,
     ...(fingerprintVersion !== undefined ? { fingerprintVersion } : {}),
     ...(detectorRevision !== undefined ? { detectorRevision } : {}),
+    ...(ruleDetectorRevision !== undefined ? { ruleDetectorRevision } : {}),
     ...(expiresAt !== undefined ? { expiresAt } : {}),
     ...(removalMilestone !== undefined ? { removalMilestone } : {}),
     ...(notCompatibility ? { notCompatibility: true as const } : {}),

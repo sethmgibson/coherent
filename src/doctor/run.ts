@@ -1,7 +1,13 @@
 import { readFile } from "node:fs/promises";
 import { isAbsolute, join } from "node:path";
 import { runAudit } from "../audit/run.js";
-import { isBaselineStale, readBaseline } from "../baseline/run.js";
+import {
+  baselineDetectorRevisionForRule,
+  isBaselineStale,
+  readBaseline,
+  staleBaselineRuleIds,
+  type BaselineFile,
+} from "../baseline/run.js";
 import { ARCHITECTURE_FILE, loadConfig } from "../config.js";
 import { legacyStateDirWarning, resolveStateDir } from "../state-dir.js";
 import { generateArchitectureMarkdown } from "../init/architecture.js";
@@ -36,7 +42,7 @@ export async function runDoctor(
       issues,
       options.deep === true,
       baseline.fingerprints,
-      baseline.detectorRevision,
+      baseline.file,
     );
     const runtime = await runtimeIdentity(snapshotRoot);
     return { runtime, target, issues, ok: issues.length === 0 };
@@ -90,15 +96,21 @@ async function checkArchitecture(root: string, issues: DoctorIssue[]): Promise<v
 async function checkBaseline(
   root: string,
   issues: DoctorIssue[],
-): Promise<{ fingerprints: Set<string>; detectorRevision?: number }> {
+): Promise<{ fingerprints: Set<string>; file?: BaselineFile }> {
   try {
     const raw = await readBaseline(root);
     if (!raw) return { fingerprints: new Set() };
     const stale = isBaselineStale(raw) || raw.schemaVersion === undefined;
+    const staleRules = staleBaselineRuleIds(raw);
     if (stale) {
       issues.push({
         code: "baseline-versions",
-        message: "Baseline is missing versions or they do not match this CLI. Re-run `coherent baseline`.",
+        message: "Baseline schema or fingerprint version does not match this CLI. Re-run `coherent baseline`.",
+      });
+    } else if (staleRules.length > 0) {
+      issues.push({
+        code: "baseline-versions",
+        message: `Baseline has stale detector rules (${staleRules.join(", ")}). Re-run \`coherent baseline\` to refresh only those rules.`,
       });
     }
     if (typeof raw.root === "string" && raw.root !== "." && isAbsolute(raw.root)) {
@@ -110,8 +122,14 @@ async function checkBaseline(
     const fingerprints = raw.findings.map((entry) => entry.fingerprint);
     reportDuplicates(fingerprints, "baseline.json", issues);
     return {
-      fingerprints: stale ? new Set() : new Set(fingerprints),
-      detectorRevision: raw.detectorRevision,
+      fingerprints: stale
+        ? new Set()
+        : new Set(
+            raw.findings
+              .filter((entry) => !staleRules.includes(entry.ruleId))
+              .map((entry) => entry.fingerprint),
+          ),
+      file: raw,
     };
   } catch (error) {
     issues.push({
@@ -127,7 +145,7 @@ async function checkDecisions(
   issues: DoctorIssue[],
   deep: boolean,
   baselineFingerprints: ReadonlySet<string>,
-  baselineDetectorRevision?: number,
+  baseline?: BaselineFile,
 ): Promise<void> {
   try {
     const decisions = await readDecisions(root);
@@ -144,7 +162,7 @@ async function checkDecisions(
     reportStateVersionSkew(
       decisions.reviews,
       semanticFingerprints,
-      baselineDetectorRevision,
+      baseline,
       issues,
     );
     const stale = new Set<string>();
@@ -187,21 +205,21 @@ async function checkDecisions(
 function reportStateVersionSkew(
   reviews: Awaited<ReturnType<typeof readDecisions>>["reviews"],
   semanticFingerprints: ReadonlySet<string>,
-  baselineDetectorRevision: number | undefined,
+  baseline: BaselineFile | undefined,
   issues: DoctorIssue[],
 ): void {
-  if (baselineDetectorRevision === undefined) return;
+  if (!baseline) return;
   const mismatched = reviews.filter(
     (review) =>
       !semanticFingerprints.has(review.fingerprint) &&
-      review.detectorRevision !== undefined &&
-      review.detectorRevision !== baselineDetectorRevision,
+      (review.ruleDetectorRevision ?? review.detectorRevision) !== undefined &&
+      (review.ruleDetectorRevision ?? review.detectorRevision) !==
+        baselineDetectorRevisionForRule(baseline, review.ruleId),
   );
   if (mismatched.length === 0) return;
-  const revisions = [...new Set(mismatched.map((review) => review.detectorRevision))].sort();
   issues.push({
     code: "state-version-skew",
-    message: `${mismatched.length} mechanical or hybrid review(s) use detector revision ${revisions.join(", ")} while baseline.json uses revision ${baselineDetectorRevision}. Commit the CLI lock, baseline, and decisions as one compatible state before trusting this snapshot.`,
+    message: `${mismatched.length} mechanical or hybrid review(s) use a different per-rule detector revision than baseline.json. Commit the CLI lock, baseline, and decisions as one compatible state before trusting this snapshot.`,
   });
 }
 
@@ -227,7 +245,7 @@ function reportStaleReview(
   review: Awaited<ReturnType<typeof readDecisions>>["reviews"][number],
   issues: DoctorIssue[],
 ): void {
-  const seen = review.detectorRevision;
+  const seen = review.ruleDetectorRevision ?? review.detectorRevision;
   issues.push({
     code: "stale-review",
     message:

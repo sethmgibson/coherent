@@ -78,7 +78,7 @@ describe("generated skill docs", () => {
       "utf8",
     );
     expect(cursor).toMatch(/^---\nname: coherent\n/);
-    expect(cursor).toContain("skills/coherent/SKILL.md");
+    expect(cursor).toContain("runtime.skillPath");
   });
 
   it("does not package nested discoverable skills", async () => {

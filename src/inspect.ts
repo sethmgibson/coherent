@@ -15,6 +15,8 @@ import { readDecisions } from "./review/store.js";
 import { findingsForNode, renderFixNext, type FixNextResult } from "./fix/run.js";
 import { selectNextNode } from "./fix/select.js";
 import { renderRuntimeIdentity, type PortableRuntimeIdentity } from "./runtime.js";
+import type { PlanOptions } from "./plan/run.js";
+import { inspectWorktreeTargets } from "./fix/worktree.js";
 
 export interface InspectResult extends FixNextResult {
   audit: AuditResult;
@@ -27,16 +29,29 @@ export interface InspectJson {
   plan: CleanupPlan;
   nextNode: CleanupNode | null;
   nextFindings: Finding[];
+  dirtyTargetFiles: string[];
+  worktreeInspectionWarning?: string;
 }
 
-export async function runInspect(root: string): Promise<InspectResult> {
+export async function runInspect(
+  root: string,
+  options: PlanOptions = {},
+): Promise<InspectResult> {
   const [audit, decisions] = await Promise.all([
     runAudit(root),
     readDecisions(root),
   ]);
-  const { plan, findings } = planFromAudit(audit, decisions);
+  const { plan, findings } = planFromAudit(audit, decisions, options);
   const node = selectNextNode(plan);
-  return { audit, plan, node, findings: findingsForNode(node, findings) };
+  const inspection = await inspectWorktreeTargets(root, node?.likelyFiles ?? []);
+  return {
+    audit,
+    plan,
+    node,
+    findings: findingsForNode(node, findings),
+    dirtyTargetFiles: inspection.dirtyFiles,
+    ...(inspection.warning ? { worktreeInspectionWarning: inspection.warning } : {}),
+  };
 }
 
 export function inspectJson(result: InspectResult): InspectJson {
@@ -47,6 +62,10 @@ export function inspectJson(result: InspectResult): InspectJson {
     plan: result.plan,
     nextNode: result.node ?? null,
     nextFindings: result.findings,
+    dirtyTargetFiles: result.dirtyTargetFiles,
+    ...(result.worktreeInspectionWarning
+      ? { worktreeInspectionWarning: result.worktreeInspectionWarning }
+      : {}),
   };
 }
 

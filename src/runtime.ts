@@ -8,8 +8,9 @@ import { artifactVersions } from "./config.js";
 
 const execFileAsync = promisify(execFile);
 
-export const WORKFLOW_REVISION = 1;
+export const WORKFLOW_REVISION = 2;
 export const RUNTIME_CAPABILITIES = [
+  "canonical-skill-path",
   "doctor-ref",
   "doctor-staged",
   "inspect-terminal-state",
@@ -27,6 +28,7 @@ export interface PortableRuntimeIdentity extends ReturnType<typeof artifactVersi
 
 export interface RuntimeIdentity extends PortableRuntimeIdentity {
   packageRoot: string;
+  skillPath: string;
   sourceRevision?: string;
   sourceDirty?: boolean;
   declaredRevision?: string;
@@ -56,6 +58,7 @@ export async function runtimeIdentity(targetRoot?: string): Promise<RuntimeIdent
   return {
     ...portableRuntimeIdentity(),
     packageRoot: pkg,
+    skillPath: join(pkg, "skills", "coherent", "SKILL.md"),
     ...(source?.revision ? { sourceRevision: source.revision } : {}),
     ...(source ? { sourceDirty: source.dirty } : {}),
     ...(declared?.revision ? { declaredRevision: declared.revision } : {}),
@@ -104,6 +107,7 @@ export function renderRuntimeDetails(runtime: RuntimeIdentity): string {
   return [
     renderRuntimeIdentity(runtime),
     `Package: ${runtime.packageRoot}`,
+    `Canonical skill: ${runtime.skillPath}`,
     ...(runtime.sourceRevision
       ? [`Source revision: ${runtime.sourceRevision}${runtime.sourceDirty ? " (dirty)" : ""}`]
       : []),
@@ -130,6 +134,9 @@ If this command is missing or exits non-zero, stop before \`doctor\`, \`inspect\
 or review writes. Inspect the reported package path and the target lockfile revision, then
 update either the skill or CLI so they describe one workflow. A shared package version alone
 is not sufficient evidence when Git dependencies can resolve different commits.
+
+The JSON report exposes \`runtime.skillPath\`. Editor adapters should load that exact file
+instead of guessing that the target repository contains a \`skills/coherent\` checkout.
 
 The required capabilities are: ${runtime.capabilities.map((capability) => `\`${capability}\``).join(", ")}.
 `;

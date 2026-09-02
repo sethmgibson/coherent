@@ -57,6 +57,7 @@ export interface CleanupPlan {
   blockedNodeIds: string[];
   needsReviewNodeIds: string[];
   deferredNodeIds: string[];
+  advisoryFindingCount: number;
   reviewSummary?: PlanReviewSummary;
 }
 
@@ -65,6 +66,7 @@ export interface PlanReviewSummary {
   dismissed: number;
   confirmed: number;
   deferred: number;
+  advisory: number;
   awaitingReview: number;
   cleanupNodes: number;
 }

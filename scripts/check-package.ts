@@ -80,6 +80,7 @@ try {
       detectorRevision: number;
       capabilities: unknown;
       packageRoot: string;
+      skillPath: string;
     };
     compatible: boolean;
     issues: unknown;
@@ -88,10 +89,14 @@ try {
   assert.equal(versionReport.compatible, true);
   assert.deepEqual(versionReport.issues, []);
   assert.equal(runtime.coherentVersion, manifest.version);
-  assert.equal(runtime.workflowRevision, 1);
-  assert.equal(runtime.detectorRevision, 8);
+  assert.equal(runtime.workflowRevision, 2);
+  assert.equal(runtime.detectorRevision, 9);
   assert(Array.isArray(runtime.capabilities) && runtime.capabilities.length > 0);
   assert.equal(await realpath(runtime.packageRoot), installed);
+  assert.equal(
+    await realpath(runtime.skillPath),
+    await realpath(join(installed, "skills", "coherent", "SKILL.md")),
+  );
   const target = join(temporaryRoot, "audit-target");
   await mkdir(target);
   await writeFile(join(target, "index.ts"), "export const answer = 42;\n");
@@ -101,7 +106,7 @@ try {
   };
   assert(Array.isArray(audit.findings), "Installed CLI did not return findings JSON");
   assert.equal(audit.runtime?.coherentVersion, manifest.version);
-  assert.equal(audit.runtime?.workflowRevision, 1);
+  assert.equal(audit.runtime?.workflowRevision, 2);
   console.log("Installed CLI aliases, runtime identity, and audit passed.");
 
   await cp(join(repoRoot, "tests", "fixtures", "packed-package", "consumer.ts"), join(consumer, "consumer.ts"));

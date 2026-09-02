@@ -123,6 +123,7 @@ export function buildPlan(
     blockedNodeIds,
     needsReviewNodeIds,
     deferredNodeIds,
+    advisoryFindingCount: 0,
   };
 }
 

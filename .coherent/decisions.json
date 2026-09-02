@@ -521,16 +521,6 @@
       "reviewedAt": "2026-09-01T02:31:32.187Z",
       "fingerprintVersion": 2,
       "detectorRevision": 8
-    },
-    {
-      "fingerprint": "5cb8dec76ba24db2470e6a334a4f9ec0284b42c509938a844d073abf2741c624",
-      "ruleId": "A06",
-      "identity": "duplicate-rep:CompactFindingsFile+FindingsFile",
-      "decision": "dismissed",
-      "reason": "Intentional wire-format projection: FindingsFile is the complete internal and persisted audit artifact used by planning and metrics, while CompactFindingsFile is a deliberately smaller stdout/API representation produced from it. The compact type omits mutable derived collections and cannot replace the full artifact without expanding the public payload.",
-      "reviewedAt": "2026-09-01T06:12:16.542Z",
-      "fingerprintVersion": 2,
-      "detectorRevision": 8
     }
   ],
   "findings": []

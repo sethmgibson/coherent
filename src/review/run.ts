@@ -1,7 +1,11 @@
 import { resolve } from "node:path";
 import { runAudit } from "../audit/run.js";
-import { isBaselineStale, readBaseline } from "../baseline/run.js";
-import { DETECTOR_REVISION, FINGERPRINT_VERSION } from "../config.js";
+import { isBaselineStale, readBaseline, staleBaselineRuleIds } from "../baseline/run.js";
+import {
+  DETECTOR_REVISION,
+  FINGERPRINT_VERSION,
+  detectorRevisionForRule,
+} from "../config.js";
 import type { Finding } from "../domain/finding.js";
 import { classifyReview } from "./apply.js";
 import { reviewLifecycleState, validateReviewLifecycle, validateReviewReason } from "./lifecycle.js";
@@ -14,6 +18,7 @@ import type {
   ReviewLifecycle,
   ReviewReplacement,
 } from "./types.js";
+import { reviewGroupKey } from "./group.js";
 import { portableRuntimeIdentity } from "../runtime.js";
 
 export type { ReviewRequest } from "./parse.js";
@@ -141,6 +146,7 @@ interface PreparedReviews {
   retained: FindingReview[];
   replacements: ReviewReplacement[];
   targets: ReviewApplyReceipt["targets"];
+  groups: ReviewApplyReceipt["groups"];
 }
 
 function prepareReviews(
@@ -153,6 +159,8 @@ function prepareReviews(
   const seenIdentities = new Set<string>();
   const targets: ReviewApplyReceipt["targets"] = [];
   const replacements: ReviewReplacement[] = [];
+  const requestGroups = new Map<number, string>();
+  const receiptGroups = new Map<string, ReviewApplyReceipt["groups"][number]>();
 
   for (const request of requests) {
     const finding = resolveFinding(findings, request.fingerprint);
@@ -162,6 +170,16 @@ function prepareReviews(
       );
     }
     const identityKey = `${finding.ruleId}\u0000${finding.identity}`;
+    const groupKey = reviewGroupKey(finding);
+    if (request.requestGroup !== undefined) {
+      const expectedGroup = requestGroups.get(request.requestGroup);
+      if (expectedGroup !== undefined && expectedGroup !== groupKey) {
+        throw new Error(
+          `Grouped review item spans unrelated evidence groups (${expectedGroup} and ${groupKey}). Split it into separately reasoned batch items.`,
+        );
+      }
+      requestGroups.set(request.requestGroup, groupKey);
+    }
     if (seenFingerprints.has(finding.fingerprint) || seenIdentities.has(identityKey)) {
       throw new Error(`Review batch contains the same finding more than once: ${request.fingerprint}.`);
     }
@@ -183,7 +201,20 @@ function prepareReviews(
       identity: finding.identity,
       ruleId: finding.ruleId,
       title: finding.title,
+      reviewGroupKey: groupKey,
     });
+    const receiptGroup = receiptGroups.get(groupKey) ?? {
+      reviewGroupKey: groupKey,
+      ruleId: finding.ruleId,
+      count: 0,
+      files: [],
+    };
+    receiptGroup.count += 1;
+    receiptGroup.files = [...new Set([
+      ...receiptGroup.files,
+      ...finding.locations.map((location) => location.file),
+    ])].sort();
+    receiptGroups.set(groupKey, receiptGroup);
     reviews.push(review);
   }
 
@@ -196,7 +227,13 @@ function prepareReviews(
       !replacedFingerprints.has(review.fingerprint) &&
       !replacedIdentities.has(`${review.ruleId}\u0000${review.identity}`),
   );
-  return { reviews, retained, replacements, targets };
+  return {
+    reviews,
+    retained,
+    replacements,
+    targets,
+    groups: [...receiptGroups.values()],
+  };
 }
 
 function toReceipt(
@@ -211,6 +248,7 @@ function toReceipt(
     decisionsPath: decisionsPathValue,
     wrote,
     targets: prepared.targets,
+    groups: prepared.groups,
     replacements: prepared.replacements,
     conflicts: [],
     reviews: prepared.reviews,
@@ -259,6 +297,7 @@ function toReview(finding: Finding, request: ReviewRequest): FindingReview {
     reviewedAt: new Date().toISOString(),
     fingerprintVersion: FINGERPRINT_VERSION,
     detectorRevision: DETECTOR_REVISION,
+    ruleDetectorRevision: detectorRevisionForRule(finding.ruleId),
     ...(request.expiresAt ? { expiresAt: request.expiresAt } : {}),
     ...(request.removalMilestone ? { removalMilestone: request.removalMilestone } : {}),
     ...(request.notCompatibility ? { notCompatibility: true as const } : {}),
@@ -272,5 +311,10 @@ function toReview(finding: Finding, request: ReviewRequest): FindingReview {
 async function currentBaselineFingerprints(root: string): Promise<Set<string>> {
   const baseline = await readBaseline(root);
   if (!baseline || isBaselineStale(baseline)) return new Set();
-  return new Set(baseline.findings.map((finding) => finding.fingerprint));
+  const staleRules = new Set(staleBaselineRuleIds(baseline));
+  return new Set(
+    baseline.findings
+      .filter((entry) => !staleRules.has(entry.ruleId))
+      .map((entry) => entry.fingerprint),
+  );
 }

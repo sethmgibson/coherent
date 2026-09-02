@@ -74,7 +74,7 @@ export function renderPlan(
 }
 
 function renderReviewSummary(summary: NonNullable<CleanupPlan["reviewSummary"]>): string {
-  return `Signals: ${summary.detected}  Dismissed: ${summary.dismissed}  Confirmed: ${summary.confirmed}  Deferred: ${summary.deferred}  Awaiting review: ${summary.awaitingReview}`;
+  return `Signals: ${summary.detected}  Advisory: ${summary.advisory}  Dismissed: ${summary.dismissed}  Confirmed: ${summary.confirmed}  Deferred: ${summary.deferred}  Awaiting review: ${summary.awaitingReview}`;
 }
 
 function renderNode(node: CleanupNode): string[] {

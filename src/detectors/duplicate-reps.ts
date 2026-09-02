@@ -29,11 +29,13 @@ export function detectDuplicateRepresentations(ctx: AnalysisContext): Finding[] 
     const left = first ? shapes[first.left] : undefined;
     const right = first ? shapes[first.right] : undefined;
     const named = related.some((pair) => pair.named);
+    const stem = representationStem(cluster[0]!.name);
+    const scope = representationScope(cluster);
     const highOverlap = related.some((pair) => pair.overlap >= 0.8 && pair.typeMismatches.length === 0);
     findings.push(
       makeFinding({
         ruleId: "A06",
-        identity: `duplicate-rep:${names.join("+")}`,
+        identity: `duplicate-rep:${scope}:${stem}`,
         title: "Structurally similar representations",
         severity: "medium",
         confidence: highOverlap || named ? "high" : "medium",
@@ -137,6 +139,10 @@ function overlappingPairs(shapes: ShapedType[]): Overlap[] {
     const overlap = candidate.shared.length / larger;
     if (overlap < 0.6) continue;
     const typeMismatches = fieldDifferences(left, right, candidate.shared);
+    const named =
+      representationStem(left.name) === representationStem(right.name)
+      && representationStem(left.name).length > 1;
+    if (!named) continue;
     pairs.push({
       left: candidate.left,
       right: candidate.right,
@@ -146,10 +152,24 @@ function overlappingPairs(shapes: ShapedType[]): Overlap[] {
       overlap,
       typeCompatible: candidate.shared.length - typeMismatches.length,
       typeMismatches,
-      named: nameStem(left.name) === nameStem(right.name) && nameStem(left.name).length > 1,
+      named,
     });
   }
   return pairs;
+}
+
+function representationStem(name: string): string {
+  return nameStem(name).replace(
+    /(view|row|copy|snapshot|payload|response|document)$/,
+    "",
+  );
+}
+
+function representationScope(cluster: ShapedType[]): string {
+  const roots = new Set(
+    cluster.map((shape) => shape.file.split("/").slice(0, 2).join("/")),
+  );
+  return roots.size === 1 ? [...roots][0]! : "cross-boundary";
 }
 
 function clusterPairs(count: number, pairs: Overlap[]): number[][] {

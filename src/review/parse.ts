@@ -7,6 +7,8 @@ export interface ReviewRequest extends ReviewLifecycle {
   reason: string;
   semanticEquivalence?: string;
   authoritativeConcept?: string;
+  /** Internal ID preserving one grouped JSON item's semantic boundary. */
+  requestGroup?: number;
 }
 
 const BATCH_FIELDS = new Set([
@@ -56,18 +58,27 @@ export function parseReviewRequests(raw: unknown): ReviewRequest[] {
         `Review batch item ${index + 1} notCompatibility must be true when present.`,
       );
     }
-    return fingerprints.map((fingerprint) => ({
-      fingerprint,
-      decision: record.decision as ReviewDecision,
-      reason,
-      ...(expiresAt ? { expiresAt } : {}),
-      ...(removalMilestone ? { removalMilestone } : {}),
-      ...(record.notCompatibility === true ? { notCompatibility: true as const } : {}),
-      ...optionalReviewText(record, "semanticEquivalence", index),
-      ...optionalReviewText(record, "authoritativeConcept", index),
-      ...optionalReviewText(record, "missingEvidence", index),
-      ...optionalReviewText(record, "reconsiderWhen", index),
-    }));
+    return fingerprints.map((fingerprint) => {
+      const request: ReviewRequest = {
+        fingerprint,
+        decision: record.decision as ReviewDecision,
+        reason,
+        ...(expiresAt ? { expiresAt } : {}),
+        ...(removalMilestone ? { removalMilestone } : {}),
+        ...(record.notCompatibility === true ? { notCompatibility: true as const } : {}),
+        ...optionalReviewText(record, "semanticEquivalence", index),
+        ...optionalReviewText(record, "authoritativeConcept", index),
+        ...optionalReviewText(record, "missingEvidence", index),
+        ...optionalReviewText(record, "reconsiderWhen", index),
+      };
+      if (fingerprints.length > 1) {
+        Object.defineProperty(request, "requestGroup", {
+          value: index,
+          enumerable: false,
+        });
+      }
+      return request;
+    });
   });
 }
 

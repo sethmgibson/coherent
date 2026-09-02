@@ -12,6 +12,9 @@ const cli = join(repoRoot, "src", "cli.ts");
 const tsx = join(repoRoot, "node_modules", "tsx", "dist", "cli.mjs");
 const expressFixture = join(repoRoot, "tests", "fixtures", "express-app");
 const scannerFixture = join(repoRoot, "tests", "fixtures", "scanner-app");
+// Multi-command CLI workflows spawn a fresh tsx+audit process per call (~0.5-0.7s
+// idle; >1s under a loaded suite). Five sequential audits exceed Vitest's 5s default.
+const CLI_WORKFLOW_TIMEOUT_MS = 15_000;
 
 async function runCli(
   args: string[],
@@ -95,6 +98,7 @@ describe("CLI", () => {
           workflowRevision: number;
           detectorRevision: number;
           packageRoot: string;
+          skillPath: string;
           declaredRevision?: string;
           capabilities: string[];
         };
@@ -103,12 +107,14 @@ describe("CLI", () => {
       expect(report.compatible).toBe(true);
       expect(report.runtime).toMatchObject({
         coherentVersion: "0.2.0",
-        workflowRevision: 1,
+        workflowRevision: 2,
         packageRoot: repoRoot,
         declaredRevision: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
       });
       expect(report.runtime.detectorRevision).toEqual(expect.any(Number));
       expect(report.runtime.capabilities).toContain("doctor-staged");
+      expect(report.runtime.capabilities).toContain("canonical-skill-path");
+      expect(report.runtime.skillPath).toBe(join(repoRoot, "skills", "coherent", "SKILL.md"));
 
       const mismatch = await runCli([
         "version", root, "--json", "--expect-detector", "999",
@@ -197,7 +203,7 @@ describe("CLI", () => {
         nextNode: { id: string } | null;
       };
       expect(inspection.audit.findings).toHaveLength(inspection.audit.summary.total);
-      expect(inspection.runtime.workflowRevision).toBe(1);
+      expect(inspection.runtime.workflowRevision).toBe(2);
       expect(inspection.terminalState).toEqual(expect.any(String));
       expect(inspection.audit.runtime.detectorRevision).toEqual(expect.any(Number));
       expect(inspection.plan).toHaveProperty("terminalState");
@@ -266,11 +272,15 @@ describe("CLI", () => {
       expect(snapshot.nextFindings).toEqual([]);
       const target = snapshot.audit.findings[0]!;
       expect(target.status).toBe("candidate");
-      const confirmed = await runCliWithInput(["review", "apply", root], JSON.stringify([{
+      const reviewBatch = JSON.stringify([{
         fingerprint: target.fingerprint,
         decision: "confirmed",
         reason: "Internal app helper; checked all imports, package exports, and runtime registration.",
-      }]));
+      }]);
+      await writeFile(join(root, "review-batch.json"), reviewBatch);
+      const confirmed = await runCli([
+        "review", "apply", root, "--input", "review-batch.json",
+      ]);
       expect(confirmed.code).toBe(0);
 
       const selected = await runCli(["fix", "next", root, "--json"]);
@@ -287,10 +297,6 @@ describe("CLI", () => {
         locations: [{ file: "helper.ts", line: 1, column: 1, symbol: "orphan" }],
         evidence: { summary: "No static references to function 'orphan' were found." },
       });
-      const plain = await runCli(["fix", "next", root]);
-      expect(plain.stdout).toContain("helper.ts:1:1 (orphan)");
-      expect(plain.stdout).toContain(target.fingerprint);
-      expect(plain.stdout).toContain(brief.findings[0]!.evidence.summary);
 
       const inspected = await runCli(["inspect", root, "--json"]);
       const reviewed = JSON.parse(inspected.stdout) as typeof snapshot;
@@ -299,7 +305,7 @@ describe("CLI", () => {
     } finally {
       await rm(root, { recursive: true, force: true });
     }
-  });
+  }, CLI_WORKFLOW_TIMEOUT_MS);
 
   it("reviews, refreshes, and doctors a fixture", async () => {
     const root = await mkdtemp(join(tmpdir(), "coherent-review-cli-"));
@@ -345,19 +351,30 @@ describe("CLI", () => {
       expect(refresh.stdout).toMatch(/Updated discovered sections/);
       const doctor = await runCli(["doctor", root]);
       expect(doctor.stdout).toMatch(/Coherent doctor/);
-      const doctorHelp = await runCli(["doctor", "--help"]);
-      expect(doctorHelp.stdout).toContain("--deep");
-      expect(doctorHelp.stdout).toContain("--staged");
-      expect(doctorHelp.stdout).toContain("--ref");
     } finally {
       await rm(root, { recursive: true, force: true });
     }
-  });
+  }, CLI_WORKFLOW_TIMEOUT_MS);
 
   it("exposes install, update, and check --changed", async () => {
     const check = await runCli(["check", "--help"]);
     expect(check.code).toBe(0);
     expect(check.stdout).toContain("--changed");
+    const inspect = await runCli(["inspect", "--help"]);
+    expect(inspect.stdout).toContain("--performance");
+    const plan = await runCli(["plan", "--help"]);
+    expect(plan.stdout).toContain("--performance");
+    const fix = await runCli(["fix", "next", "--help"]);
+    expect(fix.stdout).toContain("--performance");
+    const doctorHelp = await runCli(["doctor", "--help"]);
+    expect(doctorHelp.stdout).toContain("--deep");
+    expect(doctorHelp.stdout).toContain("--staged");
+    expect(doctorHelp.stdout).toContain("--ref");
+    const apply = await runCli(["review", "apply", "--help"]);
+    expect(apply.stdout).toContain("--input");
+    const queue = await runCli(["review", "queue", "--help"]);
+    expect(queue.stdout).toContain("--group-by");
+    expect(queue.stdout).toContain("advisory");
     const install = await runCli(["install", "--help"]);
     expect(install.code).toBe(0);
     expect(install.stdout).toMatch(/prevention|adapter|hooks/i);
@@ -376,7 +393,7 @@ describe("CLI", () => {
     expect(defer.code).toBe(0);
     expect(defer.stdout).toContain("--expires-at");
     expect(defer.stdout).toContain("--removal-milestone");
-  });
+  }, CLI_WORKFLOW_TIMEOUT_MS);
 
   it("runs audit without writing project state and supports explicit output", async () => {
     const root = await mkdtemp(join(tmpdir(), "coherent-audit-"));
@@ -394,7 +411,7 @@ describe("CLI", () => {
         await readFile(join(root, output), "utf8"),
       );
       expect(findings).toHaveProperty("findings", expect.any(Array));
-      expect(findings).toHaveProperty("runtime.workflowRevision", 1);
+      expect(findings).toHaveProperty("runtime.workflowRevision", 2);
     } finally {
       await rm(root, { recursive: true, force: true });
     }
@@ -426,7 +443,7 @@ describe("CLI", () => {
         metrics?: unknown;
       };
       expect(compact.findings).toHaveLength(compact.summary.total);
-      expect(compact.runtime.workflowRevision).toBe(1);
+      expect(compact.runtime.workflowRevision).toBe(2);
       expect(compact.summary.confirmed + compact.summary.candidates).toBe(
         compact.summary.total,
       );

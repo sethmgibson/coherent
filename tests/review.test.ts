@@ -2,7 +2,12 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { artifactVersions, DETECTOR_REVISION, FINGERPRINT_VERSION } from "../src/config.js";
+import {
+  artifactVersions,
+  DETECTOR_REVISION,
+  detectorRevisionForRule,
+  FINGERPRINT_VERSION,
+} from "../src/config.js";
 import { createFinding, type FindingInput } from "../src/domain/finding.js";
 import { applyReviews, classifyReview } from "../src/review/apply.js";
 import { validateReviewLifecycle } from "../src/review/lifecycle.js";
@@ -43,6 +48,7 @@ function review(
     reviewedAt: "2026-08-28T00:00:00.000Z",
     fingerprintVersion: FINGERPRINT_VERSION,
     detectorRevision: DETECTOR_REVISION,
+    ruleDetectorRevision: detectorRevisionForRule(target.ruleId),
   };
 }
 
@@ -82,7 +88,7 @@ describe("review merge into plan", () => {
   it("requires a current confirmation for deterministic candidates and respects deferrals", () => {
     const target = finding({ ruleId: "A08", identity: "unused-candidate:src/a.ts:foo", detectionMode: "deterministic" });
     const confirmed = review(target, "confirmed");
-    for (const reviews of [[], [review(target, "deferred")], [{ ...confirmed, detectorRevision: DETECTOR_REVISION - 1 }]]) {
+    for (const reviews of [[], [review(target, "deferred")], [{ ...confirmed, ruleDetectorRevision: detectorRevisionForRule(target.ruleId) - 1 }]]) {
       const merged = applyReviews([target], reviews, []);
       expect(selectNextNode(buildPlan(".", merged.findings, merged))).toBeUndefined();
     }
@@ -170,6 +176,7 @@ describe("review merge into plan", () => {
       reviewedAt: "2026-08-28T00:00:00.000Z",
       fingerprintVersion: FINGERPRINT_VERSION,
       detectorRevision: DETECTOR_REVISION,
+      ruleDetectorRevision: detectorRevisionForRule("A06"),
     };
     const merged = applyReviews([current], [staleFingerprint], []);
     expect(merged.findings).toEqual([]);
@@ -214,6 +221,7 @@ describe("review merge into plan", () => {
       reviewedAt: "2026-08-28T00:00:00.000Z",
       fingerprintVersion: FINGERPRINT_VERSION,
       detectorRevision: DETECTOR_REVISION - 1,
+      ruleDetectorRevision: detectorRevisionForRule("A06") - 1,
     };
     expect(applyReviews([current], [oldRevision], []).findings).toEqual([current]);
     expect(classifyReview(oldRevision, [current])).toBe("stale");
@@ -282,6 +290,7 @@ describe("review merge into plan", () => {
       reviewedAt: "2026-08-28T00:00:00.000Z",
       fingerprintVersion: FINGERPRINT_VERSION - 1,
       detectorRevision: DETECTOR_REVISION,
+      ruleDetectorRevision: detectorRevisionForRule("A06"),
     };
     expect(applyReviews([current], [churned], []).findings).toEqual([]);
   });
@@ -500,6 +509,39 @@ describe("review merge into plan", () => {
     }])).toThrow(/not both/);
   });
 
+  it("rejects one grouped decision that spans unrelated evidence", async () => {
+    const root = await mkdtemp(join(tmpdir(), "coherent-review-groups-"));
+    try {
+      const state = join(root, ".coherent");
+      await mkdir(state, { recursive: true });
+      const first = finding({
+        ruleId: "A01",
+        identity: "fossil:First",
+        detectionMode: "semantic",
+      });
+      const second = finding({
+        ruleId: "A01",
+        identity: "fossil:Second",
+        detectionMode: "semantic",
+      });
+      await writeFile(
+        join(state, "decisions.json"),
+        `${JSON.stringify({ schemaVersion: 1, reviews: [], findings: [first, second] }, null, 2)}\n`,
+      );
+      const requests = parseReviewRequests([{
+        fingerprints: [first.fingerprint, second.fingerprint],
+        decision: "dismissed",
+        reason: "One reason should not silently cover unrelated evidence.",
+      }]);
+      await expect(runReviewBatch(root, requests)).rejects.toThrow(
+        /unrelated evidence groups/i,
+      );
+      expect((await readDecisions(root)).reviews).toEqual([]);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
   it("previews review pruning and preserves current or baseline-backed history", async () => {
     const root = await mkdtemp(join(tmpdir(), "coherent-review-prune-"));
     try {
@@ -579,6 +621,58 @@ describe("review merge into plan", () => {
       expect((await readDecisions(root)).reviews.map((item) => item.identity).sort()).toEqual([
         "fossil:Current",
         "fossil:Resolved",
+      ]);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it("does not treat stale-rule baseline fingerprints as resolved history", async () => {
+    const root = await mkdtemp(join(tmpdir(), "coherent-review-prune-stale-rule-"));
+    try {
+      const state = join(root, ".coherent");
+      await mkdir(state, { recursive: true });
+      const stale = finding({
+        ruleId: "A03",
+        identity: "string-protocol:kind:old",
+        detectionMode: "hybrid",
+      });
+      const staleReview = {
+        ...review(stale, "dismissed"),
+        fingerprint: "stale-rule-fingerprint",
+        identity: "string-protocol:kind:old",
+      };
+      await writeFile(
+        join(state, "decisions.json"),
+        `${JSON.stringify({ schemaVersion: 1, reviews: [staleReview], findings: [] }, null, 2)}\n`,
+      );
+      await writeFile(
+        join(state, "baseline.json"),
+        `${JSON.stringify({
+          ...artifactVersions(),
+          ruleDetectorRevisions: {
+            ...artifactVersions().ruleDetectorRevisions,
+            A03: detectorRevisionForRule("A03") - 1,
+          },
+          createdAt: "2026-01-01T00:00:00.000Z",
+          findings: [
+            {
+              fingerprint: staleReview.fingerprint,
+              ruleId: "A03",
+              identity: staleReview.identity,
+              title: "Old string protocol",
+              detectionMode: "hybrid",
+              status: "candidate",
+              severity: "medium",
+              files: ["src/a.ts"],
+              symbols: ["kind"],
+            },
+          ],
+        }, null, 2)}\n`,
+      );
+      const preview = await runReviewPrune(root);
+      expect(preview.removable.map((item) => item.fingerprint)).toEqual([
+        staleReview.fingerprint,
       ]);
     } finally {
       await rm(root, { recursive: true, force: true });

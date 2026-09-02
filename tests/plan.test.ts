@@ -268,4 +268,26 @@ describe("cleanup DAG", () => {
       await rm(root, { recursive: true, force: true });
     }
   });
+
+  it("keeps noisy performance heuristics advisory unless explicitly requested", async () => {
+    const root = await mkdtemp(join(tmpdir(), "coherent-plan-performance-"));
+    try {
+      const { cp } = await import("node:fs/promises");
+      await cp(scannerFixture, root, { recursive: true });
+      const ordinary = await runPlan(root);
+      expect(ordinary.plan.advisoryFindingCount).toBeGreaterThan(0);
+      expect(ordinary.plan.reviewSummary?.advisory).toBeGreaterThan(0);
+      expect(ordinary.plan.nodes.some((node) =>
+        node.ruleIds.some((ruleId) => ruleId === "E01" || ruleId === "E05" || ruleId === "E06"),
+      )).toBe(false);
+
+      const performance = await runPlan(root, { includeAdvisory: true });
+      expect(performance.plan.advisoryFindingCount).toBe(0);
+      expect(performance.plan.nodes.some((node) =>
+        node.ruleIds.some((ruleId) => ruleId === "E01" || ruleId === "E05" || ruleId === "E06"),
+      )).toBe(true);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
 });

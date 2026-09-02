@@ -1,7 +1,11 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { runAudit, type AuditResult } from "../audit/run.js";
-import { artifactVersions, BASELINE_FILE } from "../config.js";
+import {
+  artifactVersions,
+  BASELINE_FILE,
+  detectorRevisionForRule,
+} from "../config.js";
 import { resolveStateDir } from "../state-dir.js";
 import {
   DETECTION_MODES,
@@ -34,6 +38,7 @@ export interface BaselineFile {
   coherentVersion: string;
   fingerprintVersion: number;
   detectorRevision: number;
+  ruleDetectorRevisions?: Partial<Record<RuleId, number>>;
   createdAt: string;
   findings: BaselineEntry[];
   root?: string;
@@ -61,8 +66,23 @@ export function isBaselineStale(baseline: BaselineFile): boolean {
   const expected = artifactVersions();
   return (
     baseline.schemaVersion !== expected.schemaVersion ||
-    baseline.fingerprintVersion !== expected.fingerprintVersion ||
-    baseline.detectorRevision !== expected.detectorRevision
+    baseline.fingerprintVersion !== expected.fingerprintVersion
+  );
+}
+
+export function baselineDetectorRevisionForRule(
+  baseline: BaselineFile,
+  ruleId: RuleId,
+): number {
+  return baseline.ruleDetectorRevisions?.[ruleId] ?? baseline.detectorRevision;
+}
+
+export function staleBaselineRuleIds(baseline: BaselineFile): RuleId[] {
+  if (isBaselineStale(baseline)) return [...RULE_IDS];
+  return RULE_IDS.filter(
+    (ruleId) =>
+      baselineDetectorRevisionForRule(baseline, ruleId) !==
+      detectorRevisionForRule(ruleId),
   );
 }
 
@@ -83,6 +103,11 @@ export function parseBaselineFile(raw: unknown): BaselineFile {
   };
   if (raw.root !== undefined) {
     baseline.root = requireNonEmptyString(raw.root, "root");
+  }
+  if (raw.ruleDetectorRevisions !== undefined) {
+    baseline.ruleDetectorRevisions = parseRuleDetectorRevisions(
+      raw.ruleDetectorRevisions,
+    );
   }
   return baseline;
 }
@@ -109,10 +134,15 @@ export async function runBaseline(root: string): Promise<{
     runAudit(root),
     readBaseline(root),
   ]);
+  const staleRules = existing ? new Set(staleBaselineRuleIds(existing)) : undefined;
+  const findings =
+    existing && !isBaselineStale(existing) && staleRules && staleRules.size > 0
+      ? refreshStaleRuleEntries(existing.findings, audit.findings, staleRules)
+      : audit.findings.map(toBaselineEntry);
   const next: BaselineFile = {
     ...artifactVersions(),
     createdAt: new Date().toISOString(),
-    findings: audit.findings.map(toBaselineEntry),
+    findings,
   };
   if (existing && equivalentBaseline(existing, next)) {
     return { audit, baselinePath: path, baseline: existing, wroteBaseline: false };
@@ -122,10 +152,39 @@ export async function runBaseline(root: string): Promise<{
   return { audit, baselinePath: path, baseline: next, wroteBaseline: true };
 }
 
+function refreshStaleRuleEntries(
+  existing: BaselineEntry[],
+  current: Finding[],
+  staleRules: ReadonlySet<RuleId>,
+): BaselineEntry[] {
+  const refreshed = current
+    .filter((finding) => staleRules.has(finding.ruleId))
+    .map(toBaselineEntry);
+  const next: BaselineEntry[] = [];
+  let inserted = false;
+  for (const entry of existing) {
+    if (!staleRules.has(entry.ruleId)) {
+      next.push(entry);
+      continue;
+    }
+    if (!inserted) {
+      next.push(...refreshed);
+      inserted = true;
+    }
+  }
+  if (!inserted) next.push(...refreshed);
+  return next;
+}
+
 function equivalentBaseline(left: BaselineFile, right: BaselineFile): boolean {
   const withoutTime = (baseline: BaselineFile) => ({
-    ...baseline,
-    createdAt: undefined,
+    schemaVersion: baseline.schemaVersion,
+    coherentVersion: baseline.coherentVersion,
+    fingerprintVersion: baseline.fingerprintVersion,
+    detectorRevision: baseline.detectorRevision,
+    ruleDetectorRevisions: baseline.ruleDetectorRevisions,
+    findings: baseline.findings,
+    root: baseline.root,
   });
   return JSON.stringify(withoutTime(left)) === JSON.stringify(withoutTime(right));
 }
@@ -191,6 +250,27 @@ function requireStringArray(value: unknown, field: string): string[] {
     throw new Error(`Invalid baseline: ${field} must be an array of strings`);
   }
   return value;
+}
+
+function parseRuleDetectorRevisions(
+  value: unknown,
+): Partial<Record<RuleId, number>> {
+  if (!isRecord(value)) {
+    throw new Error("Invalid baseline: ruleDetectorRevisions must be an object");
+  }
+  const revisions: Partial<Record<RuleId, number>> = {};
+  for (const [ruleId, revision] of Object.entries(value)) {
+    if (!(RULE_IDS as readonly string[]).includes(ruleId)) {
+      throw new Error(
+        `Invalid baseline: ruleDetectorRevisions.${ruleId} is not a known rule`,
+      );
+    }
+    revisions[ruleId as RuleId] = requireInteger(
+      revision,
+      `ruleDetectorRevisions.${ruleId}`,
+    );
+  }
+  return revisions;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

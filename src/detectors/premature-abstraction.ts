@@ -4,7 +4,7 @@ import { locationOf } from "../analysis/inspect.js";
 import { makeFinding } from "../audit/finding-factory.js";
 import type { Finding } from "../domain/finding.js";
 
-const BOUNDARY = /(Repository|Store|Client|Gateway|Port|Adapter)$/;
+const BOUNDARY = /(Repository|Store|Client|Gateway|Port|Adapter|ReadModel|Persistence|Reader|Writer|Expirer)$/;
 
 export function detectPrematureAbstraction(ctx: AnalysisContext): Finding[] {
   const findings: Finding[] = [];
@@ -18,6 +18,7 @@ export function detectPrematureAbstraction(ctx: AnalysisContext): Finding[] {
     for (const iface of file.getInterfaces()) {
       const name = iface.getName();
       if (!name) continue;
+      if (BOUNDARY.test(name)) continue;
       const impls = classes.filter(({ cls, file: implFile }) => {
         if (ctx.isTestFile(implFile)) return false;
         return implementsSymbol(cls, iface);
