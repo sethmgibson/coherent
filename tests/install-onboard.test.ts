@@ -237,6 +237,31 @@ describe("install onboarding", () => {
       await cleanup();
     }
   });
+
+  it("writes the Cursor skill tree when --adapter is combined with project adoption", async () => {
+    const { root, home, cleanup } = await isolatedRoots("coherent-adapter-tree");
+    try {
+      const result = await runInstall(root, {
+        home,
+        pathEnv: "",
+        yes: true,
+        providers: "cursor",
+        scope: "project",
+        adapter: true,
+        runCommand: fakeRunCommand(),
+      });
+      expect(result.actions.find((action) => action.path.endsWith("SKILL.md"))).toMatchObject({
+        action: "wrote",
+      });
+      const skill = await readFile(join(root, ".cursor", "skills", "coherent", "SKILL.md"), "utf8");
+      expect(skill).toContain("reference/taxonomy.md");
+      expect(skill).not.toContain("<!-- coherent:adapter -->");
+      expect(await readFile(join(root, ".cursor", "skills", "coherent", "reference", "taxonomy.md"), "utf8"))
+        .toContain("A08");
+    } finally {
+      await cleanup();
+    }
+  });
 });
 
 describe("install CLI onboarding", () => {

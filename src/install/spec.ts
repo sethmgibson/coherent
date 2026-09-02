@@ -35,9 +35,12 @@ export function addCliCommand(manager: ProjectManager): string {
   return [command, ...args].join(" ");
 }
 
+const SAME_GITHUB_SPEC =
+  /^(?:github:)?sethmgibson\/coherent(?:\.git)?(?:[#?].*)?$/i;
+const SAME_GIT_HTTPS_SPEC =
+  /^git\+https:\/\/github\.com\/sethmgibson\/coherent(?:\.git)?(?:[#?].*)?$/i;
+
 export function isSameCoherentPackageSpec(spec: string): boolean {
   const value = spec.trim();
-  if (value === GITHUB_PACKAGE_SPEC) return true;
-  if (value.startsWith("github:sethmgibson/coherent")) return true;
-  return /^git\+https:\/\/github\.com\/sethmgibson\/coherent(\.git)?([#?].*)?$/i.test(value);
+  return SAME_GITHUB_SPEC.test(value) || SAME_GIT_HTTPS_SPEC.test(value);
 }

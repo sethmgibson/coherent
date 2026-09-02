@@ -184,6 +184,59 @@ describe("project CLI install", () => {
     }
   });
 
+  it("treats a similarly prefixed GitHub repo as a conflict", async () => {
+    const { root, home, cleanup } = await isolatedRoots("coherent-prefix-conflict");
+    try {
+      const manifest = `${JSON.stringify({
+        private: true,
+        dependencies: { coherent: "github:sethmgibson/coherent-evil" },
+      }, null, 2)}\n`;
+      await writeFile(join(root, "package.json"), manifest, "utf8");
+      const { runCommand, calls } = createFakeRunCommand();
+      await expect(
+        runInstall(root, {
+          home,
+          pathEnv: "",
+          yes: true,
+          providers: "codex",
+          scope: "project",
+          runCommand,
+        }),
+      ).rejects.toThrow(/already declares coherent as "github:sethmgibson\/coherent-evil"/);
+      expect(calls).toEqual([]);
+      expect(await readFile(join(root, "package.json"), "utf8")).toBe(manifest);
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it("keeps a same-repo pin and installs that specifier", async () => {
+    const { root, home, cleanup } = await isolatedRoots("coherent-pin");
+    try {
+      const pinned = "github:sethmgibson/coherent#abc123";
+      await writeFile(
+        join(root, "package.json"),
+        `${JSON.stringify({ private: true, devDependencies: { coherent: pinned } }, null, 2)}\n`,
+      );
+      const { runCommand, calls } = createFakeRunCommand();
+      const result = await runInstall(root, {
+        home,
+        pathEnv: "",
+        yes: true,
+        providers: "codex",
+        scope: "project",
+        runCommand,
+      });
+      expect(calls[0]?.args.at(-1)).toBe(pinned);
+      expect(result.cli).toMatchObject({ alreadyPresent: true, specifier: pinned, handshakeVerified: true });
+      expect(JSON.parse(await readFile(join(root, "package.json"), "utf8"))).toMatchObject({
+        devDependencies: { coherent: pinned },
+      });
+    } finally {
+      await cleanup();
+    }
+  });
+
   it("fails project adoption on malformed package.json instead of reporting success", async () => {
     const { root, home, cleanup } = await isolatedRoots("coherent-malformed-cli");
     try {
@@ -291,6 +344,7 @@ describe("project CLI install", () => {
       expect(JSON.parse(await readFile(join(root, "package.json"), "utf8"))).toMatchObject({
         devDependencies: { coherent: GITHUB_PACKAGE_SPEC },
       });
+      await expect(readdir(join(root, ".agents"))).rejects.toMatchObject({ code: "ENOENT" });
     } finally {
       await cleanup();
     }

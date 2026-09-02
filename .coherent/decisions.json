@@ -521,6 +521,52 @@
       "reviewedAt": "2026-09-01T02:31:32.187Z",
       "fingerprintVersion": 2,
       "detectorRevision": 8
+    },
+    {
+      "fingerprint": "836bdca2a307d5e6dbcc07b11bccd2ea17a43612b0d73139f007330a9cc2e601",
+      "ruleId": "A07",
+      "identity": "compat:branch:src/install/cli-dep.ts:parsed.compatible !== true",
+      "decision": "dismissed",
+      "reason": "parsed.compatible !== true is the project-local coherent version handshake fail-closed check, not an old/new compatibility branch. Incompatible JSON fails adoption.",
+      "reviewedAt": "2026-09-02T05:58:41.419Z",
+      "fingerprintVersion": 2,
+      "detectorRevision": 9,
+      "ruleDetectorRevision": 8,
+      "notCompatibility": true
+    },
+    {
+      "fingerprint": "fd96f8a75a72b71418afe83cf07892095a142f6265454501bf3fbd11eb7a966b",
+      "ruleId": "D03",
+      "identity": "swallowed-empty:src/install/detect.ts:commandOnPath",
+      "decision": "dismissed",
+      "reason": "commandOnPath probes PATH entries with stat/access. A failed probe means that candidate is not a usable executable and the search continues. This is the absence protocol for PATH lookup, not a swallowed operational error.",
+      "reviewedAt": "2026-09-02T05:58:41.419Z",
+      "fingerprintVersion": 2,
+      "detectorRevision": 9,
+      "ruleDetectorRevision": 9
+    },
+    {
+      "fingerprint": "a9039f9ffa04bb23eb6aaddd39b8d6f0588216710c5cf62eb48465195c81f655",
+      "ruleId": "D03",
+      "identity": "swallowed-empty:src/install/skill-tree.ts:readIfExists",
+      "decision": "dismissed",
+      "reason": "readIfExists returns undefined only on ENOENT and rethrows every other error. That is the same absence protocol writeManagedFile already uses, not a boundary fallback that hides failures.",
+      "reviewedAt": "2026-09-02T05:58:41.419Z",
+      "fingerprintVersion": 2,
+      "detectorRevision": 9,
+      "ruleDetectorRevision": 9
+    },
+    {
+      "fingerprint": "f7b1e3bc503991a4cf73e7a111f42831571f058abd18dffb6d7aede73c083d1b",
+      "ruleId": "C04",
+      "identity": "context-object:src/install/run.ts:InstallOptions",
+      "decision": "dismissed",
+      "reason": "InstallOptions is the install/update command flag bag plus test seams (home, pathEnv, ask, runCommand). Helpers each read the flags they own. It is not a growing request context passed through business logic.",
+      "reviewedAt": "2026-09-02T05:58:41.419Z",
+      "fingerprintVersion": 2,
+      "detectorRevision": 9,
+      "ruleDetectorRevision": 9,
+      "authoritativeConcept": "install command options"
     }
   ],
   "findings": []

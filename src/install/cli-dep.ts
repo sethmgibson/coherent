@@ -65,6 +65,7 @@ export async function installProjectCli(
   }
 
   let alreadyPresent = false;
+  let spec = GITHUB_PACKAGE_SPEC;
   if (existing !== "missing") {
     const current = declaredCoherentSpec(existing);
     if (typeof current === "string") {
@@ -76,15 +77,16 @@ export async function installProjectCli(
         );
       }
       alreadyPresent = true;
+      spec = current;
     }
   }
 
-  const invocation = cliInstallArgv(manager);
+  const invocation = cliInstallArgv(manager, spec);
   try {
     await run(invocation.command, invocation.args, { cwd: root });
   } catch (error) {
     throw new Error(
-      `Failed to install ${GITHUB_PACKAGE_SPEC} with ${resolvedManager}. ` +
+      `Failed to install ${spec} with ${resolvedManager}. ` +
         `Skill files were not copied. ${error instanceof Error ? error.message : String(error)}`,
       { cause: error },
     );

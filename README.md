@@ -27,11 +27,12 @@ Scripts can skip prompts:
 npx --yes --package github:sethmgibson/coherent -- coherent install --providers=codex,cursor --scope=project --yes
 ```
 
-Project scope copies the packaged skill tree (so `reference/` links keep
-working) and installs `github:sethmgibson/coherent` with the detected package
+Project scope installs `github:sethmgibson/coherent` with the detected package
 manager (`pnpm`, `npm`, `yarn`, or `bun`) so `package.json`, the lockfile, and
 `node_modules` are updated in that same command. It then verifies the
-project-local `coherent version` handshake. See the
+project-local `coherent version` handshake and copies the packaged skill tree
+so `reference/` links keep working. A failed install or handshake does not
+copy skill files. See the
 [adoption preflight](skills/coherent/reference/install.md#adoption-preflight)
 before CI or containers fetch GitHub. Unusual CI or global-CLI setups can pass
 `--skills-only` to copy skill files without installing the project CLI.

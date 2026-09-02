@@ -19,8 +19,9 @@ npx --yes --package github:sethmgibson/coherent -- coherent install --providers=
 
 That project-scope command is complete: it installs `github:sethmgibson/coherent`
 through the detected package manager (`pnpm`, `npm`, `yarn`, or `bun`) using
-fixed argv, updates the matching lockfile and `node_modules`, copies the skill
-tree, and verifies the project-local `coherent version` handshake. No second
+fixed argv, updates the matching lockfile and `node_modules`, verifies the
+project-local `coherent version` handshake, then copies the skill tree. A failed
+package-manager install or handshake does not copy skill files. No second
 `pnpm add` / `npm install` step is required.
 
 A TTY asks which detected harnesses to keep and whether to install into the
@@ -35,8 +36,10 @@ install the Coherent CLI or put `coherent` on `PATH`. Add
 
 Project scope copies the packaged skill tree so relative references such as
 `reference/taxonomy.md` keep working. If `package.json` already declares a
-different `coherent` package, adoption fails with a conflict instead of
-overwriting it. Malformed `package.json` also fails project adoption. Unusual
+different `coherent` package, including a similarly prefixed GitHub name,
+adoption fails with a conflict instead of overwriting it. A same-repo pin such
+as `github:sethmgibson/coherent#<rev>` is kept. Malformed `package.json` also
+fails project adoption. Unusual
 CI or global-CLI setups can pass `--skills-only` to copy skill files without
 installing the project CLI. The copied skill and the project CLI stay
 compatible through `coherent version` / `runtime.skillPath`. Reload Codex or
@@ -82,9 +85,9 @@ and user edits outside those cases are left alone.
 - `--providers=codex` / detected Codex → `.agents/skills/coherent/` (the packaged skill tree)
 - `--providers=cursor` / detected Cursor → `.cursor/skills/coherent/` (the packaged skill tree)
 - `--scope=global` writes those trees under the user home instead of the project
-- project scope installs `github:sethmgibson/coherent` with the detected package manager, then verifies `node_modules/.bin/coherent version`
+- project scope installs `github:sethmgibson/coherent` with the detected package manager, verifies `node_modules/.bin/coherent version`, then copies the skill tree
 - `--skills-only` copies skill files and skips the project CLI install
-- `--adapter` → `.cursor/skills/coherent/SKILL.md` (handshake adapter; skipped if a full skill tree is already present as user content)
+- `--adapter` → `.cursor/skills/coherent/SKILL.md` (handshake adapter; skipped when project Cursor adoption will write the skill tree, or if a full skill tree is already present as user content)
 - `--alias` → `.cursor/skills/backend/SKILL.md`, the legacy `/backend` alias
 - `--rule` → `.cursor/rules/backend-prevention.mdc`
 - `--cursor-hook` → `.cursor/hooks/coherent-check.sh` and a `stop` entry in `.cursor/hooks.json`

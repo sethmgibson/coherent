@@ -82,7 +82,8 @@ export async function runInstall(
   const home = options.home ?? homedir();
   const detections = collectInstallDetections(root, home, options.pathEnv ?? process.env.PATH ?? "");
   const actions: CopyResult[] = [];
-  if (options.adapter === true) {
+  const adoption = await chooseAdoption(root, home, detections, options);
+  if (options.adapter === true && !writesProjectCursorTree(adoption)) {
     const adapter = await readFile(adapterSkillPath(packageRoot()), "utf8");
     actions.push(rel(root, await writeManagedFile(destAdapter(root), adapter, "adapter")));
   }
@@ -102,11 +103,12 @@ export async function runInstall(
     actions.push(rel(root, await writeGitPreventionHook(root)));
   }
 
-  const adoption = await chooseAdoption(root, home, detections, options);
   let cli: CliDependencyResult | undefined;
   if (adoption?.scope === "project") {
     if (shouldInstallProjectCli(options)) {
       cli = await installProjectCli(root, projectCliOptions(options));
+      await verifyProjectCliHandshake(root, projectCliOptions(options));
+      cli = { ...cli, handshakeVerified: true };
     } else if (options.skillsOnly === true) {
       cli = skillsOnlyCliResult(root, await detectRootPackageManager(root));
     }
@@ -120,8 +122,6 @@ export async function runInstall(
     }
     if (cli && !cli.skillsOnly) {
       actions.push(rel(root, cli.action));
-      await verifyProjectCliHandshake(root, projectCliOptions(options));
-      cli = { ...cli, handshakeVerified: true };
     }
   }
   return {
@@ -214,6 +214,12 @@ async function chooseAdoption(
     scope = await promptScope(root, formatPathForDisplay(home, home), options.ask);
   }
   return { providers, scope, installRoot: scope === "global" ? home : root };
+}
+
+function writesProjectCursorTree(
+  adoption: { providers: ProviderId[]; scope: InstallScope } | undefined,
+): boolean {
+  return adoption?.scope === "project" && adoption.providers.includes("cursor");
 }
 
 function shouldInstallProjectCli(options: InstallOptions): boolean {
