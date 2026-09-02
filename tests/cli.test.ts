@@ -14,7 +14,7 @@ const expressFixture = join(repoRoot, "tests", "fixtures", "express-app");
 const scannerFixture = join(repoRoot, "tests", "fixtures", "scanner-app");
 // Multi-command CLI workflows spawn a fresh tsx+audit process per call (~0.5-0.7s
 // idle; >1s under a loaded suite). Five sequential audits exceed Vitest's 5s default.
-const CLI_WORKFLOW_TIMEOUT_MS = 15_000;
+const CLI_WORKFLOW_TIMEOUT_MS = 20_000;
 
 async function runCli(
   args: string[],
@@ -58,7 +58,7 @@ async function runCliWithInput(
   });
 }
 
-describe("CLI", () => {
+describe("CLI", { timeout: CLI_WORKFLOW_TIMEOUT_MS }, () => {
   it.each([
     ["audit", "--json"], ["audit", "--compact-json"], ["plan", "--json"],
   ])("keeps %s %s stdout parseable with an explicit output file", async (command, format) => {

@@ -42,7 +42,7 @@ Detected frameworks:
 
 Languages: JavaScript, TypeScript
 
-Approximate size: 189 files, 18502 source lines.
+Approximate size: 190 files, 18531 source lines.
 
 Dependencies: 2 runtime, 9 development.
 <!-- /coherent:discovered -->
