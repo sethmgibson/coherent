@@ -81,7 +81,7 @@ export async function createAnalysisContext(
     isTestFile(relativePath) {
       return (
         /(^|\/)(tests?|__tests__|spec|e2e)(\/|$)/.test(relativePath) ||
-        /\.(spec|test)\.[cm]?[jt]sx?$/.test(relativePath)
+        /\.(spec|test|check)\.[cm]?[jt]sx?$/.test(relativePath)
       );
     },
     isPublicModule(relativePath) {

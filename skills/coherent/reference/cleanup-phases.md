@@ -3,7 +3,8 @@
 # Cleanup phases
 
 Taxonomy, audit order, cleanup execution, and finding prerequisites are not
-the same. The cleanup DAG is authoritative for actual work. These default
+the same. In the optional advanced workflow, the cleanup DAG is authoritative
+for actual work. Ordinary bounded improvements do not require phases or a DAG. These default
 phases only break ties when dependencies are otherwise equal.
 
 Dead-code reduction (A08) happens early so later analysis has less surface.
@@ -14,7 +15,7 @@ after architecture collapse because those edits unlock newly unused code.
 
 `safety-and-understanding`
 
-Inventory the repository, entrypoints, critical workflows, and available behavioral tests. Establish a baseline before changing behavior. This phase is not a rule.
+Inventory the repository, entrypoints, critical workflows, and available behavioral tests. Characterize behavior before changing it; a persisted baseline is optional advanced state. This phase is not a rule.
 
 Default sequence: (no rules — inventory, entrypoints, tests, baseline)
 

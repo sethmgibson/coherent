@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { generateLegacyArchitectureMarkdown } from "../src/init/architecture.js";
 import { runInit, runRefresh } from "../src/init/run.js";
 
 const expressFixture = join(
@@ -30,15 +31,12 @@ describe("init", () => {
         code: "ENOENT",
       });
       expect(architecture).toContain("# Architecture");
-      expect(architecture).toContain("express-app");
-      expect(architecture).toContain("Express");
-      expect(architecture).toContain("`src/index.ts`");
-      expect(architecture).toContain("automatically discovered");
-      expect(architecture).toContain("requires human or agent completion");
-      expect(architecture).toContain("TODO: What this system is for");
+      expect(architecture).toContain("Purpose and ownership");
+      expect(architecture).toContain("Intentional distinctions");
+      expect(architecture).toContain("duplicate-write safeguards");
+      expect(architecture).not.toMatch(/Approximate size|Dependencies:|coherent:discovered/);
       expect(architecture).not.toMatch(/hexagonal|microservice|event-driven/i);
-      expect(architecture).toContain("coherent:architecture-schema 1");
-      expect(architecture).toContain("<!-- coherent:discovered -->");
+      expect(architecture).toContain("coherent:architecture-schema 2");
     } finally {
       await rm(root, { recursive: true, force: true });
     }
@@ -64,7 +62,7 @@ describe("init", () => {
     try {
       await runInit(root);
       const path = join(root, ".coherent", "ARCHITECTURE.md");
-      const original = await readFile(path, "utf8");
+      const original = generateLegacyArchitectureMarkdown((await runInit(root)).inventory);
       const confirmed = original.replace(
         "## System purpose\n\n> Status: requires human or agent completion\n\nTODO: What this system is for, who it serves, and what success means.",
         "## System purpose\n\n> Status: confirmed\n\nKeep this semantic purpose statement.",

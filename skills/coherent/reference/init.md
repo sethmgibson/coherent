@@ -1,25 +1,23 @@
-# `init`
+# Optional architecture context
 
-Create durable architecture context. Do not invent a design.
-
-## Mechanical step
+A bounded task uses existing project guidance; missing context does not require
+initialization. When the user requests a Coherent architecture starter:
 
 ```bash
 coherent init
-coherent refresh
-coherent init --force
 ```
 
-`backend init` is the same command. `--force` and `refresh` replace only `<!-- coherent:discovered -->` interiors from the current inventory. They must not overwrite confirmed semantic prose, including mixed-section addenda. Never silently overwrite a completed `ARCHITECTURE.md`.
+New files focus on ownership, invariants, external boundaries, intentional
+distinctions and compatibility consumers. Unknown knowledge stays incomplete;
+no layers or design are invented. The starter has no volatile inventory counts
+or discovered-fact fences to maintain. Complete only source-supported facts as
+[architecture-analysis.md](architecture-analysis.md) describes.
 
-Unfenced files (one-release migration from leftover `.backend/` or a pre-fence `ARCHITECTURE.md`) are reconstructed onto the current template. Confirmed prose in known sections is kept. Unknown human-authored `##` sections survive verbatim. After fences exist, only fence interiors are replaced.
+Existing architecture files stay unchanged. `init --force` and `refresh` keep
+legacy fenced inventory updates compatible, never overwrite authored prose,
+and leave focused context byte-for-byte unchanged. A baseline, audit and review
+queue are not next-step requirements. See [migration.md](migration.md) for an
+explicit preview of converting older context.
 
-The CLI keeps inventory in memory and writes only `.coherent/ARCHITECTURE.md`, durable context that should be committed when the team wants shared architecture guidance.
-
-If only `.backend/` exists, the CLI uses it for this run and tells you to rename it to `.coherent/`. If both exist, it uses `.coherent/` and warns about the leftover directory.
-
-It fills only what inventory can know: packages, frameworks, source and test directories, entrypoints, declared exports, observed persistence libraries, approximate size. Those facts are fenced. Everything else is marked incomplete.
-
-## Semantic step
-
-Follow [architecture-analysis.md](architecture-analysis.md). Write confirmed facts. Label inferences. Recommend `audit` next, then `baseline` before destructive cleanup.
+`.backend/` is still read when it is the only legacy location. Neither ordinary
+work nor migration silently renames/removes directories or user files.

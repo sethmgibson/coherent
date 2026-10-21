@@ -4,6 +4,8 @@ import {
   DISCOVERED_CLOSE,
   DISCOVERED_OPEN,
   generateArchitectureMarkdown,
+  generateLegacyArchitectureMarkdown,
+  isFocusedArchitecture,
 } from "./architecture.js";
 
 const FENCE_RE = new RegExp(
@@ -29,7 +31,8 @@ export function normalizeDiscoveredFacts(text: string): string {
 }
 
 export function refreshArchitectureMarkdown(existing: string, inventory: Inventory): string {
-  const generated = generateArchitectureMarkdown(inventory);
+  if (isFocusedArchitecture(existing)) return existing;
+  const generated = existing.trim() ? generateLegacyArchitectureMarkdown(inventory) : generateArchitectureMarkdown();
   if (!existing.trim()) return generated;
   if (hasDiscoveredFences(existing)) return replaceFencedInteriors(existing, generated);
   return migrateUnfenced(existing, generated);

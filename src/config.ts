@@ -21,7 +21,7 @@ export const ARTIFACT_SCHEMA_VERSION = 1;
 /** Bump when the fingerprint hash payload changes. Identity match still applies if detectorRevision matches. */
 export const FINGERPRINT_VERSION = 2;
 /** Portable release-wide detector contract used by the skill/runtime handshake. */
-export const DETECTOR_REVISION = 10;
+export const DETECTOR_REVISION = 11;
 /**
  * Detector reviews are invalidated per rule. Entries that are not bumped
  * retain their prior contract, so an unrelated detector change does not erase
@@ -30,12 +30,12 @@ export const DETECTOR_REVISION = 10;
 export const RULE_DETECTOR_REVISIONS: Readonly<Record<RuleId, number>> = {
   A01: 8,
   A02: 8,
-  A03: 9,
+  A03: 10,
   A04: 8,
   A05: 8,
   A06: 9,
   A07: 8,
-  A08: 9,
+  A08: 10,
   B01: 8,
   B02: 8,
   B03: 9,
@@ -44,12 +44,12 @@ export const RULE_DETECTOR_REVISIONS: Readonly<Record<RuleId, number>> = {
   B06: 8,
   C01: 8,
   C02: 8,
-  C03: 9,
+  C03: 10,
   C04: 9,
   C05: 8,
-  D01: 8,
+  D01: 9,
   D02: 8,
-  D03: 11,
+  D03: 12,
   D04: 8,
   D05: 8,
   E01: 8,

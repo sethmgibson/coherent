@@ -12,14 +12,11 @@ codebases. It exists because repeated agent feature additions create
 architectural entropy: extra paths, names, shims, and representations instead
 of a changed design.
 
-Success today means a working inventory, a single typed rule catalog, a
-default cleanup-phase model, `init` / `refresh`, a scanner (`audit`,
-`baseline`, `check`), a durable decision loop (`decisions.json`), a
-finding-specific cleanup DAG (`plan`), a
-single-scan combined inspection (`inspect`), a one-node work brief
-(`fix next`), an executable runtime/skill compatibility handshake (`version`),
-and a read-only worktree/index/ref `doctor`. The coding
-agent performs semantic reasoning; there is no hosted LLM service.
+The default is a skill-led bounded improvement: scope, architecture, targeted
+source evidence, agent judgment, proportionate validation and a benefit report.
+No baseline, review file, cleanup DAG or context initialization is required.
+Persistent review/baseline/planning commands are explicitly selected advanced
+workflows. Their stored schemas and command contracts remain supported.
 
 ## Major applications/services
 
@@ -66,7 +63,9 @@ generic tiers:
 - `src/analysis` — one in-memory ts-morph project per scan for TypeScript; helpers current detectors need. `createModuleResolver` shares parsed repository tsconfigs, inherited compiler options, path aliases, and owning child configs between full analysis and scoped importer discovery without generating files or caches. Python uses an explicit stdlib-`ast` sidecar (`python/analyze.py`) spawned by the Node CLI host; there is no plugin registry and no third-party Python runtime dependency.
 - `src/detectors` — one function per implemented rule, called explicitly
 - `src/analysis/nest-reachability.ts` — bounded static Nest module/provider resolution and evidence for exact port calls, HTTP handlers, and lifecycle methods. It uses the current analysis context, respects module visibility, and leaves opaque or ambiguous bindings unresolved; it does not execute Nest or infer bindings from type shapes.
-- `src/audit`, `src/baseline`, `src/check` — CLI workflows and on-disk snapshots
+- `src/audit/collect.ts` — source evidence collection without stored reviews, fingerprints or planning; detectors return minimal Evidence. `audit/run.ts` enriches it into the legacy advanced Finding envelope.
+- `src/baseline`, `src/check` — optional advanced snapshots and drift checks
+- `src/migrate.ts` — explicit context conversion preview/write; preserves baseline and decisions
 - `src/review` — durable review decisions and semantic-only findings
 - `src/plan` — cleanup DAG from merged findings; default phases are tie-breaks only
 - `src/fix` — select one unlocked node and write a work brief
@@ -141,6 +140,7 @@ Observed top-level modules:
 
 - Catalog data is owned by `src/catalog/rules.ts` and `src/catalog/phases.ts`.
 - Inventory is owned by `collectInventory` and remains in memory.
+- Default evidence stays in memory; no Coherent metadata is required.
 - Architecture prose is owned by `.coherent/ARCHITECTURE.md`. Machine-owned facts live in `<!-- coherent:discovered -->` fences.
 - Audit findings are owned by `runAudit` and remain in memory unless the user explicitly supplies `--output`.
 - Reviews and semantic-only findings are stored together in `.coherent/decisions.json` (committed).
@@ -169,13 +169,15 @@ Observed top-level modules:
 - Semantic questions must not be reported as deterministic conclusions.
 - `init` must not invent architecture. Unknown sections stay incomplete.
 - `init --force` and `refresh` replace only fenced discovered interiors. Semantic prose stays. Unfenced migration (one-release `.backend/` / pre-fence files) keeps unknown human-authored `##` sections verbatim.
-- Candidates (including deterministic unused exports), hybrid findings, and semantic findings are not `fix next` targets until `coherent review confirm`. Plan building and review application share the same review predicate. Public/protected methods may be reached through structural ports even in non-exported classes; absent direct references remain candidates.
+- In the advanced DAG only, candidates (including deterministic unused exports), hybrid findings, and semantic findings are not `fix next` targets until `coherent review confirm`. Plan building and review application share the same review predicate. Public/protected methods may be reached through structural ports even in non-exported classes; absent direct references remain candidates.
 - Dead-code `test-only` findings preserve test caller locations and stay candidates. Public APIs and intentional test support require review; production-file references are not recursively classified as test-only. Proven static Nest registrations and port bindings count as use before classifying direct references.
+- Advanced mechanical reviews bind to current source evidence; changed content or missing historical evidence reopens them without rewriting stored state.
+- New architecture starters focus on ownership/invariants; legacy refresh remains fenced and focused context is unchanged.
 - Dismissed findings are absent from the cleanup DAG. Architecture prose alone does not dismiss them. Mechanical and hybrid reviews require a matching `detectorRevision`, including exact fingerprints; exact pure-semantic reviews may survive detector bumps.
 - A review whose exact fingerprint remains in the current baseline but is absent from the current audit is resolved history, not an orphan. Deep doctor still rejects reviews absent from both.
 - `check` fails only on new confirmed high/critical deterministic findings. Version-skewed baselines are stale and must be regenerated.
 - Baseline drift and review disposition are separate. Full `check` may apply identity review matching with the complete peer set; scoped `check --changed` applies exact reviews only and labels possible identity matches `requires_full_scan`.
-- A full cleanup must pass the generated runtime compatibility command before scanning or writing reviews. A missing command, workflow/detector mismatch, or missing capability is a hard stop.
+- An explicitly selected advanced full cleanup must pass the generated runtime compatibility command before scanning or writing reviews. A missing command, workflow/detector mismatch, or missing capability is a hard stop.
 - CLI lock, detector-version baseline, and mechanical/hybrid decisions are coupled commit state. Worktree doctor success is not proof about the Git index or a committed ref; use `doctor --staged` and `doctor --ref` for those exact boundaries.
 - Taxonomy ID order is not cleanup execution order. The cleanup DAG is authoritative.
 - `prerequisiteFindingIds` names current finding fingerprints. The planner maps them through finding groups, ignores same-node references, treats absent fingerprints as satisfied, and preserves explicit `unlocks` text in work briefs.

@@ -1,6 +1,12 @@
 # `install` / `update`
 
 Install Codex and Cursor skill files, and optional Cursor or Git integrations.
+
+For the default skill-led workflow, use `coherent install --skills-only --yes`.
+This does not add a project CLI dependency or require baseline/review state.
+Reload the harness and ask for a bounded improvement; `init` is optional.
+The existing project-adoption command below remains available for teams that
+explicitly want dependency-managed CLI and advanced hooks.
 The unscoped npm name `coherent` belongs to a different package, so the public
 launcher is a GitHub package specifier, not `npx coherent`.
 
@@ -43,7 +49,7 @@ fails project adoption. Unusual
 CI or global-CLI setups can pass `--skills-only` to copy skill files without
 installing the project CLI. The copied skill and the project CLI stay
 compatible through `coherent version` / `runtime.skillPath`. Reload Codex or
-Cursor, then run `$coherent init` or `/coherent init`.
+Cursor, then request a bounded improvement. Initialize context only when useful.
 
 ## Adoption preflight
 
@@ -77,8 +83,11 @@ coherent update --providers=codex,cursor --yes
 With no flags, non-TTY `install` and `update` write nothing. `coherent update`
 refreshes selected integration and skill files only; it does **not** update the
 CLI dependency or lockfile. They share the same safe copy rules: missing files
-are written, generated reference files and known adapter stubs are refreshed,
-and user edits outside those cases are left alone.
+are written, managed reference fences and known adapter stubs are refreshed,
+and authored text outside those fences is left alone. Differing unfenced
+legacy references are skipped. If the existing full skill differs, its references
+are left together with it to avoid mixing workflow versions. Compare the skipped
+copy with the actual package canonical skill before a deliberate update.
 
 ## What is written
 

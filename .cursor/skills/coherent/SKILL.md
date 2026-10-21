@@ -1,19 +1,16 @@
 ---
 name: coherent
-description: "Use when the user wants Impeccable-style maintainability work on a backend or large AI-built codebase: initialize durable architecture context, audit or inspect architectural entropy, plan cleanup, fix the next DAG node, check drift, or record a baseline. Not for frontend visual design."
+description: "Use when the user wants Impeccable-style maintainability work on a backend or large AI-built codebase: make bounded improvements with targeted evidence and agent judgment. Persistent cleanup is optional. Not for frontend visual design."
 argument-hint: "[init|refresh|audit|inspect|review|baseline|check|plan|fix|doctor|install|update] [target]"
 ---
 
 <!-- coherent:adapter -->
-This is a Cursor bootstrap adapter, not a second methodology. Run
-`coherent version . --json`, then load the exact canonical file reported at
-`runtime.skillPath` and follow its references. If the command,
-`canonical-skill-path` capability, or reported file is unavailable, stop and
-repair the CLI/skill installation before auditing or writing Coherent state.
-
-In chat: `/coherent init`, `/coherent refresh`, `/coherent audit`, `/coherent inspect`, `/coherent review`, `/coherent baseline`, `/coherent plan`, `/coherent fix next`, `/coherent check`, `/coherent doctor`, `/coherent install`, `/coherent update`.
-
-`/backend` is a skill alias for the same workflow. CLI: `coherent` (alias `backend`).
-
-Project adoption: `npx --yes --package github:sethmgibson/coherent -- coherent install`.
+This is the Cursor repository discovery adapter. Read the canonical skill at
+`../../../skills/coherent/SKILL.md` and follow its bounded default workflow.
+The CLI is optional. When using an installed CLI, `coherent version . --json`
+reports `runtime.skillPath`; load that exact canonical skill before tool work.
+Missing CLI support does not block source inspection or require state setup.
+Use skills-only adoption for consumer projects; do not copy this source-relative
+adapter into them. Persistent reviews, baseline gates and managed cleanup are
+explicit advanced choices.
 <!-- /coherent:adapter -->

@@ -8,7 +8,7 @@ export function wrapDiscovered(body: string): string {
   return `${DISCOVERED_OPEN}\n${body.trim()}\n${DISCOVERED_CLOSE}`;
 }
 
-export function generateArchitectureMarkdown(inventory: Inventory): string {
+export function generateLegacyArchitectureMarkdown(inventory: Inventory): string {
   const packages = inventory.packages
     .map((pkg) => `- \`${pkg.name}\` (\`${pkg.path}\`)`)
     .join("\n");
@@ -197,4 +197,39 @@ function publicApiBullets(inventory: Inventory): string {
     }
   }
   return lines.length > 0 ? lines.join("\n") : "- None declared in package.json.";
+}
+
+/** New context records durable knowledge, never volatile inventory counters. */
+export function generateArchitectureMarkdown(): string {
+  return `# Architecture
+
+Keep confirmed ownership, invariants and intentional distinctions here.
+Use existing project guidance where it already owns this knowledge. Omit
+irrelevant sections and leave uncertainty explicit; do not invent a design.
+
+## Purpose and ownership
+
+Requires human or agent completion: important concepts, their owners and the
+representations authoritative for them.
+
+## Invariants and external boundaries
+
+Requires human or agent completion: behavioral rules, external contracts,
+uncertainty, recovery and duplicate-write safeguards.
+
+## Intentional distinctions
+
+Requires human or agent completion: similar concepts that must stay separate,
+and the consumer or invariant that requires the distinction.
+
+## Compatibility
+
+Requires human or agent completion: real consumers, purpose and removal conditions.
+
+<!-- coherent:architecture-schema 2 -->
+`;
+}
+
+export function isFocusedArchitecture(markdown: string): boolean {
+  return markdown.includes("<!-- coherent:architecture-schema 2 -->");
 }

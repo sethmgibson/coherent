@@ -8,6 +8,11 @@ export async function copySkillTree(sourceDir: string, destDir: string): Promise
   if (existingSkill !== undefined && looksLikeAdapterSkill(existingSkill)) {
     return [{ path: join(destDir, "SKILL.md"), action: "skipped", reason: "existing adapter" }];
   }
+  const shippedSkill = await readFile(join(sourceDir, "SKILL.md"), "utf8");
+  if (existingSkill !== undefined && existingSkill.trimEnd() !== shippedSkill.trimEnd() && !looksLikeStubSkill(existingSkill)) {
+    // Do not mix newer references with an older or user-edited entrypoint.
+    return [{ path: join(destDir, "SKILL.md"), action: "skipped", reason: "user edits" }];
+  }
   const actions: CopyResult[] = [];
   for (const source of await listFiles(sourceDir)) {
     const rel = relative(sourceDir, source);
@@ -25,16 +30,25 @@ export async function writeShippedFile(
   shipped: string,
   kind: ShippedKind,
 ): Promise<CopyResult> {
+  const open = "<!-- coherent:reference -->";
+  const close = "<!-- /coherent:reference -->";
+  const managed = kind === "reference" ? `${open}\n${shipped.trimEnd()}\n${close}\n` : shipped;
   const existing = await readIfExists(dest);
   if (existing === undefined) {
-    await writeText(dest, shipped);
+    await writeText(dest, managed);
     return { path: dest, action: "wrote" };
   }
   if (existing === shipped || existing === `${shipped}\n` || `${existing}\n` === shipped) {
     return { path: dest, action: "unchanged" };
   }
   if (kind === "reference") {
-    await writeText(dest, shipped);
+    if (existing === managed) return { path: dest, action: "unchanged" };
+    const start = existing.indexOf(open);
+    const end = existing.indexOf(close, start + open.length);
+    if (start < 0 || end < 0) return { path: dest, action: "skipped", reason: "user edits" };
+    const next = existing.slice(0, start) + managed.trimEnd() + existing.slice(end + close.length);
+    if (next === existing) return { path: dest, action: "unchanged" };
+    await writeText(dest, next);
     return { path: dest, action: "updated" };
   }
   if (kind === "skill" && looksLikeStubSkill(existing)) {

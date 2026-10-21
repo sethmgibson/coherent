@@ -55,6 +55,8 @@ export interface Finding {
   testSafetyEvidence?: string;
   /** Current-finding fingerprints that must be cleaned first. Absent fingerprints are already satisfied. */
   prerequisiteFindingIds: string[];
+  /** Current source evidence used only to validate advanced persisted decisions. */
+  evidenceHash?: string;
   fingerprint: string;
 }
 
@@ -104,6 +106,7 @@ export function parseFindingInput(raw: unknown): FindingInput {
     evidence: parseEvidence(raw.evidence),
     locations: parseLocations(raw.locations),
     affectedSymbols: requireStringArray(raw.affectedSymbols, "affectedSymbols"),
+    ...(raw.evidenceHash !== undefined ? { evidenceHash: requireString(raw.evidenceHash, "evidenceHash") } : {}),
     cleanupBenefit: requireString(raw.cleanupBenefit, "cleanupBenefit"),
     changeRisk: requireString(raw.changeRisk, "changeRisk"),
     prerequisiteFindingIds: requireStringArray(

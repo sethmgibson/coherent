@@ -166,7 +166,7 @@ export function importedPackageNames(files: SourceFile[]): Set<string> {
     }
     for (const call of file.getDescendantsOfKind(SyntaxKind.CallExpression)) {
       const expr = call.getExpression();
-      if (expr.getKind() !== SyntaxKind.ImportKeyword) continue;
+      if (expr.getKind() !== SyntaxKind.ImportKeyword && expr.getText() !== "require") continue;
       const arg = call.getArguments()[0];
       if (arg && Node.isStringLiteral(arg)) {
         const pkg = packageNameFromSpecifier(arg.getLiteralValue());

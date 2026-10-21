@@ -11,6 +11,7 @@ import {
   FINGERPRINT_VERSION,
 } from "../src/config.js";
 import { createFinding } from "../src/domain/finding.js";
+import { generateLegacyArchitectureMarkdown } from "../src/init/architecture.js";
 import { runInit } from "../src/init/run.js";
 
 const expressFixture = join(
@@ -22,7 +23,8 @@ const expressFixture = join(
 async function seededRoot(): Promise<string> {
   const root = await mkdtemp(join(tmpdir(), "coherent-doctor-"));
   await cp(expressFixture, root, { recursive: true });
-  await runInit(root);
+  const initialized = await runInit(root);
+  await writeFile(initialized.architecturePath, generateLegacyArchitectureMarkdown(initialized.inventory), "utf8");
   return root;
 }
 

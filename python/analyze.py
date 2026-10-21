@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import ast
+import hashlib
 import json
 import re
 import sys
@@ -123,7 +124,9 @@ def analyze_tree(
 ) -> None:
     owners = ["anonymous"]
 
-    def visit(node: ast.AST) -> None:
+    anchors: dict[str, int] = {}
+
+    def visit(node: ast.AST, anchor: str = "") -> None:
         function = isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
         if function:
             if not test_file:
@@ -131,12 +134,19 @@ def analyze_tree(
                 consider_booleans(findings, flag_sets, node, relative)
             owners.append(node.name)
         elif isinstance(node, ast.ExceptHandler) and not test_file:
-            classify_except(findings, node, relative, owners[-1])
+            classify_except(findings, node, relative, owners[-1], anchor)
         for body in statement_blocks(node):
             if body:
                 scan_block(findings, body, relative, source)
         for child in ast.iter_child_nodes(node):
-            visit(child)
+            child_anchor = ""
+            if isinstance(child, ast.ExceptHandler) and (isinstance(node, ast.Try) or try_star(node)):
+                structural = ast.dump(ast.Module(body=node.body, type_ignores=[]), include_attributes=False)
+                structural += ast.dump(child.type, include_attributes=False) if child.type else "bare"
+                key = owners[-1] + ":" + hashlib.sha256(structural.encode()).hexdigest()[:12]
+                anchors[key] = anchors.get(key, 0) + 1
+                child_anchor = f"{key}:{anchors[key]}"
+            visit(child, child_anchor)
         if function:
             owners.pop()
 
@@ -425,7 +435,8 @@ def consider_booleans(
     name = node.name
     if not name:
         return
-    bool_params = [arg.arg for arg in node.args.args if is_bool_param(node, arg)]
+    params = [*node.args.posonlyargs, *node.args.args, *node.args.kwonlyargs]
+    bool_params = [arg.arg for arg in params if is_bool_param(node, arg)]
     branched = boolean_branches(node)
     flags = list(dict.fromkeys([*bool_params, *branched]))
     flag_sets.append({"name": name, "flags": flags, "file": relative})
@@ -438,13 +449,20 @@ def consider_booleans(
 def is_bool_param(fn: ast.FunctionDef | ast.AsyncFunctionDef, arg: ast.arg) -> bool:
     if annotation_is_bool(arg.annotation):
         return True
-    defaults = bool_defaults(fn, arg)
-    return defaults or bool(FLAG_NAME.match(arg.arg))
+    if arg.annotation is not None:
+        return False
+    return bool_defaults(fn, arg) or bool(FLAG_NAME.match(arg.arg))
 
 
 def annotation_is_bool(annotation: ast.AST | None) -> bool:
     if annotation is None:
         return False
+    if isinstance(annotation, ast.Subscript):
+        base = annotation.value
+        name = base.id if isinstance(base, ast.Name) else base.attr if isinstance(base, ast.Attribute) else ""
+        if name == "Annotated":
+            args = annotation.slice.elts if isinstance(annotation.slice, ast.Tuple) else [annotation.slice]
+            return bool(args) and annotation_is_bool(args[0])
     if isinstance(annotation, ast.Name):
         return annotation.id == "bool"
     if isinstance(annotation, ast.Constant):
@@ -453,14 +471,17 @@ def annotation_is_bool(annotation: ast.AST | None) -> bool:
 
 
 def bool_defaults(fn: ast.FunctionDef | ast.AsyncFunctionDef, arg: ast.arg) -> bool:
-    args = fn.args.args
+    if arg in fn.args.kwonlyargs:
+        value = fn.args.kw_defaults[fn.args.kwonlyargs.index(arg)]
+        return isinstance(value, ast.Constant) and isinstance(value.value, bool)
+    args = [*fn.args.posonlyargs, *fn.args.args]
     defaults = fn.args.defaults
     index = args.index(arg)
     offset = len(args) - len(defaults)
     if index < offset:
         return False
     value = defaults[index - offset]
-    return isinstance(value, ast.Constant) and value.value in {True, False}
+    return isinstance(value, ast.Constant) and isinstance(value.value, bool)
 
 
 def boolean_branches(fn: ast.FunctionDef | ast.AsyncFunctionDef) -> list[str]:
@@ -572,8 +593,13 @@ def classify_except(
     handler: ast.ExceptHandler,
     relative: str,
     owner: str,
+    anchor: str = "",
 ) -> None:
     body = handler.body
+
+    def emit(handler: ast.ExceptHandler, relative: str, owner: str, kind: str, details: list[str]) -> dict[str, Any]:
+        return swallow_finding(handler, relative, owner, kind, details, anchor)
+
     if except_rethrows(body) or except_translates(body):
         return
     logs = has_log_call(body)
@@ -587,7 +613,7 @@ def classify_except(
     loop_exit = any(isinstance(stmt, (ast.Break, ast.Continue)) for stmt in body)
     if empty:
         findings.append(
-            swallow_finding(
+            emit(
                 handler,
                 relative,
                 owner,
@@ -598,7 +624,7 @@ def classify_except(
         return
     if returns_nullish and not logs:
         findings.append(
-            swallow_finding(
+            emit(
                 handler,
                 relative,
                 owner,
@@ -609,18 +635,18 @@ def classify_except(
         return
     if returns_nullish and logs:
         findings.append(
-            swallow_finding(
+            emit(
                 handler,
                 relative,
                 owner,
                 "swallowed-nullish",
-                [f"Except logs and returns {return_expr}. Callers cannot observe the failure."],
+                [f"Except logs and returns {return_expr}. No direct reraise is present; inspect durable state, caller handling and recovery before judging observability."],
             )
         )
         return
     if logs and returns and not returns_nullish:
         findings.append(
-            swallow_finding(
+            emit(
                 handler,
                 relative,
                 owner,
@@ -634,7 +660,7 @@ def classify_except(
         return
     if loop_exit and all(isinstance(stmt, (ast.Break, ast.Continue, ast.Pass)) for stmt in body):
         findings.append(
-            swallow_finding(
+            emit(
                 handler,
                 relative,
                 owner,
@@ -645,7 +671,7 @@ def classify_except(
         return
     if logs and not returns and all(is_log_statement(stmt) for stmt in body):
         findings.append(
-            swallow_finding(
+            emit(
                 handler,
                 relative,
                 owner,
@@ -780,10 +806,11 @@ def swallow_finding(
     owner: str,
     kind: str,
     details: list[str],
+    anchor: str = "",
 ) -> dict[str, Any]:
     return finding(
         "D03",
-        f"{kind}:{relative}:{owner}",
+        f"{kind}:{relative}:{owner}" + (f":{anchor}" if anchor else ""),
         "Possible boundary fallback",
         "medium",
         "medium",

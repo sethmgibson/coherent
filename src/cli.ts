@@ -3,7 +3,11 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, resolve } from "node:path";
 import { Command } from "commander";
+import { runMigration } from "./migrate.js";
 import { runInit, runRefresh } from "./init/run.js";
+import { collectEvidence } from "./audit/collect.js";
+import { RULE_IDS, RULES_BY_ID } from "./catalog/rules.js";
+import type { RuleId } from "./catalog/types.js";
 import { compactFindingsFile, runAudit } from "./audit/run.js";
 import { renderAudit } from "./audit/render.js";
 import { runBaseline } from "./baseline/run.js";
@@ -94,7 +98,7 @@ program
       `Discovered ${result.inventory.packages.length} package(s), ${result.inventory.frameworks.join(", ") || "no frameworks"}, ${result.inventory.fileCount} files.`,
     );
     console.log(
-      "Review semantic sections using the Coherent skill's init workflow.",
+      "Complete only the durable context justified by source evidence; no baseline or audit is required.",
     );
   });
 
@@ -119,10 +123,13 @@ program
   .argument("[root]", "repository root", ".")
   .option("--json", "print findings as JSON", false)
   .option("--compact-json", "print one review-focused copy of each finding as JSON", false)
+  .option("--evidence", "collect source evidence without advanced state or planning", false)
+  .option("--paths <paths...>", "repository-relative source files or directories (evidence only)")
+  .option("--rules <rules...>", "selected rule IDs (evidence only)")
   .option("--output <path>", "write JSON to an explicit path relative to the repository")
   .action(async (
     root: string,
-    options: { json: boolean; compactJson: boolean; output?: string },
+    options: { json: boolean; compactJson: boolean; output?: string; evidence: boolean; paths?: string[]; rules?: string[] },
   ) => {
     if (options.json && options.compactJson) {
       console.error("Choose either --json or --compact-json, not both.");
@@ -130,6 +137,44 @@ program
       return;
     }
     const resolved = resolve(root);
+    if ((options.paths || options.rules) && !options.evidence) {
+      console.error("--paths and --rules require --evidence; legacy audit output is unchanged.");
+      process.exitCode = 1;
+      return;
+    }
+    if (options.evidence) {
+      try {
+        const rules = options.rules ?? ["A06"];
+        if (rules.some(rule => !(RULE_IDS as readonly string[]).includes(rule))) throw new Error("Unknown rule in --rules.");
+        const result = await collectEvidence(resolved, {
+          ...(options.paths ? { include: options.paths } : {}), rules: rules as RuleId[],
+        });
+        const observations = result.observations.map(item => ({
+          ruleId: item.ruleId, title: item.title, identity: item.identity,
+          confidence: item.confidence, detectionMode: item.detectionMode,
+          explanation: item.explanation, evidence: item.evidence,
+          locations: item.locations, affectedSymbols: item.affectedSymbols,
+        }));
+        const output = { runtime: await runtimeIdentity(resolved),
+          scope: { paths: options.paths ?? ["."], rules, repositoryWide: !options.paths,
+            limitation: "Source observations require agent interpretation. Scoped absence does not establish repository-wide reachability or cleanliness." },
+          observations };
+        if (options.json || options.compactJson) console.log(JSON.stringify(output, null, options.compactJson ? 0 : 2));
+        else {
+          console.log(`Source evidence: ${observations.length} observation(s). Agent interpretation required; no cleanup queue. Scope: ${(options.paths ?? ["."]).join(", ")}.`);
+          for (const item of observations) console.log(`${RULES_BY_ID[item.ruleId].title}: ${item.evidence.summary}\n${item.locations.map(loc => `  ${loc.file}:${loc.line ?? "?"}`).join("\n")}`);
+        }
+        if (options.output) {
+          const path = resolve(resolved, options.output);
+          await writeJsonOutput(path, output);
+          console.error(`Wrote ${path}`);
+        }
+      } catch (error) {
+        console.error(error instanceof Error ? error.message : String(error));
+        process.exitCode = 1;
+      }
+      return;
+    }
     const result = await runAudit(resolved);
     const jsonOutput = options.compactJson
       ? compactFindingsFile(result.file)
@@ -145,6 +190,28 @@ program
       const path = resolve(resolved, options.output);
       await writeJsonOutput(path, jsonOutput, options.compactJson ? 0 : 2);
       console.error(`Wrote ${path}`);
+    }
+  });
+
+program
+  .command("migrate")
+  .description("Preview optional focused-context migration; preserve baseline and reviews")
+  .argument("[root]", "repository root", ".")
+  .option("--write", "convert managed architecture inventory sections", false)
+  .option("--json", "print the migration preview as JSON", false)
+  .action(async (root: string, options: { write: boolean; json: boolean }) => {
+    try {
+      const result = await runMigration(resolve(root), options.write);
+      if (options.json) console.log(JSON.stringify(result, null, 2));
+      else {
+        console.log(`${result.wrote ? "Migrated" : "Preview"}: ${result.architecturePath}`);
+        if (result.architecture) console.log(result.architecture.after);
+        console.log(`${result.reviewsNeedingEvidence.length} historical review(s) lack source evidence. No decisions or baseline rewritten.`);
+        console.log(result.message);
+      }
+    } catch (error) {
+      console.error(error instanceof Error ? error.message : String(error));
+      process.exitCode = 1;
     }
   });
 

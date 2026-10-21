@@ -241,6 +241,15 @@ describe("review merge into plan", () => {
     expect(classifyReview(oldRevision, [current])).toBe("applied");
   });
 
+  it("requires current detector semantics for semantic identity fallback while retaining exact history", () => {
+    const current = finding({ ruleId: "A01", identity: "fossil:OldLayer", detectionMode: "semantic" });
+    const old = { ...review(current, "dismissed"), ruleDetectorRevision: detectorRevisionForRule("A01") - 1 };
+    expect(classifyReview(old, [current])).toBe("applied");
+    const fallback = { ...old, fingerprint: "older-hash" };
+    expect(applyReviews([], [fallback], [current]).findings).toEqual([current]);
+    expect(classifyReview(fallback, [current])).toBe("stale");
+  });
+
   it("reopens compatibility findings when their review lifecycle is missing or expired", () => {
     const current = finding({
       ruleId: "A07",

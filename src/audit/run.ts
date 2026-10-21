@@ -1,24 +1,13 @@
+import { createHash } from "node:crypto";
+import { readFile } from "node:fs/promises";
+import { collectEvidence } from "./collect.js";
+import { findingFromEvidence } from "./finding-factory.js";
 import { stat } from "node:fs/promises";
 import { join } from "node:path";
-import { createAnalysisContext } from "../analysis/context.js";
-import { collectPythonFindings } from "../analysis/python.js";
-import { ARCHITECTURE_FILE, PORTABLE_ROOT, loadConfig } from "../config.js";
+import { ARCHITECTURE_FILE, PORTABLE_ROOT } from "../config.js";
 import { resolveStateDir } from "../state-dir.js";
-import { collectInventory, type Inventory } from "../inventory.js";
+import { type Inventory } from "../inventory.js";
 import type { Finding } from "../domain/finding.js";
-import { detectDeadCode } from "../detectors/dead-code.js";
-import { detectStaleCompatibility } from "../detectors/stale-compat.js";
-import { detectStringProtocols } from "../detectors/string-protocols.js";
-import { detectDuplicateRepresentations } from "../detectors/duplicate-reps.js";
-import { detectPrematureAbstraction } from "../detectors/premature-abstraction.js";
-import { detectExcessiveIndirection } from "../detectors/indirection.js";
-import { detectBooleanExplosion } from "../detectors/boolean-explosion.js";
-import { detectContextExplosion } from "../detectors/context-explosion.js";
-import { detectSwallowedErrors } from "../detectors/swallowed-errors.js";
-import { detectDependencyCreep } from "../detectors/dependency-creep.js";
-import { detectRedundantDbAccess } from "../detectors/redundant-db.js";
-import { detectSequentialIo } from "../detectors/sequential-io.js";
-import { detectAlgorithmicComplexity } from "../detectors/complexity.js";
 import { computeMetrics } from "./metrics.js";
 import type { Metric } from "./metrics.js";
 import { groupFindings } from "../plan/group.js";
@@ -89,22 +78,25 @@ export async function runAudit(
   options: AuditOptions = {},
 ): Promise<AuditResult> {
   const started = Date.now();
-  const config = await loadConfig(root);
-  const inventory = await collectInventory(root, config);
-  const findings =
-    options.include && options.include.length === 0
-      ? []
-      : mergeFindingsByFingerprint([
-          ...collectFindings(
-            await createAnalysisContext(
-              root,
-              inventory,
-              config,
-              options.include ? { include: options.include } : {},
-            ),
-          ),
-          ...await collectPythonFindings(root, config, options.include),
-        ]);
+  const { inventory, observations } = await collectEvidence(root, options);
+  const findings = mergeFindingsByFingerprint(observations.map(findingFromEvidence));
+  const hashes = new Map<string, string>();
+  for (const finding of findings) {
+    const files = [...new Set(finding.locations.map(loc => loc.file))].sort();
+    const inputs: string[] = [];
+    for (const file of files) {
+      let hash = hashes.get(file);
+      if (!hash) {
+        const source = await readFile(join(root, file), "utf8");
+        // Conservative file evidence: only leading/trailing whitespace is ignored.
+        // Preserve literals, directives and regex text; never normalize token content.
+        hash = createHash("sha256").update(source.trim()).digest("hex");
+        hashes.set(file, hash);
+      }
+      inputs.push(file, hash);
+    }
+    finding.evidenceHash = createHash("sha256").update(JSON.stringify([inputs, finding.evidence])).digest("hex");
+  }
   assertUniqueFingerprints(findings);
   const durationMs = Date.now() - started;
   const confirmed = findings.filter((finding) => finding.status === "confirmed");
@@ -176,22 +168,4 @@ async function fileExists(path: string): Promise<boolean> {
   } catch {
     return false;
   }
-}
-
-function collectFindings(ctx: Parameters<typeof detectDeadCode>[0]): Finding[] {
-  return [
-    ...detectDeadCode(ctx),
-    ...detectStaleCompatibility(ctx),
-    ...detectStringProtocols(ctx),
-    ...detectDuplicateRepresentations(ctx),
-    ...detectPrematureAbstraction(ctx),
-    ...detectExcessiveIndirection(ctx),
-    ...detectBooleanExplosion(ctx),
-    ...detectContextExplosion(ctx),
-    ...detectSwallowedErrors(ctx),
-    ...detectDependencyCreep(ctx),
-    ...detectRedundantDbAccess(ctx),
-    ...detectSequentialIo(ctx),
-    ...detectAlgorithmicComplexity(ctx),
-  ];
 }

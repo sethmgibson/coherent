@@ -1,13 +1,13 @@
 import type { ClassDeclaration, InterfaceDeclaration, Symbol, Type } from "ts-morph";
 import type { AnalysisContext } from "../analysis/context.js";
 import { locationOf } from "../analysis/inspect.js";
-import { makeFinding } from "../audit/finding-factory.js";
-import type { Finding } from "../domain/finding.js";
+import { makeEvidence } from "../audit/finding-factory.js";
+import type { Evidence } from "../audit/finding-factory.js";
 
 const BOUNDARY = /(Repository|Store|Client|Gateway|Port|Adapter|ReadModel|Persistence|Reader|Writer|Expirer)$/;
 
-export function detectPrematureAbstraction(ctx: AnalysisContext): Finding[] {
-  const findings: Finding[] = [];
+export function detectPrematureAbstraction(ctx: AnalysisContext): Evidence[] {
+  const findings: Evidence[] = [];
   const classes = ctx.sourceFiles.flatMap((file) =>
     file.getClasses().map((cls) => ({ cls, file: ctx.relativePath(file) })),
   );
@@ -82,7 +82,7 @@ function singleImplFinding(
   impl: ClassDeclaration,
   implFile: string,
   kind: "interface" | "abstract-class",
-): Finding {
+): Evidence {
   const implName = impl.getName() ?? "(anonymous)";
   const boundary = BOUNDARY.test(name);
   const details = [
@@ -92,7 +92,7 @@ function singleImplFinding(
       : "No second production implementation was found.",
     "Hybrid signal only — do not collapse without semantic review.",
   ];
-  return makeFinding({
+  return makeEvidence({
     ruleId: "B03",
     identity: `single-impl:${file}:${name}`,
     title: "Single-implementation abstraction",

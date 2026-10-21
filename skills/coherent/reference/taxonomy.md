@@ -3,7 +3,8 @@
 # Taxonomy
 
 Rule IDs are stable identifiers. Rule ID order is **not** cleanup execution
-order. See [cleanup-phases.md](cleanup-phases.md).
+order. Default work is chosen by the agent; phases and prerequisite graphs are
+optional advanced cleanup metadata. See [cleanup-phases.md](cleanup-phases.md).
 
 Source of truth: `src/catalog/rules.ts`.
 

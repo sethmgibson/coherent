@@ -64,6 +64,7 @@ export interface Inventory {
 export async function collectInventory(
   root: string,
   config: CoherentConfig = {},
+  include?: string[],
 ): Promise<Inventory> {
   const files = await walkFiles(root, new Set(config.ignore ?? []));
   const packageJsonFiles = files
@@ -88,10 +89,11 @@ export async function collectInventory(
   const { dependencies, devDependencies } = mergeDependencies(packages);
   const allDeps = { ...dependencies, ...devDependencies, ...pythonDependencies };
 
+  const included = include ? new Set(include) : undefined;
   let lineCount = 0;
   const mainGuardEntrypoints: string[] = [];
   for (const file of files) {
-    if (!SOURCE_EXTENSIONS.has(extensionOf(file.name))) continue;
+    if (!SOURCE_EXTENSIONS.has(extensionOf(file.name)) || (included && !included.has(file.relativePath))) continue;
     const text = await readFile(file.absolutePath, "utf8");
     lineCount += countLines(text);
     if (

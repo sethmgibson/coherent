@@ -1,11 +1,11 @@
 import { Node, SyntaxKind, type FunctionDeclaration, type MethodDeclaration } from "ts-morph";
 import type { AnalysisContext } from "../analysis/context.js";
 import { locationOf } from "../analysis/inspect.js";
-import { makeFinding } from "../audit/finding-factory.js";
-import type { Finding } from "../domain/finding.js";
+import { makeEvidence } from "../audit/finding-factory.js";
+import type { Evidence } from "../audit/finding-factory.js";
 
-export function detectBooleanExplosion(ctx: AnalysisContext): Finding[] {
-  const findings: Finding[] = [];
+export function detectBooleanExplosion(ctx: AnalysisContext): Evidence[] {
+  const findings: Evidence[] = [];
   const flagSets: { name: string; flags: string[]; file: string }[] = [];
 
   for (const file of ctx.sourceFiles) {
@@ -50,7 +50,7 @@ export function detectBooleanExplosion(ctx: AnalysisContext): Finding[] {
   for (const [key, users] of combinations) {
     if (users.length < 2) continue;
     findings.push(
-      makeFinding({
+      makeEvidence({
         ruleId: "C03",
         identity: `bool-combo:${key}`,
         title: "Repeated boolean flag combination",
@@ -79,8 +79,8 @@ function flagFinding(
   boolParams: string[],
   branched: string[],
   kind: string,
-): Finding {
-  return makeFinding({
+): Evidence {
+  return makeEvidence({
     ruleId: "C03",
     identity: `${kind}:${relative}:${name}`,
     title: "Boolean parameter / branch explosion",

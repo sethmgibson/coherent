@@ -12,7 +12,7 @@ export const PHASES = [
     slug: "safety-and-understanding",
     title: "Safety and understanding",
     summary:
-      "Inventory the repository, entrypoints, critical workflows, and available behavioral tests. Establish a baseline before changing behavior. This phase is not a rule.",
+      "Inventory the repository, entrypoints, critical workflows, and available behavioral tests. Characterize behavior before changing it; a persisted baseline is optional advanced state. This phase is not a rule.",
     sequence: [],
   },
   {

@@ -195,6 +195,7 @@ function parseReview(raw: unknown): FindingReview {
   const reconsiderWhen = optionalReviewText(raw.reconsiderWhen, "reconsiderWhen");
   return {
     fingerprint: raw.fingerprint,
+    ...(raw.evidenceHash !== undefined ? { evidenceHash: optionalReviewText(raw.evidenceHash, "evidenceHash")! } : {}),
     ruleId: raw.ruleId as RuleId,
     identity: raw.identity,
     decision: raw.decision as FindingReview["decision"],

@@ -1,8 +1,8 @@
 import { Node, SyntaxKind, type CallExpression } from "ts-morph";
 import type { AnalysisContext } from "../analysis/context.js";
 import { locationOf } from "../analysis/inspect.js";
-import { makeFinding } from "../audit/finding-factory.js";
-import type { Finding } from "../domain/finding.js";
+import { makeEvidence } from "../audit/finding-factory.js";
+import type { Evidence } from "../audit/finding-factory.js";
 
 const LOOP_METHODS = new Set(["find", "filter", "some", "includes", "sort"]);
 const LOOP_KINDS = new Set([
@@ -13,8 +13,8 @@ const LOOP_KINDS = new Set([
 ]);
 const SMALL_FIXED_COLLECTION_LIMIT = 16;
 
-export function detectAlgorithmicComplexity(ctx: AnalysisContext): Finding[] {
-  const findings: Finding[] = [];
+export function detectAlgorithmicComplexity(ctx: AnalysisContext): Evidence[] {
+  const findings: Evidence[] = [];
   for (const file of ctx.sourceFiles) {
     if (ctx.isTestFile(ctx.relativePath(file))) continue;
     const relative = ctx.relativePath(file);
@@ -31,7 +31,7 @@ export function detectAlgorithmicComplexity(ctx: AnalysisContext): Finding[] {
 
 function collectLoopMethods(
   ctx: AnalysisContext,
-  findings: Finding[],
+  findings: Evidence[],
   relative: string,
   name: string,
   body: Node,
@@ -62,7 +62,7 @@ function collectLoopMethods(
       }),
     );
     findings.push(
-      makeFinding({
+      makeEvidence({
         ruleId: "E06",
         identity,
         title: `Collection .${group.method}() inside a loop`,
@@ -89,7 +89,7 @@ function collectLoopMethods(
 
 function collectNestedLoops(
   ctx: AnalysisContext,
-  findings: Finding[],
+  findings: Evidence[],
   relative: string,
   name: string,
   fn: Node,
@@ -113,7 +113,7 @@ function collectNestedLoops(
   });
   if (nested.length === 0) return;
   findings.push(
-    makeFinding({
+    makeEvidence({
       ruleId: "E06",
       identity: `nested-loop:${relative}:${name}`,
       title: "Nested collection iteration",

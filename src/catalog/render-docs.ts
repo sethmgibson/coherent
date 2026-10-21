@@ -22,7 +22,8 @@ export function renderTaxonomyMarkdown(): string {
 # Taxonomy
 
 Rule IDs are stable identifiers. Rule ID order is **not** cleanup execution
-order. See [cleanup-phases.md](cleanup-phases.md).
+order. Default work is chosen by the agent; phases and prerequisite graphs are
+optional advanced cleanup metadata. See [cleanup-phases.md](cleanup-phases.md).
 
 Source of truth: \`src/catalog/rules.ts\`.
 
@@ -61,7 +62,8 @@ Default sequence: ${sequence}
 # Cleanup phases
 
 Taxonomy, audit order, cleanup execution, and finding prerequisites are not
-the same. The cleanup DAG is authoritative for actual work. These default
+the same. In the optional advanced workflow, the cleanup DAG is authoritative
+for actual work. Ordinary bounded improvements do not require phases or a DAG. These default
 phases only break ties when dependencies are otherwise equal.
 
 Dead-code reduction (A08) happens early so later analysis has less surface.

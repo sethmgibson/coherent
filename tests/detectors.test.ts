@@ -97,7 +97,7 @@ describe("hybrid detectors on scanner-app", () => {
   it("D01 reports unused runtime deps and a known overlap family", async () => {
     const { findings } = await auditFixture();
     const deps = byRule(findings, "D01");
-    expect(findingFor(deps, "moment")?.status).toBe("confirmed");
+    expect(findingFor(deps, "moment")?.status).toBe("candidate");
     expect(findingFor(deps, "express")).toBeUndefined();
     expect(deps.some((finding) => finding.identity.includes("lodash") && finding.identity.includes("underscore"))).toBe(
       true,

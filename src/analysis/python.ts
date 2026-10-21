@@ -2,9 +2,9 @@ import { access } from "node:fs/promises";
 import { execFile, spawn } from "node:child_process";
 import { join } from "node:path";
 import { promisify } from "node:util";
-import { makeFinding } from "../audit/finding-factory.js";
+import { makeEvidence } from "../audit/finding-factory.js";
 import type { CoherentConfig } from "../config.js";
-import type { Finding } from "../domain/finding.js";
+import type { Evidence } from "../audit/finding-factory.js";
 import { isPythonSource } from "../inventory-scan.js";
 import { toPosix, walkFiles, type WalkedFile } from "../inventory-walk.js";
 import { packageRoot } from "../runtime.js";
@@ -29,12 +29,12 @@ interface SidecarFinding {
   ruleId: "A08" | "B04" | "C03" | "D03";
   identity: string;
   title: string;
-  severity: Finding["severity"];
-  confidence: Finding["confidence"];
-  status: Finding["status"];
+  severity: Evidence["severity"];
+  confidence: Evidence["confidence"];
+  status: Evidence["status"];
   explanation: string;
-  evidence: Finding["evidence"];
-  locations: Finding["locations"];
+  evidence: Evidence["evidence"];
+  locations: Evidence["locations"];
   affectedSymbols: string[];
 }
 
@@ -70,7 +70,7 @@ export async function collectPythonFindings(
   root: string,
   config: CoherentConfig = {},
   include?: string[],
-): Promise<Finding[]> {
+): Promise<Evidence[]> {
   const files = await listPythonFiles(root, config, include);
   if (files.length === 0) return [];
   let interpreter: string;
@@ -248,8 +248,8 @@ async function interpreterSupported(command: string): Promise<boolean> {
   }
 }
 
-function toFinding(raw: SidecarFinding): Finding {
-  return makeFinding({
+function toFinding(raw: SidecarFinding): Evidence {
+  return makeEvidence({
     ruleId: raw.ruleId,
     identity: raw.identity,
     title: raw.title,

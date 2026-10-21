@@ -20,6 +20,7 @@ export interface ReviewLifecycle {
 
 export interface FindingReview extends ReviewLifecycle {
   fingerprint: string;
+  evidenceHash?: string;
   ruleId: RuleId;
   identity: string;
   decision: ReviewDecision;

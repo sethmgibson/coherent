@@ -9,7 +9,7 @@ After implementing: search for code the change made obsolete.
 
 Never preserve architecture only because many files already use it. Never merge two concepts only because they have similar shapes.
 
-If a baseline exists, run `coherent check --changed` (or `coherent check`) and answer: did this feature make the system conceptually harder to change?
+Inspect the affected diff and contracts: did this feature make the workflow harder to change? Run `coherent check --changed` only when the project explicitly requires its advanced baseline gate. A baseline is not required for ordinary work.
 
 Do not run a full legacy cleanup for a small feature. Existing debt is allowed; new debt is not ignored.
 <!-- /coherent:prevention -->

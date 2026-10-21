@@ -1,14 +1,14 @@
 import { Node, SyntaxKind, type CallExpression, type ForInStatement, type ForOfStatement, type ForStatement, type WhileStatement } from "ts-morph";
 import type { AnalysisContext } from "../analysis/context.js";
 import { locationOf } from "../analysis/inspect.js";
-import { makeFinding } from "../audit/finding-factory.js";
-import type { Finding } from "../domain/finding.js";
+import { makeEvidence } from "../audit/finding-factory.js";
+import type { Evidence } from "../audit/finding-factory.js";
 
 const REPO_OBJECT = /(repo|repository|store|dao|prisma|database|\bdb\b|client)/i;
 const REPO_METHOD = /^(find|get|load|fetch|query|select|read|lookup|list)/i;
 
-export function detectRedundantDbAccess(ctx: AnalysisContext): Finding[] {
-  const findings: Finding[] = [];
+export function detectRedundantDbAccess(ctx: AnalysisContext): Evidence[] {
+  const findings: Evidence[] = [];
   for (const file of ctx.sourceFiles) {
     if (ctx.isTestFile(ctx.relativePath(file))) continue;
     const relative = ctx.relativePath(file);
@@ -27,7 +27,7 @@ export function detectRedundantDbAccess(ctx: AnalysisContext): Finding[] {
           if (!call) continue;
           const loopBound = usesLoopBinding(call, loop);
           findings.push(
-            makeFinding({
+            makeEvidence({
               ruleId: "E01",
               identity: `n-plus-one:${relative}:${name}:${call.getExpression().getText()}`,
               title: "Awaited lookup inside a loop",
@@ -57,7 +57,7 @@ export function detectRedundantDbAccess(ctx: AnalysisContext): Finding[] {
 
 function reportRepeatedCalls(
   ctx: AnalysisContext,
-  findings: Finding[],
+  findings: Evidence[],
   relative: string,
   name: string,
   fn: Node,
@@ -73,7 +73,7 @@ function reportRepeatedCalls(
   for (const [key, count] of keys) {
     if (count < 2) continue;
     findings.push(
-      makeFinding({
+      makeEvidence({
         ruleId: "E01",
         identity: `repeated-lookup:${relative}:${name}:${key.slice(0, 60)}`,
         title: "Repeated equivalent lookup",

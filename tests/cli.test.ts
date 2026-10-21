@@ -59,6 +59,45 @@ async function runCliWithInput(
 }
 
 describe("CLI", { timeout: CLI_WORKFLOW_TIMEOUT_MS }, () => {
+  it("prints targeted evidence without required state and preserves malformed advanced files", async () => {
+    const root = await mkdtemp(join(tmpdir(), "coherent-cli-evidence-"));
+    try {
+      await mkdir(join(root, "src"));
+      await mkdir(join(root, ".coherent"));
+      await writeFile(join(root, "src/types.ts"), "export type Order={id:string;amount:number;state:string}; export type OrderCopy={id:string;amount:number;state:string};");
+      await writeFile(join(root, ".coherent/decisions.json"), "unreadable advanced state");
+      const result = await runCli(["audit", root, "--evidence", "--paths", "src", "--rules", "A06", "--json", "--output", "evidence.json"]);
+      expect(result.code, result.stderr).toBe(0);
+      const output = JSON.parse(result.stdout) as { scope: { repositoryWide: boolean }; observations: unknown[] };
+      expect(output.scope.repositoryWide).toBe(false);
+      expect(output.observations).toHaveLength(1);
+      expect(output.observations[0]).not.toHaveProperty("fingerprint");
+      expect(output).toEqual(JSON.parse(await readFile(join(root, "evidence.json"), "utf8")));
+      expect(await readFile(join(root, ".coherent/decisions.json"), "utf8")).toBe("unreadable advanced state");
+      expect(await readdir(join(root, ".coherent"))).toEqual(["decisions.json"]);
+      expect((await runCli(["audit", root, "--paths", "src"])).code).toBe(1);
+      expect((await runCli(["audit", root, "--evidence", "--rules", "NOT_A_RULE"])).code).toBe(1);
+      expect((await runCli(["audit", root, "--evidence", "--rules", "A01"])).code).toBe(1);
+    } finally { await rm(root, { recursive: true, force: true }); }
+  });
+
+  it("previews a context migration through the CLI without altering old state", async () => {
+    const root = await mkdtemp(join(tmpdir(), "coherent-cli-migrate-"));
+    try {
+      await mkdir(join(root, ".coherent"));
+      const original = "# Owned context\nInvariant stays.\n<!-- coherent:discovered -->\ncounts\n<!-- /coherent:discovered -->\n";
+      await writeFile(join(root, ".coherent/ARCHITECTURE.md"), original);
+      const preview = await runCli(["migrate", root, "--json"]);
+      expect(preview.code, preview.stderr).toBe(0);
+      expect(JSON.parse(preview.stdout)).toMatchObject({ dryRun: true, wrote: false });
+      expect(await readFile(join(root, ".coherent/ARCHITECTURE.md"), "utf8")).toBe(original);
+      const migrated = await runCli(["migrate", root, "--write", "--json"]);
+      expect(migrated.code, migrated.stderr).toBe(0);
+      expect(JSON.parse(migrated.stdout)).toMatchObject({ wrote: true });
+      expect(await readFile(join(root, ".coherent/ARCHITECTURE.md"), "utf8")).toContain("Invariant stays.");
+    } finally { await rm(root, { recursive: true, force: true }); }
+  });
+
   it.each([
     ["audit", "--json"], ["audit", "--compact-json"], ["plan", "--json"],
   ])("keeps %s %s stdout parseable with an explicit output file", async (command, format) => {
@@ -154,7 +193,8 @@ describe("CLI", { timeout: CLI_WORKFLOW_TIMEOUT_MS }, () => {
         join(root, ".coherent", "ARCHITECTURE.md"),
         "utf8",
       );
-      expect(architecture).toContain("express-app");
+      expect(architecture).toContain("Purpose and ownership");
+      expect(architecture).not.toContain("Approximate size");
     } finally {
       await rm(root, { recursive: true, force: true });
     }

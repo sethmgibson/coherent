@@ -290,6 +290,7 @@ function toReview(finding: Finding, request: ReviewRequest): FindingReview {
   const authoritativeConcept = request.authoritativeConcept ?? finding.authoritativeConcept;
   return {
     fingerprint: finding.fingerprint,
+    ...(finding.evidenceHash ? { evidenceHash: finding.evidenceHash } : {}),
     ruleId: finding.ruleId,
     identity: finding.identity,
     decision: request.decision,

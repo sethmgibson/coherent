@@ -162,7 +162,7 @@ export function renderInstall(title: string, result: InstallResult): string {
   if (result.adoption?.scope === "project" && result.cli) {
     if (result.cli.skillsOnly) {
       lines.push("  skills only; the project CLI was not installed");
-      lines.push(`  add it later with: ${result.cli.addCommand}`);
+      lines.push(`  optional mechanical CLI later: ${result.cli.addCommand}`);
     } else {
       const verb = result.cli.alreadyPresent ? "ensured" : "installed";
       lines.push(`  ${verb} github:sethmgibson/coherent with ${result.cli.resolvedManager}`);
@@ -173,11 +173,11 @@ export function renderInstall(title: string, result: InstallResult): string {
   }
   if (result.adoption?.scope === "global") {
     lines.push("  global skill files do not install the Coherent CLI or put it on PATH");
-    lines.push("  add github:sethmgibson/coherent to each project, or run commands through");
+    lines.push("  the CLI is optional; for mechanical tools use a project dependency or");
     lines.push(`  ${PUBLIC_NPM_EXEC_INSTALL.replace(/ install$/, " <command>")}`);
   }
   if (result.adoption !== undefined || result.actions.some((action) => action.action === "wrote" || action.action === "updated")) {
-    lines.push("  reload Codex or Cursor so it discovers the skill, then run $coherent init or /coherent init");
+    lines.push("  reload Codex or Cursor so it discovers the skill, then ask $coherent or /coherent for a bounded improvement; context initialization is optional");
   }
   return `${lines.join("\n")}\n`;
 }

@@ -55,7 +55,7 @@ argument-hint: "[init|refresh|audit|inspect|review|baseline|check|plan|fix|docto
 ${ADAPTER_OPEN}
 This is a CLI and skill alias for Coherent. Prefer \`/coherent\`.
 
-Run \`coherent version . --json\`, load the exact \`runtime.skillPath\` it reports, and follow that canonical playbook. Stop if the command, capability, or reported file is unavailable. Do not invent a second methodology here.
+Run \`coherent version . --json\`, load the exact \`runtime.skillPath\` it reports, and follow that canonical playbook. The CLI is optional for bounded source work; use the installed canonical skill directly when available. Verify capabilities before mechanical tools or advanced state writes. Do not invent a second methodology here.
 
 In chat, \`/backend init\` (and the other \`/backend\` commands) map to the same playbooks as \`/coherent\`.
 

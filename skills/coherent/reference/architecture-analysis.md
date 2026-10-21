@@ -1,46 +1,26 @@
-# Architecture analysis
+# Durable architecture context
 
-Durable context lives in `.coherent/ARCHITECTURE.md`. Inventory facts are regenerable. Do not invent a design.
+Reuse existing project guidance first. Missing `.coherent/ARCHITECTURE.md` does
+not block a bounded task. Write context only when requested, or when an
+implemented change genuinely changes established ownership or invariants.
 
-## What to capture
+Capture only knowledge worth retaining:
 
-After `coherent init`, complete only what the tree and the user can confirm:
+- Purpose and ownership of important concepts and data.
+- Authoritative representations and producer/parser/consumer boundaries.
+- Behavioral invariants, external effects, recovery and delivery ownership.
+- Intentional distinctions that similar names or shapes must not erase.
+- Compatibility consumers, purpose and removal conditions.
 
-- System purpose
-- Modules, apps, and services
-- Domain concepts
-- Canonical terminology
-- Authoritative representations
-- Data ownership
-- Invariants
-- Persistence boundaries
-- External and provider boundaries
-- Dependency direction
-- Public APIs
-- Async boundaries
-- Critical workflows
-- Legacy and transitional paths
+Inspect the relevant entrypoints and representative workflows; do not read
+all files or complete a taxonomy checklist. State uncertainty and omit sections
+that do not apply. Source code and tests must support architectural assertions.
 
-Mark uncertainty explicitly. Omit sections that do not apply.
+Do not maintain file/line counts, dependency totals, regenerable inventories,
+scan results, review ledgers or completed-finding histories here. Those are
+recomputable or belong to an explicitly selected advanced workflow.
 
-## How to inspect (do not read every file)
-
-1. Run `coherent init` for the mechanical inventory.
-2. Read existing architecture and config files (`ARCHITECTURE.md`, `coherent.json`, tsconfig, package manifests, workspace files).
-3. Inspect declared entrypoints, bins, and exports.
-4. Inspect workspace and package structure.
-5. Inspect major persistence, domain, and external boundaries (clients, stores, provider adapters).
-6. Inspect a few representative workflows from those entrypoints — the paths that must keep working during cleanup.
-7. Update `.coherent/ARCHITECTURE.md`. Never silently overwrite completed semantic sections.
-
-Phase 0 work also includes: understand important workflows, inspect existing behavioral tests, identify externally reachable boundaries, and establish a baseline (`coherent baseline`) before destructive cleanup.
-
-## Phase 2 — semantic map
-
-A01, A02, and A03 often produce knowledge before code changes. Use them to record:
-
-- Intentional architecture vs historical accidents
-- Domain vocabulary
-- Protocol and state vocabulary
-
-Do not mass-rename solely because terminology drift was discovered. Rename when it supports an actual consolidation or clarification.
+`coherent init` explicitly creates a small context starter. Existing legacy
+inventory documents are left intact; `refresh` preserves authored text. See
+[migration.md](migration.md) for an explicit preview of removing managed
+inventory sections without deleting stored baseline/review state.

@@ -1,62 +1,56 @@
-# Fix safety
+# Bounded improvement safety
 
-`coherent fix next` selects **one** unlocked cleanup node. It does not rewrite the repository. The agent performs the edit.
-
-```bash
-coherent fix next
-coherent fix next --json
-```
-
-When the reviewed plan has zero nodes, `fix next` reports a clean terminal and
-exits successfully. A no-node failure means work still exists but is blocked
-or needs review.
-
-## Selection
-
-The CLI picks the highest-scoring ready node: prerequisites satisfied, then confidence, surface reduction, unlock value, simplification, risk, tests, and default phase. Early in a legacy repository this is often high-confidence dead code or a stale path.
-
-Candidates never enter the ready queue without `review confirm`, including
-unused-export and indirect-registration findings. The brief includes each
-selected finding's fingerprint, exact locations, symbols, and detector
-evidence from the same scan. `--json` includes these reviewed findings in
-`findings`; do not run another audit just to recover their line numbers.
-
-If the node is analysis-only, the successful outcome may be an architecture note rather than a code edit.
+The agent chooses the unit of work from the request, current evidence and
+expected benefit. A default improvement requires no baseline, saved confirmation,
+DAG, metadata check or exhaustive candidate triage. Advanced `fix next` is a
+separate, explicitly selected workflow.
 
 ## Before editing
 
-Inspect callers, callees, registration mechanisms, external and public reachability, tests, and relevant architecture documentation.
+Read project instructions, relevant ownership/invariants, existing changes,
+callers, callees, public consumers and tests. Trace producer → parser → consumer.
+Preserve distinct protocols, nullability, unknown-value handling and import paths.
+For deletion, establish reachability through frameworks, DI, decorators,
+reflection, CLI registration, dynamic imports, background jobs and public APIs.
 
-For dead-code deletion, verify dynamic mechanisms: DI, decorators, reflection, framework registration, jobs, CLI registration, dynamic imports, package exports, external API exposure.
+For compatibility, name the actual consumer and removal condition. For external
+writes, name the idempotency, recovery and uncertain-outcome boundaries. Carry
+user constraints forward; never widen commit, deploy or production authority.
 
-## During editing
+Choose one useful improvement. Related edits may share a validation pass when
+contracts, files or tests overlap; preserve separate semantic conclusions. Do
+not batch unrelated deletion or manufacture an abstraction to remove a wrapper.
 
-Prefer deletion, consolidation, reducing representations, removing wrappers, and moving invariants upstream.
+## Validation
 
-Avoid replacement abstractions, compatibility wrappers for removed compatibility wrappers, and broad unrelated cleanup.
+Classify the actual change, not its task label:
 
-Only remove dead code when confidence is sufficient. Stale compatibility requires semantic verification before deletion.
+- **Type-only:** check assignability, callers, serialization contracts, null and
+  unknown handling; verify runtime preservation where useful.
+- **Refactor:** characterize observable behavior and public/import compatibility.
+- **Behavior:** reproduce the old failure and test the corrected outcome plus
+  valid controls and recovery.
+- **External side effects:** test uncertain responses, retries, lost responses,
+  re-entry, stable operation/request IDs, attempts and duplicate-write prevention.
+  A scan or byte-identical transpilation is not proof about live providers.
 
-## After editing
+Inspect test prerequisites before a broad run: actual runner, local resource
+ownership, DB version/fixture endpoint restrictions and schema readiness. Use
+project setup commands; do not repurpose another project's resources.
 
-1. Typecheck
-2. Run targeted tests
-3. Run broader tests where appropriate
-4. Rerun `coherent audit`
-5. Rerun `coherent check`
-6. Confirm the target finding is gone
-7. Inspect newly dead code
-8. Inspect newly unused dependencies
-9. Update the cleanup DAG (`coherent plan`)
-10. Update architecture documentation if authoritative concepts changed
+Run targeted checks while editing, then the normal checks required by the
+repository and change risk. Reuse evidence from the same unchanged source.
+Additional passes require new changes, failures or unresolved concerns. Keep
+old test failures, expected regression reds and new mistakes distinct. Repair
+unrelated stale assertions only when justified and report the extra scope.
 
-After compatibility removal or consolidation, explicitly search for newly dead code, types, tests, helpers, configuration, and dependencies.
+Reinspect the diff and any code made obsolete. A targeted rescan is useful when
+it verifies the original hypothesis; audit/check/plan/doctor are not a mandatory
+chain. Do not create reviews to make a noisy residual signal disappear.
 
-## Report
+## Handoff and stopping
 
-Lines added and deleted, symbols removed, representations removed, paths removed, findings resolved, findings indirectly resolved, new findings, newly unlocked cleanup nodes, tests run.
-
-## Tests: early vs late
-
-Early: small safety and characterization tests so cleanup cannot silently break behavior.
-Late: architectural test simplification (D04, D05). Do not refactor hundreds of mocks around code that is likely to disappear.
+Explain before → after → practical effect, preserved invariants, tests and limits.
+Be candid about marginal benefits and no demonstrated performance gain. A fixed
+signal count is secondary. Report missing evidence or a concrete blocker when
+no safe edit is justified. Complete the bounded outcome and stop.

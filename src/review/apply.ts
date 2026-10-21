@@ -65,7 +65,7 @@ export function matchReviewDetails(
     (review) =>
       sameIdentity(review, finding) &&
       hasCurrentDetectorRevision(review) &&
-      reviewLifecycleState(review) === "current",
+      reviewApplies(finding, review),
   );
   if (fallback.length !== 1) return undefined;
   if (ambiguousIdentity(finding, peers)) return undefined;
@@ -80,7 +80,7 @@ export function hasPotentialIdentityReview(
     (review) =>
       sameIdentity(review, finding) &&
       hasCurrentDetectorRevision(review) &&
-      reviewLifecycleState(review) === "current",
+      reviewApplies(finding, review),
   );
 }
 
@@ -107,7 +107,7 @@ export function classifyReview(review: FindingReview, findings: Finding[]): Revi
   if (
     identityHits === 1 &&
     hasCurrentDetectorRevision(review) &&
-    reviewLifecycleState(review) === "current"
+    reviewApplies(findings.find(finding => sameIdentity(review, finding))!, review)
   ) {
     return "applied";
   }
@@ -116,7 +116,9 @@ export function classifyReview(review: FindingReview, findings: Finding[]): Revi
 
 function reviewApplies(finding: Finding, review: FindingReview): boolean {
   if (reviewLifecycleState(review) !== "current") return false;
-  return finding.detectionMode === "semantic" || hasCurrentDetectorRevision(review);
+  if (finding.detectionMode === "semantic") return true;
+  if (finding.evidenceHash && finding.evidenceHash !== review.evidenceHash) return false;
+  return hasCurrentDetectorRevision(review);
 }
 
 function sameIdentity(review: FindingReview, finding: Finding): boolean {

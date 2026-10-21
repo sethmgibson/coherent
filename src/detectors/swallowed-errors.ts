@@ -1,14 +1,15 @@
+import { createHash } from "node:crypto";
 import { Node, SyntaxKind, type CatchClause } from "ts-morph";
 import type { AnalysisContext } from "../analysis/context.js";
 import { catchHasReturn, catchLooksLikeRethrow, locationOf } from "../analysis/inspect.js";
-import { makeFinding } from "../audit/finding-factory.js";
-import type { Finding } from "../domain/finding.js";
+import { makeEvidence } from "../audit/finding-factory.js";
+import type { Evidence } from "../audit/finding-factory.js";
 
 const LOG_CALL = /(log|logger|console|report|capture|track|metric)/i;
 const TRANSLATE = /throw new\s+\w+|return\s+\w*(Result|Err|Failure|Fail)\b/;
 
-export function detectSwallowedErrors(ctx: AnalysisContext): Finding[] {
-  const findings: Finding[] = [];
+export function detectSwallowedErrors(ctx: AnalysisContext): Evidence[] {
+  const findings: Evidence[] = [];
   for (const file of ctx.sourceFiles) {
     if (ctx.isTestFile(ctx.relativePath(file))) continue;
     for (const clause of file.getDescendantsOfKind(SyntaxKind.CatchClause)) {
@@ -20,7 +21,7 @@ export function detectSwallowedErrors(ctx: AnalysisContext): Finding[] {
 
 function classifyCatch(
   ctx: AnalysisContext,
-  findings: Finding[],
+  findings: Evidence[],
   clause: CatchClause,
 ): void {
   if (catchLooksLikeRethrow(clause)) return;
@@ -75,7 +76,7 @@ function classifyCatch(
   if (returnsNullish && logs) {
     findings.push(
       swallowFinding(ctx, clause, relative, owner, "candidate", "medium", "swallowed-nullish", [
-        `Catch logs and returns ${returnExpr}. Callers cannot observe the failure.`,
+        `Catch logs and returns ${returnExpr}. No direct rethrow is present; inspect durable state, caller handling and recovery.`,
         ...(allowsNullish
           ? ["The callable explicitly permits a nullish result."]
           : []),
@@ -139,10 +140,10 @@ function swallowFinding(
   confidence: "high" | "medium",
   kind: string,
   details: string[],
-): Finding {
-  return makeFinding({
+): Evidence {
+  return makeEvidence({
     ruleId: "D03",
-    identity: `${kind}:${relative}:${owner}`,
+    identity: `${kind}:${relative}:${owner}:${catchAnchor(clause)}`,
     title: status === "confirmed" ? "Swallowed error" : "Possible boundary fallback",
     severity: status === "confirmed" ? "high" : "medium",
     confidence,
@@ -177,4 +178,16 @@ function ownerName(clause: CatchClause): string {
     return fn.getName() ?? "anonymous";
   }
   return "anonymous";
+}
+
+function catchAnchor(clause: CatchClause): string {
+  const parent = clause.getParent();
+  const text = Node.isTryStatement(parent) ? parent.getTryBlock().getText() : "catch";
+  const key = createHash("sha256").update(text.replace(/\s+/g, " ")).digest("hex").slice(0, 12);
+  const peers = clause.getSourceFile().getDescendantsOfKind(SyntaxKind.CatchClause)
+    .filter(peer => {
+      const p = peer.getParent();
+      return Node.isTryStatement(p) && p.getTryBlock().getText().replace(/\s+/g, " ") === text.replace(/\s+/g, " ");
+    });
+  return `${key}:${peers.indexOf(clause) + 1}`;
 }

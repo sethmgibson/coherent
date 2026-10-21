@@ -25,7 +25,7 @@ export async function runInit(
   const exists = await fileExists(architecturePath);
   let wroteArchitecture = false;
   if (!exists) {
-    await writeFile(architecturePath, generateArchitectureMarkdown(inventory), "utf8");
+    await writeFile(architecturePath, generateArchitectureMarkdown(), "utf8");
     wroteArchitecture = true;
   } else if (options.force === true) {
     await refreshArchitectureFile(architecturePath, inventory);

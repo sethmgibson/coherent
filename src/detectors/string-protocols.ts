@@ -1,8 +1,8 @@
 import { Node, SyntaxKind } from "ts-morph";
 import type { AnalysisContext } from "../analysis/context.js";
 import { locationOf } from "../analysis/inspect.js";
-import { makeFinding } from "../audit/finding-factory.js";
-import type { Finding } from "../domain/finding.js";
+import { makeEvidence } from "../audit/finding-factory.js";
+import type { Evidence } from "../audit/finding-factory.js";
 
 const PROTOCOL_PROPS = new Set([
   "status",
@@ -27,7 +27,7 @@ interface LiteralUse {
   scope: string;
 }
 
-export function detectStringProtocols(ctx: AnalysisContext): Finding[] {
+export function detectStringProtocols(ctx: AnalysisContext): Evidence[] {
   const uses: LiteralUse[] = [];
   for (const file of ctx.sourceFiles) {
     if (ctx.isTestFile(ctx.relativePath(file))) continue;
@@ -50,7 +50,7 @@ export function detectStringProtocols(ctx: AnalysisContext): Finding[] {
   }
 
   const byExact = groupBy(uses, (use) => `${use.owner}\0${use.scope}\0${use.value}`);
-  const findings: Finding[] = [];
+  const findings: Evidence[] = [];
   const reported = new Set<string>();
 
   for (const [key, group] of byExact) {
@@ -87,10 +87,10 @@ function protocolFinding(
   label: string,
   group: LiteralUse[],
   variants: string[],
-): Finding {
+): Evidence {
   const files = [...new Set(group.map((use) => use.file))];
   const owners = [...new Set(group.map((use) => use.owner))];
-  return makeFinding({
+  return makeEvidence({
     ruleId: "A03",
     identity,
     title: variants.length > 0 ? "String protocol spelling variants" : "Repeated string discriminant",
@@ -121,8 +121,9 @@ function valueOf(literal: Node): string {
 function isTypedStringUnion(node: Node, value: string): boolean {
   try {
     const type = node.getType();
-    const parts = type.isUnion() ? type.getUnionTypes() : [type];
-    if (parts.length < 2 || !parts.every((part) => part.isStringLiteral())) return false;
+    const parts = (type.isUnion() ? type.getUnionTypes() : [type])
+      .filter(part => !part.isNull() && !part.isUndefined());
+    if (parts.length === 0 || !parts.every(part => part.isStringLiteral())) return false;
     return parts.some((part) => part.getLiteralValue() === value);
   } catch {
     return false;

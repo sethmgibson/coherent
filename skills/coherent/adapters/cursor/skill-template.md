@@ -5,18 +5,16 @@ argument-hint: "[init|refresh|audit|inspect|review|baseline|check|plan|fix|docto
 ---
 
 <!-- coherent:adapter -->
-This is a Cursor bootstrap adapter, not a second methodology. First run `coherent version . --json`. Load the exact file reported at `runtime.skillPath` and follow its references. If the command, `canonical-skill-path` capability, or reported file is missing, stop and repair the CLI/skill installation before auditing or writing Coherent state.
+This is a Cursor bootstrap adapter. Prefer skills-only adoption, which copies
+the complete canonical skill and needs no CLI or project dependency.
+When a CLI is available, run `coherent version . --json`, load the exact file
+at `runtime.skillPath`, and follow its bounded default workflow. If it is
+unavailable, use existing project context for source inspection; do not require
+baseline/review state or install dependencies incidentally. Verify the actual
+runtime capabilities before mechanical tool calls or advanced state writes.
 
-In chat, invoke commands as `/coherent init`, `/coherent refresh`, `/coherent audit`, `/coherent inspect`, `/coherent review`, `/coherent baseline`, `/coherent plan`, `/coherent fix next`, `/coherent check`, `/coherent doctor`, `/coherent install`, and `/coherent update`. `/backend` is a skill alias for the same commands.
-
-The CLI binary is `coherent`. `backend` is an alias.
-
-Routing:
-
-- **No argument:** recommend `init` if `.coherent/ARCHITECTURE.md` is missing; otherwise recommend `audit`.
-- **Explicit command:** open the matching playbook relative to the reported canonical skill path.
-- **Ordinary feature work:** load `reference/prevention.md` beside the canonical skill. Prefer `coherent check --changed` after edits.
-- **Taxonomy:** load `reference/taxonomy.md` beside the canonical skill (generated from `src/catalog/rules.ts`).
-
-Project adoption copies this skill tree with `npx --yes --package github:sethmgibson/coherent -- coherent install`. If you install a project rule, copy `adapters/cursor/prevention.mdc` rather than rewriting the methodology here.
+Project adoption for the default skill:
+`npx --yes --package github:sethmgibson/coherent -- coherent install --skills-only --yes`.
+Persistent reviews, baseline gates and managed cleanup remain explicit advanced
+choices. `/backend` remains a compatibility alias.
 <!-- /coherent:adapter -->

@@ -1,40 +1,42 @@
-# `audit`
+# Targeted evidence and audit
 
-Find maintainability issues. Do not fix them here.
+The agent interprets source evidence and chooses worthwhile work. An ordinary
+review or improvement does not require initialization, a baseline, a persistent
+review or a cleanup plan. Use search/compiler/test tools directly when simpler.
 
-## Mechanical step
+For selected mechanical assistance:
 
 ```bash
-coherent audit
-coherent audit --json
-coherent audit --compact-json
-coherent audit --output path/to/audit.json
+coherent version . --json --require-capability targeted-evidence
+coherent audit . --evidence --paths src/orders --rules A06 --json
+coherent audit . --evidence --paths src/orders/state.ts --rules A03 --json
 ```
 
-The CLI inventories the target, reads architecture context if present, builds one TypeScript analysis context, and resolves modules with the owning repository tsconfig (including inherited options, path aliases, and child configs in project-reference workspaces). When `.py` files are in scope it also runs the packaged Python stdlib-`ast` sidecar as an explicit subprocess of the Node CLI host. It fails closed if those files are in scope and no supported CPython 3.9+ interpreter exists, and it identifies Python syntax errors by file and line. The sidecar receives file paths as JSON, so paths with spaces stay intact, and it writes no pycache or other caches. Inventory skips `__pycache__`, `site-packages`, and local virtualenv directories (names ending in `venv`). It runs the implemented detectors, merges duplicate fingerprints (union locations, occurrence evidence), groups findings, and computes metrics. It writes nothing by default and generates no tsconfig or cache. `--json` prints the full result. `--compact-json` prints minified totals by rule plus one review-focused copy of each finding: fingerprint, rule, identity, status, severity, confidence, detection mode, evidence, and locations. It omits duplicated status arrays, groups, metrics, catalog-derived prose, and planner fields. `--output` writes the selected full or compact JSON shape to the explicit path. Fingerprints are unique. Do not combine `--json` and `--compact-json`.
+`--paths` accepts existing repository-relative files/directories. `--rules`
+selects supported rule IDs; IDs are tool parameters, not user vocabulary. With
+no selection, evidence mode runs duplicate-representation checks (A06), not the
+entire heuristic catalog. Paths outside the repository are rejected. A scoped
+result never establishes repository-wide reachability or cleanliness.
 
-Implemented detectors cover dead code, stale compatibility, implicit string protocols, duplicate representations, premature abstraction, excessive indirection, boolean and context-object explosion, swallowed errors, dependency creep, redundant database access, unnecessary sequential I/O, and algorithmic complexity. Other catalog entries remain semantic.
+The evidence JSON envelope contains `runtime`, `scope` and `observations`.
+Each observation gives its rule/name, identity, confidence, detection mode,
+explanation, source evidence, locations and symbols. There are no fingerprints,
+review states, priority scores, cleanup prerequisites or terminal-state claims.
+No baseline, decisions or architecture document is required or parsed.
+Explicit `--output path` writes only the requested result; acknowledgements go
+to stderr so JSON stdout stays parseable. Missing Python support or unreadable
+in-scope inputs fail clearly; unused language analyzers are not required.
 
-Dead-code analysis separates test-only references from production static use.
-Test-only findings remain candidates, including public APIs. Nest registration
-analysis follows exact provider tokens and constructor bindings within visible
-module scopes; proven registered consumers are not reported as unused. Opaque
-or ambiguous bindings remain conservative. Python dead-code reports only
-mechanically certain unreachable statements; it does not treat missing static
-references as deletion evidence. See [Dead code](rules/A08.md) for
-supported patterns and limits.
+Broad string repetition, wrapper counts, catch shapes and performance patterns
+are targeted investigative aids, not default work queues. Trace ownership,
+producer/parser/consumer contracts and observable error/recovery state. Do not
+turn a residual heuristic into a dismissal bookkeeping task.
 
-Mechanical findings are regenerated on demand. Record agent decisions with `coherent review`. Author semantic-only findings in the `findings` array of `.coherent/decisions.json`. `coherent plan` merges current mechanical findings with those durable decisions.
+## Existing advanced audit
 
-`audit` deliberately shows raw detector status, not review disposition. A
-reviewed repository can therefore have non-zero audit signals. Use `plan` for
-actionability and its reviewed signal summary; zero plan nodes is the clean
-terminal state.
-
-JSON modes keep stdout machine-readable even with `--output`; the write
-acknowledgement goes to stderr. The same output-channel contract applies to
-`plan --json --output`.
-
-## Agent step
-
-Follow [semantic-audits.md](semantic-audits.md). Cleanup order is not taxonomy order. See [cleanup-phases.md](cleanup-phases.md) and [cleanup-planning.md](cleanup-planning.md).
+`coherent audit`, `--json` and `--compact-json` without `--evidence` retain their
+legacy full-scan Finding shapes, groups and metrics for advanced consumers.
+They still write no metadata without `--output`. `--paths` and `--rules` require
+`--evidence`; they cannot accidentally turn a legacy full-audit assertion into
+a partial result. See [full-cleanup.md](full-cleanup.md) for explicit managed
+cleanup and [semantic-triage.md](semantic-triage.md) for optional broader review.

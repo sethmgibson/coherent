@@ -4,13 +4,17 @@ import {
   createFinding,
   type Confidence,
   type Finding,
+  type FindingInput,
   type FindingEvidence,
   type FindingStatus,
   type Severity,
   type SourceLocation,
 } from "../domain/finding.js";
 
-export function makeFinding(input: {
+export type Evidence = Omit<FindingInput, "cleanupBenefit" | "changeRisk" | "prerequisiteFindingIds">
+  & Partial<Pick<FindingInput, "cleanupBenefit" | "changeRisk">>;
+
+export function makeEvidence(input: {
   ruleId: RuleId;
   identity: string;
   title?: string;
@@ -29,9 +33,9 @@ export function makeFinding(input: {
   unlocks?: string;
   changeRisk?: string;
   testSafetyEvidence?: string;
-}): Finding {
+}): Evidence {
   const rule = RULES_BY_ID[input.ruleId];
-  return createFinding({
+  return {
     ruleId: input.ruleId,
     title: input.title ?? rule.title,
     identity: input.identity,
@@ -52,16 +56,19 @@ export function makeFinding(input: {
     ...(input.deletionOpportunity
       ? { deletionOpportunity: input.deletionOpportunity }
       : {}),
-    cleanupBenefit: input.cleanupBenefit ?? rule.whyItMatters,
+    ...(input.cleanupBenefit ? { cleanupBenefit: input.cleanupBenefit } : {}),
     ...(input.unlocks ? { unlocks: input.unlocks } : {}),
-    changeRisk:
-      input.changeRisk ??
-      (input.status === "confirmed"
-        ? "Low if evidence holds; still review callers outside this tree."
-        : "Needs semantic review before deletion or consolidation."),
-    ...(input.testSafetyEvidence
-      ? { testSafetyEvidence: input.testSafetyEvidence }
-      : {}),
+    ...(input.changeRisk ? { changeRisk: input.changeRisk } : {}),
+    ...(input.testSafetyEvidence ? { testSafetyEvidence: input.testSafetyEvidence } : {}),
+  };
+}
+
+/** Legacy advanced Finding enrichment is deliberately outside evidence collection. */
+export function findingFromEvidence(evidence: Evidence): Finding {
+  return createFinding({
+    ...evidence,
+    cleanupBenefit: evidence.cleanupBenefit ?? RULES_BY_ID[evidence.ruleId].whyItMatters,
+    changeRisk: evidence.changeRisk ?? "Inspect callers, contracts and external reachability before editing.",
     prerequisiteFindingIds: [],
   });
 }

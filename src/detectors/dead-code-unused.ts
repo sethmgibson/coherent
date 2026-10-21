@@ -7,8 +7,8 @@ import {
   locationOf,
   looksLikeFrameworkName,
 } from "../analysis/inspect.js";
-import { makeFinding } from "../audit/finding-factory.js";
-import type { Finding } from "../domain/finding.js";
+import { makeEvidence } from "../audit/finding-factory.js";
+import type { Evidence } from "../audit/finding-factory.js";
 
 export function classifyUnused(
   ctx: AnalysisContext,
@@ -19,7 +19,7 @@ export function classifyUnused(
   kind: string,
   exported: boolean,
   decorated = hasFrameworkDecorator(node),
-): Finding {
+): Evidence {
   const reasons: string[] = [`No static references to ${kind} '${name}' were found.`];
   const indirect = indirectReachability(name, relative, exported, decorated, dynamicFiles, ctx);
   if (Node.isMethodDeclaration(node) && !node.hasModifier(SyntaxKind.PrivateKeyword)) {
@@ -42,8 +42,8 @@ export function unusedFinding(
   confidence: "high" | "medium",
   details: string[],
   kind = "declaration",
-): Finding {
-  return makeFinding({
+): Evidence {
+  return makeEvidence({
     ruleId: "A08",
     identity: `${status === "confirmed" ? "unused" : "unused-candidate"}:${relative}:${name}`,
     title: status === "confirmed" ? "Unused internal declaration" : "Possibly unused export or registration",
@@ -69,12 +69,12 @@ export function testOnlyFinding(
   node: Node,
   name: string,
   references: Node[],
-): Finding {
+): Evidence {
   const callers = [...new Set(references.map((ref) => {
     const location = locationOf(ctx, ref);
     return `${location.file}:${location.line}`;
   }))].sort();
-  return makeFinding({
+  return makeEvidence({
     ruleId: "A08",
     identity: `test-only:${ctx.relativePath(node.getSourceFile())}:${name}`,
     title: "Only referenced by tests",

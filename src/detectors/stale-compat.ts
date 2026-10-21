@@ -2,8 +2,8 @@ import { Node, SyntaxKind } from "ts-morph";
 import type { AnalysisContext } from "../analysis/context.js";
 import { enclosingComments, locationOf } from "../analysis/inspect.js";
 import { externalReferences } from "../analysis/references.js";
-import { makeFinding } from "../audit/finding-factory.js";
-import type { Finding } from "../domain/finding.js";
+import { makeEvidence } from "../audit/finding-factory.js";
+import type { Evidence } from "../audit/finding-factory.js";
 
 const NAME_SIGNAL =
   /(?:^|[^A-Za-z])(legacy|deprecated|compat(?:ibility)?|oldMode|newMode|v1|v2|temporary)/i;
@@ -13,8 +13,8 @@ const BRANCH_SIGNAL =
   /(legacy|compat|oldMode|newMode|useV1|useV2|oldPath|newPath|isLegacy|enableLegacy)/i;
 const REVIEW_LIFECYCLE_SIGNAL = /\b(?:notCompatibility|requiresCompatibilityLifecycle)\b/;
 
-export function detectStaleCompatibility(ctx: AnalysisContext): Finding[] {
-  const findings: Finding[] = [];
+export function detectStaleCompatibility(ctx: AnalysisContext): Evidence[] {
+  const findings: Evidence[] = [];
   const seen = new Set<string>();
 
   for (const file of ctx.sourceFiles) {
@@ -61,7 +61,7 @@ export function detectStaleCompatibility(ctx: AnalysisContext): Finding[] {
 
 function addCompat(
   ctx: AnalysisContext,
-  findings: Finding[],
+  findings: Evidence[],
   seen: Set<string>,
   node: Node,
   symbol: string,
@@ -73,7 +73,7 @@ function addCompat(
   if (seen.has(identity)) return;
   seen.add(identity);
   findings.push(
-    makeFinding({
+    makeEvidence({
       ruleId: "A07",
       identity,
       title: "Likely compatibility path",

@@ -1,8 +1,9 @@
-# Full cleanup run
+# Advanced persistent cleanup
 
-Use this playbook when the user asks to clean a whole repository, run the full
-Coherent workflow, or continue until no safe cleanup remains. This is not the
-default for ordinary feature work.
+Use this playbook only when the user explicitly requests persistent reviews,
+baseline drift gates, or dependency-managed cleanup. A request to improve or
+review a repository otherwise follows the bounded default skill. Existing state
+files do not enroll the project. Direct legacy CLI commands retain their meanings.
 
 ## Prepare
 

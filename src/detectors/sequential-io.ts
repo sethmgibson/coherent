@@ -1,8 +1,8 @@
 import { Node, SyntaxKind, type VariableDeclaration } from "ts-morph";
 import type { AnalysisContext } from "../analysis/context.js";
 import { locationOf } from "../analysis/inspect.js";
-import { makeFinding } from "../audit/finding-factory.js";
-import type { Finding } from "../domain/finding.js";
+import { makeEvidence } from "../audit/finding-factory.js";
+import type { Evidence } from "../audit/finding-factory.js";
 
 interface AwaitDescription {
   names: string[];
@@ -12,8 +12,8 @@ interface AwaitDescription {
   resource?: string;
 }
 
-export function detectSequentialIo(ctx: AnalysisContext): Finding[] {
-  const findings: Finding[] = [];
+export function detectSequentialIo(ctx: AnalysisContext): Evidence[] {
+  const findings: Evidence[] = [];
   for (const file of ctx.sourceFiles) {
     if (ctx.isTestFile(ctx.relativePath(file))) continue;
     const relative = ctx.relativePath(file);
@@ -30,7 +30,7 @@ export function detectSequentialIo(ctx: AnalysisContext): Finding[] {
 
 function reportAwaitInLoops(
   ctx: AnalysisContext,
-  findings: Finding[],
+  findings: Evidence[],
   relative: string,
   name: string,
   fn: Node,
@@ -48,7 +48,7 @@ function reportAwaitInLoops(
   );
   if (inLoop.length === 0) return;
   findings.push(
-    makeFinding({
+    makeEvidence({
       ruleId: "E05",
       identity: `await-in-loop:${relative}:${name}`,
       title: "Await inside a loop",
@@ -68,7 +68,7 @@ function reportAwaitInLoops(
 
 function reportIndependentAwaits(
   ctx: AnalysisContext,
-  findings: Finding[],
+  findings: Evidence[],
   relative: string,
   name: string,
   fn: Node,
@@ -94,7 +94,7 @@ function reportIndependentAwaits(
 
 function flush(
   ctx: AnalysisContext,
-  findings: Finding[],
+  findings: Evidence[],
   relative: string,
   name: string,
   fn: Node,
@@ -118,7 +118,7 @@ function flush(
   }
   if (independent < 2 && dependent === sequence.length - 1) return;
   findings.push(
-    makeFinding({
+    makeEvidence({
       ruleId: "E05",
       identity: `seq-await:${relative}:${name}`,
       title: "Sequential awaits",

@@ -1,3 +1,4 @@
+import { portableRuntimeIdentity } from "../src/runtime.ts";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { access, cp, mkdir, mkdtemp, readFile, readdir, realpath, rm, writeFile, chmod } from "node:fs/promises";
@@ -96,8 +97,9 @@ try {
   assert.equal(versionReport.compatible, true);
   assert.deepEqual(versionReport.issues, []);
   assert.equal(runtime.coherentVersion, manifest.version);
-  assert.equal(runtime.workflowRevision, 2);
-  assert.equal(runtime.detectorRevision, 10);
+  const expectedRuntime = portableRuntimeIdentity();
+  assert.equal(runtime.workflowRevision, expectedRuntime.workflowRevision);
+  assert.equal(runtime.detectorRevision, expectedRuntime.detectorRevision);
   assert(Array.isArray(runtime.capabilities) && runtime.capabilities.includes("python-ast"));
   assert.equal(
     await realpath(join(installed, "python", "analyze.py")).then((path) => path.endsWith("analyze.py")),
@@ -121,7 +123,7 @@ try {
   };
   assert(Array.isArray(audit.findings), "Installed CLI did not return findings JSON");
   assert.equal(audit.runtime?.coherentVersion, manifest.version);
-  assert.equal(audit.runtime?.workflowRevision, 2);
+  assert.equal(audit.runtime?.workflowRevision, expectedRuntime.workflowRevision);
   assert(
     audit.findings.some(
       (finding) =>
@@ -131,7 +133,13 @@ try {
     ),
     "Packed CLI did not analyze a Python path containing spaces",
   );
-  console.log("Installed CLI aliases, runtime identity, and audit passed.");
+  const evidence = JSON.parse(run(coherent, ["audit", target, "--evidence", "--paths", "index.ts", "--rules", "A06", "--json"], consumer)) as {
+    scope: { repositoryWide: boolean }; observations: unknown[];
+  };
+  assert.equal(evidence.scope.repositoryWide, false);
+  assert(Array.isArray(evidence.observations));
+  assert(!(await readdir(target)).includes(".coherent"), "Targeted evidence wrote state");
+  console.log("Installed CLI aliases, runtime identity, legacy audit, and state-free targeted evidence passed.");
 
   const smoke = join(temporaryRoot, "smoke repo");
   const smokeHome = join(temporaryRoot, "smoke home");
@@ -189,7 +197,7 @@ process.exit(result.status ?? 1);
       { cause: smokeResult.error },
     );
   }
-  assert.match(smokeResult.stdout, /\$coherent init|\/coherent init/);
+  assert.match(smokeResult.stdout, /bounded improvement/);
   assert.match(smokeResult.stdout, /verified project-local CLI handshake/);
   assert.doesNotMatch(smokeResult.stdout, /add the CLI with/);
   const smokeSkill = join(smoke, ".agents", "skills", "coherent", "SKILL.md");

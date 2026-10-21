@@ -2,14 +2,14 @@ import { Node, SyntaxKind } from "ts-morph";
 import type { AnalysisContext } from "../analysis/context.js";
 import { locationOf, type ShapedType } from "../analysis/inspect.js";
 import { describeFields } from "../analysis/shape-fields.js";
-import { makeFinding } from "../audit/finding-factory.js";
-import type { Finding } from "../domain/finding.js";
+import { makeEvidence } from "../audit/finding-factory.js";
+import type { Evidence } from "../audit/finding-factory.js";
 
 const CONTEXT_NAME = /(context|state|input|options|payload|bag|request|session)/i;
 
 type Bag = ShapedType;
 
-export function detectContextExplosion(ctx: AnalysisContext): Finding[] {
+export function detectContextExplosion(ctx: AnalysisContext): Evidence[] {
   const bags: Bag[] = [];
   for (const file of ctx.sourceFiles) {
     if (ctx.isTestFile(ctx.relativePath(file))) continue;
@@ -27,14 +27,14 @@ export function detectContextExplosion(ctx: AnalysisContext): Finding[] {
     }
   }
 
-  const findings: Finding[] = [];
+  const findings: Evidence[] = [];
   for (const bag of bags) {
     const consumers = findConsumers(ctx, bag);
     const tiny = consumers.filter((consumer) => consumer.used.length > 0 && consumer.used.length <= 2);
     const mutations = consumers.filter((consumer) => consumer.mutates);
     if (tiny.length === 0 && mutations.length === 0) continue;
     findings.push(
-      makeFinding({
+      makeEvidence({
         ruleId: "C04",
         identity: `context-object:${bag.file}:${bag.name}`,
         title: "Large context / options object",

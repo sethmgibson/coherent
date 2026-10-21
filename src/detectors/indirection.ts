@@ -7,16 +7,16 @@ import {
 } from "ts-morph";
 import type { AnalysisContext } from "../analysis/context.js";
 import { locationOf } from "../analysis/inspect.js";
-import { makeFinding } from "../audit/finding-factory.js";
-import type { Finding } from "../domain/finding.js";
+import { makeEvidence } from "../audit/finding-factory.js";
+import type { Evidence } from "../audit/finding-factory.js";
 
 const MEANINGFUL =
   /(authoriz|auth|validat|map|transform|cache|log|metric|audit|translat|wrap|retr|transaction|lock|hydrat|polic|permission|guard)/i;
 const STDLIB =
   /^(JSON|Object|Array|String|Number|Math|console|Buffer|path|fs)\.|(\.test|\.exec|\.match|\.replace|\.slice|\.join|\.split|\.stringify|\.parse)$/;
 
-export function detectExcessiveIndirection(ctx: AnalysisContext): Finding[] {
-  const findings: Finding[] = [];
+export function detectExcessiveIndirection(ctx: AnalysisContext): Evidence[] {
+  const findings: Evidence[] = [];
   for (const file of ctx.sourceFiles) {
     if (ctx.isTestFile(ctx.relativePath(file))) continue;
     for (const fn of file.getFunctions()) consider(ctx, findings, fn);
@@ -29,7 +29,7 @@ export function detectExcessiveIndirection(ctx: AnalysisContext): Finding[] {
 
 function consider(
   ctx: AnalysisContext,
-  findings: Finding[],
+  findings: Evidence[],
   fn: FunctionDeclaration | MethodDeclaration,
 ): void {
   const name = fn.getName();
@@ -57,7 +57,7 @@ function consider(
   const mechanical = Node.isIdentifier(calleeExpr);
   const confirmed = mechanical && isPrivateImplementation(fn);
   findings.push(
-    makeFinding({
+    makeEvidence({
       ruleId: "B04",
       identity: `forwarding:${relative}:${name}`,
       title: "Forwarding wrapper",

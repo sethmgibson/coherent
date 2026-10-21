@@ -1,12 +1,12 @@
 import { Node, VariableDeclarationKind, type Statement } from "ts-morph";
 import type { AnalysisContext } from "../analysis/context.js";
 import { isFalseLiteral, locationOf, statementTerminates } from "../analysis/inspect.js";
-import { makeFinding } from "../audit/finding-factory.js";
-import type { Finding } from "../domain/finding.js";
+import { makeEvidence } from "../audit/finding-factory.js";
+import type { Evidence } from "../audit/finding-factory.js";
 
 export function collectUnreachable(
   ctx: AnalysisContext,
-  findings: Finding[],
+  findings: Evidence[],
   statements: Statement[],
 ): void {
   let unreachable = false;
@@ -23,7 +23,7 @@ export function collectUnreachable(
       ) continue;
       const file = ctx.relativePath(statement.getSourceFile());
       findings.push(
-        makeFinding({
+        makeEvidence({
           ruleId: "A08",
           identity: `unreachable:${file}:${stableText(statement)}`,
           title: "Unreachable statement",
@@ -61,13 +61,13 @@ export function collectUnreachable(
 
 function markUnreachableBranch(
   ctx: AnalysisContext,
-  findings: Finding[],
+  findings: Evidence[],
   then: Statement,
 ): void {
   const targets = Node.isBlock(then) ? then.getStatements() : [then];
   for (const target of targets) {
     findings.push(
-      makeFinding({
+      makeEvidence({
         ruleId: "A08",
         identity: `unreachable-false:${ctx.relativePath(target.getSourceFile())}:${stableText(target)}`,
         title: "Unreachable branch",

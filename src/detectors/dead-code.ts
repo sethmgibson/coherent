@@ -11,19 +11,21 @@ import type { AnalysisContext } from "../analysis/context.js";
 import { dynamicallyImportedFiles, hasFrameworkDecorator } from "../analysis/inspect.js";
 import { externalReferences } from "../analysis/references.js";
 import { nestReachableMethods } from "../analysis/nest-reachability.js";
-import type { Finding } from "../domain/finding.js";
+import type { Evidence } from "../audit/finding-factory.js";
 import { classifyUnused, testOnlyFinding, unusedFinding } from "./dead-code-unused.js";
 import { collectUnreachable } from "./dead-code-unreachable.js";
 
-export function detectDeadCode(ctx: AnalysisContext): Finding[] {
-  const findings: Finding[] = [];
+export function detectDeadCode(ctx: AnalysisContext): Evidence[] {
+  const findings: Evidence[] = [];
   const dynamicFiles = dynamicallyImportedFiles(ctx);
   const nestMethods = nestReachableMethods(ctx);
 
   for (const file of ctx.sourceFiles) {
     const relative = ctx.relativePath(file);
+    const nextRoute = ctx.inventory.frameworks.includes("Next.js") && /(^|\/)(src\/)?app\/.*\/route\.[cm]?[jt]s$/.test(relative);
     if (!ctx.isTestFile(relative)) {
       for (const fn of file.getFunctions()) {
+        if (nextRoute && fn.isExported() && isHttpMethod(fn.getName())) continue;
         considerDeclaration(ctx, findings, fn, relative, dynamicFiles, "function");
       }
       for (const cls of file.getClasses()) {
@@ -34,6 +36,7 @@ export function detectDeadCode(ctx: AnalysisContext): Finding[] {
         }
       }
       for (const variable of file.getVariableDeclarations()) {
+        if (nextRoute && isExportedVariable(variable) && isHttpMethod(variable.getName())) continue;
         considerVariable(ctx, findings, variable, relative, dynamicFiles);
       }
     }
@@ -52,7 +55,7 @@ export function detectDeadCode(ctx: AnalysisContext): Finding[] {
 
 function considerDeclaration(
   ctx: AnalysisContext,
-  findings: Finding[],
+  findings: Evidence[],
   node: FunctionDeclaration | ClassDeclaration,
   relative: string,
   dynamicFiles: Set<string>,
@@ -68,7 +71,7 @@ function considerDeclaration(
 
 function considerVariable(
   ctx: AnalysisContext,
-  findings: Finding[],
+  findings: Evidence[],
   node: VariableDeclaration,
   relative: string,
   dynamicFiles: Set<string>,
@@ -94,7 +97,7 @@ function considerVariable(
 
 function considerBinding(
   ctx: AnalysisContext,
-  findings: Finding[],
+  findings: Evidence[],
   element: BindingElement,
   relative: string,
   dynamicFiles: Set<string>,
@@ -111,7 +114,7 @@ function considerBinding(
 
 function considerMethod(
   ctx: AnalysisContext,
-  findings: Finding[],
+  findings: Evidence[],
   cls: ClassDeclaration,
   method: MethodDeclaration,
   relative: string,
@@ -161,7 +164,7 @@ function isInterfaceOrOverride(cls: ClassDeclaration, method: MethodDeclaration)
   );
 }
 
-function hasConsumers(ctx: AnalysisContext, findings: Finding[], node: Node, name: string): boolean {
+function hasConsumers(ctx: AnalysisContext, findings: Evidence[], node: Node, name: string): boolean {
   const refs = externalReferences(node);
   if (refs.length === 0) return false;
   const consumers = refs.filter((ref) =>
@@ -190,4 +193,8 @@ function isRequireInitializer(node: VariableDeclaration): boolean {
     if (Node.isCallExpression(expr) && expr.getExpression().getText() === "require") return true;
   }
   return /\brequire\s*\(/.test(init.getText());
+}
+
+function isHttpMethod(name: string | undefined): boolean {
+  return name !== undefined && /^(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)$/.test(name);
 }

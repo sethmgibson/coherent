@@ -10,7 +10,7 @@ import {
 } from "../baseline/run.js";
 import { ARCHITECTURE_FILE, loadConfig } from "../config.js";
 import { legacyStateDirWarning, resolveStateDir } from "../state-dir.js";
-import { generateArchitectureMarkdown } from "../init/architecture.js";
+import { generateLegacyArchitectureMarkdown, isFocusedArchitecture } from "../init/architecture.js";
 import {
   extractDiscoveredInteriors,
   hasDiscoveredFences,
@@ -71,6 +71,7 @@ async function checkArchitecture(root: string, issues: DoctorIssue[]): Promise<v
     }
     throw error;
   }
+  if (isFocusedArchitecture(markdown)) return;
   if (!hasDiscoveredFences(markdown)) {
     issues.push({
       code: "unfenced-architecture",
@@ -80,7 +81,7 @@ async function checkArchitecture(root: string, issues: DoctorIssue[]): Promise<v
   }
   const config = await loadConfig(root);
   const inventory = await collectInventory(root, config);
-  const expected = extractDiscoveredInteriors(generateArchitectureMarkdown(inventory));
+  const expected = extractDiscoveredInteriors(generateLegacyArchitectureMarkdown(inventory));
   const actual = extractDiscoveredInteriors(markdown);
   if (
     expected.length !== actual.length ||

@@ -2,8 +2,8 @@ import { Node, type ClassDeclaration } from "ts-morph";
 import type { AnalysisContext } from "../analysis/context.js";
 import { locationOf, nameStem, type ShapedType } from "../analysis/inspect.js";
 import { describeFields } from "../analysis/shape-fields.js";
-import { makeFinding } from "../audit/finding-factory.js";
-import type { Finding } from "../domain/finding.js";
+import { makeEvidence } from "../audit/finding-factory.js";
+import type { Evidence } from "../audit/finding-factory.js";
 
 interface Overlap {
   left: number;
@@ -17,10 +17,10 @@ interface Overlap {
   named: boolean;
 }
 
-export function detectDuplicateRepresentations(ctx: AnalysisContext): Finding[] {
+export function detectDuplicateRepresentations(ctx: AnalysisContext): Evidence[] {
   const shapes = collectShapes(ctx);
   const pairs = overlappingPairs(shapes);
-  const findings: Finding[] = [];
+  const findings: Evidence[] = [];
   for (const members of clusterPairs(shapes.length, pairs)) {
     const cluster = members.map((index) => shapes[index]!);
     const related = pairs.filter((pair) => members.includes(pair.left) && members.includes(pair.right));
@@ -33,7 +33,7 @@ export function detectDuplicateRepresentations(ctx: AnalysisContext): Finding[] 
     const scope = representationScope(cluster);
     const highOverlap = related.some((pair) => pair.overlap >= 0.8 && pair.typeMismatches.length === 0);
     findings.push(
-      makeFinding({
+      makeEvidence({
         ruleId: "A06",
         identity: `duplicate-rep:${scope}:${stem}`,
         title: "Structurally similar representations",
