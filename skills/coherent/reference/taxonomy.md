@@ -388,7 +388,7 @@ Redundant I/O, repeated work, over-fetching, serialization cost, and accidental 
 - Prerequisites: none
 - Re-scan after: none
 
-The same data is loaded repeatedly in one request or workflow, or N+1 queries remain after the shape of the work is known.
+Database or API reads repeat within a workflow, N+1 queries scale with item count, or a read retrieves a value safely derivable from already available authoritative inputs.
 
 Why it matters: On surviving architecture this is usually the cheapest performance win and the one agents reintroduce by composing services naively.
 
@@ -401,7 +401,7 @@ Why it matters: On surviving architecture this is usually the cheapest performan
 - Prerequisites: none
 - Re-scan after: none
 
-Pure or expensive work is recomputed in a loop or across layers when a local result would be correct.
+Pure or expensive work is recomputed across loops or layers, or summaries and indexes are fully rebuilt per item when reuse or one correctly timed batch update would suffice.
 
 Why it matters: Repeated work is often a symptom of missing ownership; fix ownership first, then the leftover hot path.
 
@@ -414,7 +414,7 @@ Why it matters: Repeated work is often a symptom of missing ownership; fix owner
 - Prerequisites: A06
 - Re-scan after: none
 
-Queries, API calls, or aggregates load wide payloads when a narrow projection is what the caller uses.
+Queries, API calls, or aggregates load unused fields or rows, run before they are needed, continue after being superseded, or trigger broad refreshes without a freshness requirement.
 
 Why it matters: Over-fetching couples consumers to unused fields and makes later representation cleanup harder.
 
@@ -453,7 +453,7 @@ Why it matters: Sequential I/O is easy for agents to write and expensive at runt
 - Prerequisites: none
 - Re-scan after: none
 
-A hot path uses a more expensive algorithm or data structure than the actual size and access pattern require.
+A hot path uses an algorithm, data structure or query shape whose work exceeds what the actual size and access pattern require, or leaves collection size, buffering or concurrency unbounded.
 
 Why it matters: This is last because the right algorithm on the wrong architecture is wasted work, and because it is easy to overfit a micro-benchmark.
 

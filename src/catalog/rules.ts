@@ -409,7 +409,7 @@ export const RULES = [
     category: "E",
     detectionMode: "hybrid",
     description:
-      "The same data is loaded repeatedly in one request or workflow, or N+1 queries remain after the shape of the work is known.",
+      "Database or API reads repeat within a workflow, N+1 queries scale with item count, or a read retrieves a value safely derivable from already available authoritative inputs.",
     whyItMatters:
       "On surviving architecture this is usually the cheapest performance win and the one agents reintroduce by composing services naively.",
     defaultCleanupPhase: 8,
@@ -425,7 +425,7 @@ export const RULES = [
     category: "E",
     detectionMode: "hybrid",
     description:
-      "Pure or expensive work is recomputed in a loop or across layers when a local result would be correct.",
+      "Pure or expensive work is recomputed across loops or layers, or summaries and indexes are fully rebuilt per item when reuse or one correctly timed batch update would suffice.",
     whyItMatters:
       "Repeated work is often a symptom of missing ownership; fix ownership first, then the leftover hot path.",
     defaultCleanupPhase: 8,
@@ -440,7 +440,7 @@ export const RULES = [
     category: "E",
     detectionMode: "hybrid",
     description:
-      "Queries, API calls, or aggregates load wide payloads when a narrow projection is what the caller uses.",
+      "Queries, API calls, or aggregates load unused fields or rows, run before they are needed, continue after being superseded, or trigger broad refreshes without a freshness requirement.",
     whyItMatters:
       "Over-fetching couples consumers to unused fields and makes later representation cleanup harder.",
     defaultCleanupPhase: 8,
@@ -486,7 +486,7 @@ export const RULES = [
     category: "E",
     detectionMode: "hybrid",
     description:
-      "A hot path uses a more expensive algorithm or data structure than the actual size and access pattern require.",
+      "A hot path uses an algorithm, data structure or query shape whose work exceeds what the actual size and access pattern require, or leaves collection size, buffering or concurrency unbounded.",
     whyItMatters:
       "This is last because the right algorithm on the wrong architecture is wasted work, and because it is easy to overfit a micro-benchmark.",
     defaultCleanupPhase: 8,

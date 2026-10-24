@@ -28,7 +28,15 @@ playbook only when one of these probes produces evidence.
    repeated linear membership checks, identify the actual input bound and use
    indexed membership where it stays simpler. Defer when target-sized evidence
    is missing; do not dismiss from a small self-run alone.
-6. **Exercise boundary combinations.** For machine-readable commands, parse
+6. **Trace data access and loading.** Check whether authoritative inputs already
+   support a fetched value by simple calculation, whether queries grow per item,
+   and whether unused payloads or inactive consumers trigger loads. Follow
+   [data-access.md](data-access.md) for E01/E02/E03/E06 evidence and validation,
+   including superseded requests, workload bounds, repeated refreshes/rebuilds
+   and expensive individual query shapes. Preserve
+   freshness, completeness and access boundaries; no mechanical signal is
+   required to investigate these paths.
+7. **Exercise boundary combinations.** For machine-readable commands, parse
    stdout with supported option combinations, including explicit file output.
    For scoped analysis, compare representative findings against a full scan;
    check target-relative paths, renames, aliases, and transitive callers when

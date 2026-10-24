@@ -8,6 +8,14 @@ capability. Look for parallel paths, redundant models, policy-free wrappers,
 unowned context fields, invariant patches and dependencies with no real need.
 After implementing, check what became obsolete.
 
+For affected data paths, check whether existing authoritative inputs or simple
+calculations can replace a read, whether query count grows per item, and whether
+fields, collections or inactive consumers load unnecessarily. Check superseded
+requests, collection/concurrency bounds, rebuild/refresh triggers and individual
+query cost when relevant. Follow
+[data-access.md](data-access.md) when one of these probes warrants investigation;
+preserve authorization, completeness, freshness and unknown-value semantics.
+
 Follow the default skill and [fix-safety.md](fix-safety.md). Existing architecture
 is context, not proof that a layer is necessary. A baseline or persisted review
 is never required for ordinary feature work. Do not run `baseline`, `review`,

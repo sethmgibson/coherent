@@ -16,6 +16,7 @@ Reload Codex or Cursor, then ask for a concrete improvement:
 ```text
 $coherent simplify the duplicated order response contracts
 /coherent review this worker's recovery and duplicate-write safeguards
+$coherent review order loading for unnecessary fetches, derivable values and N+1 queries
 ```
 
 The default needs no baseline, persistent review, DAG or `.coherent/` directory.
@@ -48,9 +49,17 @@ Coherent focuses on the kinds of entropy that accumulate when a codebase is chan
 - duplicate implementations and representations
 - terminology drift and implicit string protocols
 - unnecessary layers, wrappers, helpers, and abstractions
+- redundant fetches, values derivable from existing data, N+1 queries, unnecessary loading, and superseded requests
+- unbounded work, repeated refreshes/rebuilds, and expensive individual query shapes
 - fragile state, error-handling, test, dependency, and performance patterns
 
 Some findings can be proven mechanically. Others require judgment about meaning, ownership, or intent. Coherent keeps that distinction visible: a valid result can be “these look similar, but they are intentionally different.”
+
+Data-access review is built into the skill and can also be requested as a
+focused pass. The existing E01 detector offers N+1 and repeated-query
+candidates; derivable values and unnecessary loading require tracing callers,
+data authority and freshness. See the
+[data-access playbook](skills/coherent/reference/data-access.md).
 
 ## Optional advanced cleanup
 

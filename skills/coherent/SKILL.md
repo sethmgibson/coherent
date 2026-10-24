@@ -20,6 +20,13 @@ skill; editor adapters are discovery, not another methodology.
    A missing `.coherent/ARCHITECTURE.md` does not block work or require `init`.
 3. **Gather targeted evidence.** Search source, inspect callers and tests, and
    use compiler information or selected scanners when they save investigation.
+   In affected data paths, check for reads that existing authoritative inputs
+   or simple calculations can replace, N+1 queries, and unused or premature
+   loading. Use [data-access.md](reference/data-access.md) for a focused review;
+   include superseded requests, unbounded work, repeated refreshes/rebuilds and
+   expensive individual query shapes when those paths are in scope. Treat
+   cancellation, visibility and resource bounds as part of the contract;
+   these questions require caller and data-contract evidence, not just syntax.
    Load [audit.md](reference/audit.md) only when using mechanical tools. Verify
    the actual tool's capabilities; do not guess output shapes or mix runtimes.
 4. **Complete a coherent improvement.** Choose work with a concrete benefit.
@@ -103,6 +110,10 @@ meanings and stored state remain supported. Do not run them in an ordinary task.
 - **Audit/review:** investigate within scope and report evidence; do not edit
   application code unless requested. Repository-wide review does not require
   comprehensive candidate disposition or a baseline.
+- **Data fetching, N+1 or unnecessary loading:** use
+  [data-access.md](reference/data-access.md) within the requested scope. This is
+  part of normal source review and can also be requested as a focused pass;
+  no separate CLI command or persistent state is required.
 - **Ordinary feature work:** follow [prevention.md](reference/prevention.md).
 - **Explicit advanced command or persistent cleanup:** load its reference and
   preserve its existing state/validation contract.
