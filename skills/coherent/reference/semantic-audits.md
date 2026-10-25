@@ -1,28 +1,72 @@
 # Semantic audits
 
-Deterministic detectors collect mechanical evidence. Semantic investigation is done by the coding agent using architecture context, those findings, this skill, and targeted code inspection.
+Investigate source and explain conclusions in the conversation. No CLI,
+initialization, saved decisions, report or tracking file is required. An audit
+does not modify application code; requested fixes follow the canonical skill.
 
-A semantic audit may inspect all 30 rules. Audit order may differ from cleanup order. A01, A02, and A03 are often studied early because they improve understanding even when A08 cleanup happens first physically.
+For a bare invocation, review one class at a time in the table order of
+[taxonomy.md](taxonomy.md). Begin with A01 architecture fossilization, then
+A02 terminology drift, then A03 implicit protocols. The remaining classes
+follow that same table. The table is the sequence, not a checklist to persist.
+Explicit focused or comprehensive audit requests override this default scope.
 
-Do not overload the user with an unprioritized dump. Separate confirmed findings from candidates. Group related findings. Note prerequisites and findings that may disappear once another cleanup lands.
+Audit order may differ from cleanup order. Establish vocabulary and ownership
+before consolidating; dead-code deletion may be a prerequisite to repairing a
+surviving layer. Do not require an earlier class to be exhausted before moving on.
 
-## Finding format
+## Investigate the current class
 
-Every semantic finding should include:
+Read existing project guidance and the relevant [rule playbook](rules/README.md).
+Trace callers, callees, data ownership, tests, database representations and
+runtime behavior where relevant. Use history when it helps establish why a
+transitional pattern persists. Do not assume a copied convention is correct
+or similarly named concepts are equivalent.
 
-1. Rule ID
-2. Severity
-3. Confidence
-4. Confirmed vs candidate
-5. Exact files and symbols
-6. Evidence
-7. Semantic equivalence analysis
-8. Apparent authoritative concept or implementation
-9. Deletion or consolidation opportunity
-10. Prerequisites
-11. What the cleanup unlocks
-12. Behavioral / change risk
-13. Test and safety evidence
+Inspect representative workflows deeply enough to support specific conclusions;
+state which paths were examined and which questions remain open. Do not read
+every file or run every detector just to complete a class. If a targeted tool
+helps, use [audit.md](audit.md); a scanner's silence does not clear semantic work.
+For an explicit full-repository audit, also use
+[semantic-triage.md](semantic-triage.md) to examine detector blind spots.
+
+For reachability, name the actual caller, registration, port binding or external
+consumer. A shared name, barrel export, allowlist or passing test suite does not
+prove production use. Do not propose a new abstraction before explaining why
+an existing owner cannot serve the purpose.
+
+## Explain worthwhile findings
+
+Prioritize concrete cleanup candidates and group related evidence. Each finding
+should make these points clear without imposing a verbose form or JSON output:
+
+- Severity (critical/high/medium/low), confidence, and confirmed vs candidate.
+- Exact files/symbols and evidence that the issue exists.
+- Whether the concepts are equivalent or only superficially similar.
+- Which implementation or concept is authoritative, and why.
+- What could safely be deleted, consolidated or redesigned.
+- Prerequisites, expected simplification benefit and what the change unlocks.
+- Change risk, relevant behavioral tests and missing safety evidence.
+
+Rule IDs help internal navigation; use problem names when talking to the user.
+For architecture fossilization, explain the authoritative patterns and those
+that should no longer be copied. For terminology, explain the dictionary before
+proposing renames. Do not overwhelm the user with weak or repeated signals.
+
+Intentional differences are a successful result: explain why the concepts must
+stay distinct. When evidence is missing, name the question that prevents a safe
+change. Keep these conclusions in chat unless durable context was requested.
+
+End by offering to fix the concrete candidates, investigate more of this class,
+or review the next named class. A completed fix should offer the same choice;
+the next class does not require every remaining issue to be resolved. After
+the final class, summarize scope and open questions rather than promising a
+clean repository. Follow the user's choice and existing authorization.
+
+## Advanced recording (explicit opt-in only)
+
+The rest of this reference applies only to explicitly requested persistent
+reviews or managed cleanup. It is not part of ordinary conversational review.
+Use [full-cleanup.md](full-cleanup.md) for setup and runtime compatibility.
 
 The CLI `Finding` object already has these fields. Required planner inputs (`severity`, `confidence`, `detectionMode`, `status`, `evidence`, `cleanupBenefit`, `changeRisk`, `prerequisiteFindingIds`) must be present; `coherent doctor` rejects the file if they are missing or the wrong shape. `detectionMode` must be `semantic` or `hybrid`. Leave optional judgment fields (`semanticEquivalence`, `authoritativeConcept`, `deletionOpportunity`, `unlocks`, `testSafetyEvidence`) absent rather than inventing certainty.
 
@@ -42,7 +86,7 @@ Mechanical evidence is regenerated by `coherent audit` and stays in memory unles
 
 Per-rule investigation playbooks live in [rules/](rules/) when that directory is present.
 
-## Allowed conclusions
+### Recorded conclusions
 
 You may conclude:
 
@@ -52,9 +96,9 @@ That is a successful audit result. Record the decision in `.coherent/decisions.j
 
 You may also conclude that a hybrid signal is a candidate only, or that evidence is too weak to delete. Use `coherent review defer` when the finding should stay visible but not become `fix next` work.
 
-## How to investigate
+### Managed investigation
 
-1. Read `.coherent/ARCHITECTURE.md` if it exists. If it does not, recommend `init` first.
+1. Follow [full-cleanup.md](full-cleanup.md) for compatibility and initialization.
 2. Run `coherent audit`. Use its output; do not invent a findings file or report.
 3. Ingest the deterministic findings. Treat `candidate` as a prompt to look, not a license to delete.
 4. Inspect the files, symbols, and workflows the findings or architecture point to. For a full-repository audit, also apply [semantic-triage.md](semantic-triage.md) so rules without mechanical detectors are not silently skipped. Do not read every file.

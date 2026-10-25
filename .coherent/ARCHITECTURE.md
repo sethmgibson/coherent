@@ -12,9 +12,13 @@ codebases. It exists because repeated agent feature additions create
 architectural entropy: extra paths, names, shims, and representations instead
 of a changed design.
 
-The default is a skill-led bounded improvement: scope, architecture, targeted
-source evidence, agent judgment, proportionate validation and a benefit report.
-No baseline, review file, cleanup DAG or context initialization is required.
+The default is a conversational, class-by-class review: a fresh bare invocation
+inspects architecture fossilization, reports findings before application edits,
+and offers fixes or the next class. Requested fixes use targeted evidence, agent
+judgment and proportionate validation, then offer to stay or move on. Review
+progress lives in the conversation, not a tracking file. The catalog's table
+order is the review sequence, not mandatory fix order. Explicit targets override
+that sequence. No CLI, baseline, review file, cleanup DAG or initialization is required.
 Persistent review/baseline/planning commands are explicitly selected advanced
 workflows. Their stored schemas and command contracts remain supported.
 

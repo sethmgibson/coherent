@@ -320,7 +320,7 @@ chmodSync(bin, 0o755);
       expect(result.stdout).toContain(GITHUB_PACKAGE_SPEC);
       expect(result.stdout).toContain("verified project-local CLI handshake");
       expect(result.stdout).not.toContain("add the CLI with");
-      expect(result.stdout).toMatch(/bounded improvement/);
+      expect(result.stdout).toMatch(/conversational review/);
       expect(await readFile(join(root, ".agents", "skills", "coherent", "reference", "runtime.md"), "utf8"))
         .toContain("coherent version");
       expect(await readdir(home)).toEqual([]);

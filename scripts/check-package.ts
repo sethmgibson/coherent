@@ -197,7 +197,7 @@ process.exit(result.status ?? 1);
       { cause: smokeResult.error },
     );
   }
-  assert.match(smokeResult.stdout, /bounded improvement/);
+  assert.match(smokeResult.stdout, /conversational review/);
   assert.match(smokeResult.stdout, /verified project-local CLI handshake/);
   assert.doesNotMatch(smokeResult.stdout, /add the CLI with/);
   const smokeSkill = join(smoke, ".agents", "skills", "coherent", "SKILL.md");

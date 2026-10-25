@@ -319,9 +319,9 @@ export const RULES = [
     category: "C",
     detectionMode: "semantic",
     description:
-      "A single business workflow is split across handlers, queues, and retries without an explicit orchestration or ownership model.",
+      "A single business workflow is split across tightly coupled helpers, handlers, queues, or retries, hiding shared state, sequencing, or failure semantics without a cohesive owner.",
     whyItMatters:
-      "Failure, replay, and visibility become accidental. Agents add more hops because the existing path is hard to see.",
+      "Helper extraction can hide rather than reduce complexity; ordering, failure, replay, and visibility become accidental as agents add more hops.",
     defaultCleanupPhase: 5,
     workKind: "both",
     prerequisites: ["B01", "C01"],

@@ -21,9 +21,11 @@ export function renderTaxonomyMarkdown(): string {
 
 # Taxonomy
 
-Rule IDs are stable identifiers. Rule ID order is **not** cleanup execution
-order. Default work is chosen by the agent; phases and prerequisite graphs are
-optional advanced cleanup metadata. See [cleanup-phases.md](cleanup-phases.md).
+The table order is the default conversational review sequence: inspect one
+problem class, offer fixes, then suggest the next. Explicit targets override
+that sequence. Rule IDs are stable identifiers, **not** cleanup execution
+order; actual fixes respect their dependencies. Phases and prerequisite graphs
+are optional advanced cleanup metadata. See [cleanup-phases.md](cleanup-phases.md).
 
 Source of truth: \`src/catalog/rules.ts\`.
 

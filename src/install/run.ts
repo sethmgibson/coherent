@@ -177,7 +177,7 @@ export function renderInstall(title: string, result: InstallResult): string {
     lines.push(`  ${PUBLIC_NPM_EXEC_INSTALL.replace(/ install$/, " <command>")}`);
   }
   if (result.adoption !== undefined || result.actions.some((action) => action.action === "wrote" || action.action === "updated")) {
-    lines.push("  reload Codex or Cursor so it discovers the skill, then ask $coherent or /coherent for a bounded improvement; context initialization is optional");
+    lines.push("  reload Codex or Cursor, then send $coherent or /coherent to start a conversational review; context initialization is optional");
   }
   return `${lines.join("\n")}\n`;
 }

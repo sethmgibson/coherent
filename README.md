@@ -1,9 +1,8 @@
 # Coherent
 
-A skill-led workflow for worthwhile, bounded maintainability improvements to
-backend and large AI-built codebases. The agent interprets architecture and
-evidence, chooses and groups work, validates results, explains the benefit, and
-stops. Mechanical tools supply precise evidence; they do not dictate a backlog.
+A conversational maintainability skill for backend and large AI-built
+codebases. Start with a review, choose which issues to fix, then keep working
+on that class of problems or move to the next. Mechanical tools are optional.
 
 ## Start with the skill
 
@@ -11,7 +10,31 @@ stops. Mechanical tools supply precise evidence; they do not dictate a backlog.
 npx --yes --package github:sethmgibson/coherent -- coherent install --skills-only --yes
 ```
 
-Reload Codex or Cursor, then ask for a concrete improvement:
+Reload Codex or Cursor, then invoke the skill in chat:
+
+```text
+$coherent
+```
+
+Use `/coherent` in Cursor, or simply ask for "coherent" when the skill is
+available. A fresh run starts by inspecting architecture fossilization:
+patterns copied out of habit, obsolete layers, and historical conventions.
+The agent reports concrete findings and asks whether you want to fix them,
+investigate further, or move on to terminology drift.
+
+After each requested fix, the agent offers to stay with those issues or review
+the next class. Say "fix the first one", "keep looking", or "next"; no rule IDs
+or CLI commands are needed. The review follows the 30-class
+[catalog order](skills/coherent/reference/taxonomy.md), while actual fixes
+respect their dependencies. You can move on with issues still open.
+
+Progress stays in the conversation. Repeating the bare invocation in that chat
+starts the next offered review; a fresh chat starts at the beginning unless
+you name a starting point. There are no progress files or generated audit
+artifacts. An audit does not edit application code; a direct fix request
+authorizes the requested improvement without an extra approval round.
+
+You can also go directly to a specific task:
 
 ```text
 $coherent simplify the duplicated order response contracts
@@ -19,7 +42,7 @@ $coherent simplify the duplicated order response contracts
 $coherent review order loading for unnecessary fetches, derivable values and N+1 queries
 ```
 
-The default needs no baseline, persistent review, DAG or `.coherent/` directory.
+The default needs no CLI, baseline, persistent review, DAG or `.coherent/` directory.
 It uses existing project guidance and preserves unrelated work. `init` is optional
 when durable context is wanted; new context focuses on ownership, invariants and
 intentional distinctions rather than counters that stale after every edit.

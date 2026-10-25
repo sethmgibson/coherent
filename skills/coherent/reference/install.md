@@ -4,7 +4,8 @@ Install Codex and Cursor skill files, and optional Cursor or Git integrations.
 
 For the default skill-led workflow, use `coherent install --skills-only --yes`.
 This does not add a project CLI dependency or require baseline/review state.
-Reload the harness and ask for a bounded improvement; `init` is optional.
+Reload the harness and send `$coherent` or `/coherent` to start a conversational
+review; `init` is optional. Findings and progression stay in the chat.
 The existing project-adoption command below remains available for teams that
 explicitly want dependency-managed CLI and advanced hooks.
 The unscoped npm name `coherent` belongs to a different package, so the public
@@ -49,7 +50,8 @@ fails project adoption. Unusual
 CI or global-CLI setups can pass `--skills-only` to copy skill files without
 installing the project CLI. The copied skill and the project CLI stay
 compatible through `coherent version` / `runtime.skillPath`. Reload Codex or
-Cursor, then request a bounded improvement. Initialize context only when useful.
+Cursor, then invoke the skill or request a specific fix. Initialize context only
+when useful.
 
 ## Adoption preflight
 

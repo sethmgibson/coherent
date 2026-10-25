@@ -1,49 +1,65 @@
 ---
 name: coherent
-description: "Make worthwhile, bounded maintainability improvements to backend and large AI-built codebases. The agent interprets architecture and evidence, chooses and groups work, validates results, and explains the benefit. Precise mechanical tools and persistent cleanup management are optional. Not for frontend visual design."
+description: "Find and fix maintainability problems in backend and large AI-built codebases. Start a simple, conversational review with coherent, or request a specific audit or improvement. Inspect one problem class, offer concrete fixes, and suggest the next class. Not for frontend visual design."
 ---
 
-Coherent is a skill-led maintainability workflow. The agent owns interpretation,
-work selection, grouping, and validation. Mechanical tools supply evidence;
-a signal is an investigation opportunity, not a bookkeeping obligation.
+Coherent is a conversational maintainability skill. The agent investigates,
+explains the issues, implements requested fixes, and helps the user choose what
+to examine next. Mechanical tools are optional evidence, not a work queue.
 
-Use `$coherent` in Codex or `/coherent` in Cursor. Work through this canonical
-skill; editor adapters are discovery, not another methodology.
+Use `$coherent` in Codex or `/coherent` in Cursor, or a plain "coherent" request
+when this skill is available. These are chat invocations; the CLI is optional.
+Editor adapters lead here, not to another methodology.
 
-## Default: one bounded improvement
+## Default: inspect, offer fixes, suggest the next class
 
-1. **Understand scope.** Resolve the requested outcome, affected workflow,
-   existing edits and constraints. Carry constraints forward. Advice and review
-   requests authorize advice and review, not application edits or release.
-2. **Inspect relevant architecture.** Read existing project instructions and
-   the ownership, contracts and invariants involved. Use existing documentation.
-   A missing `.coherent/ARCHITECTURE.md` does not block work or require `init`.
-3. **Gather targeted evidence.** Search source, inspect callers and tests, and
-   use compiler information or selected scanners when they save investigation.
-   In affected data paths, check for reads that existing authoritative inputs
-   or simple calculations can replace, N+1 queries, and unused or premature
-   loading. Use [data-access.md](reference/data-access.md) for a focused review;
-   include superseded requests, unbounded work, repeated refreshes/rebuilds and
-   expensive individual query shapes when those paths are in scope. Treat
-   cancellation, visibility and resource bounds as part of the contract;
-   these questions require caller and data-contract evidence, not just syntax.
-   Load [audit.md](reference/audit.md) only when using mechanical tools. Verify
-   the actual tool's capabilities; do not guess output shapes or mix runtimes.
-4. **Complete a coherent improvement.** Choose work with a concrete benefit.
-   Group related edits when they share contracts or validation; preserve distinct
-   concepts. Explain a marginal cleanup's payoff before expensive validation.
-   Evidence-backed agent judgment is sufficient: no saved review is required.
-5. **Validate proportionately.** Follow [fix-safety.md](reference/fix-safety.md).
-   Run focused checks while editing, then the broader repository-required checks.
-   Additional passes need a change, failure or unresolved risk to justify them.
-6. **Explain the benefit and stop.** Lead with before → after → practical effect,
-   then preserved invariants, checks and limits. Distinguish runtime correctness,
-   diagnostics, type guarantees and small simplifications. Do not turn every
-   remaining signal into another task or claim whole-repository cleanliness.
+1. **Start investigating.** On a fresh, bare invocation, begin with architecture
+   fossilization (A01): patterns copied because they exist, historical layers,
+   and conventions that no longer match living workflows. Read project guidance,
+   inspect existing edits, and trace representative entrypoints and callers.
+   Infer a useful scope from the repository; do not ask the user to choose a CLI
+   command or approve inspection. Existing architecture documentation helps;
+   missing `.coherent/ARCHITECTURE.md` does not require `init`.
+2. **Examine one problem class.** Read its playbook under
+   [rules/](reference/rules/README.md), using source, callers, tests and relevant
+   history to establish meaning and authority. Use the table order in
+   [taxonomy.md](reference/taxonomy.md) for the 30-class review sequence, starting
+   with architecture, terminology, and implicit protocols. Load only the current
+   playbook and relevant supporting guidance. Review order is not mandatory fix
+   order; prerequisites may make a proposed edit premature.
+3. **Present concrete findings before editing.** Follow
+   [semantic-audits.md](reference/semantic-audits.md). Prioritize worthwhile
+   candidates, distinguish proven issues from open questions, and explain what
+   could safely change. For A01, identify authoritative patterns and patterns
+   to stop propagating; for A02, explain the vocabulary before renaming anything.
+   A bare invocation or audit does not authorize application edits. After the
+   findings, ask whether to fix them, investigate more of this class, or move to
+   the next named class. Do not require every candidate to be resolved.
+4. **Complete the requested fix.** When the user asks to fix an issue, implement
+   it without asking again. Preserve existing constraints and unrelated edits.
+   Group related changes when they share contracts or validation; do not turn
+   approval of one fix into permission to fix every class. Follow
+   [fix-safety.md](reference/fix-safety.md), run focused and repository-required
+   checks, and inspect code made obsolete by the change.
+5. **Offer a natural continuation.** Explain before → after → practical effect,
+   validation and remaining uncertainty. After each completed fix or fix round,
+   offer to continue this class or review the next named class, even if more
+   findings remain. For example: "We can keep working on these architecture
+   issues, or move on to terminology drift." Suggesting a review does not start
+   another fix. Complete the requested work and let the user choose.
 
-A valid result may be that two similar concepts must stay distinct, or that
-missing evidence prevents a safe change. Report the concrete reason and stop.
-Never ask the user to route the next CLI command or memorize rule IDs.
+Use the conversation to remember the current class, findings, choices and
+intentional distinctions. A repeated bare invocation, "next" or "move on"
+starts a read-only review of the next class offered; it never implies fix
+approval. Honor explicit choices to stay, skip, revisit, stop, or fix. If the user
+has already authorized a sequence of work, continue within that scope. In a fresh chat with
+no usable history, start at A01 unless the user names a class or starting point;
+do not invent previous coverage or reconstruct a tracking system.
+
+No findings, intentional differences, and insufficient evidence are valid
+outcomes. State what was examined and offer the next class; do not manufacture
+cleanup or claim repository-wide cleanliness. At the end of the sequence,
+summarize the reviewed scope and open questions without silently restarting.
 
 ## Safety and judgment
 
@@ -68,8 +84,9 @@ infrastructure is needed.
 
 ## Context and write boundaries
 
-Use chat and command output for the current task. Do not create reports, queues,
-plans, scratch scripts or session ledgers merely so Coherent can operate.
+Keep progression and findings in the conversation. Do not create reports, queues,
+plans, scratch scripts, progress files or session ledgers merely so Coherent can
+operate.
 Default work requires **zero Coherent metadata writes**, even when legacy
 baseline/decision files exist. Do not parse or repair advanced state incidentally.
 
@@ -104,16 +121,19 @@ meanings and stored state remain supported. Do not run them in an ordinary task.
 
 ## Routing
 
-- **No concrete request:** offer a bounded inspection of the relevant area;
-  clarify only scope that cannot reasonably be inferred. Do not auto-initialize.
-- **Improve/fix a target:** follow the default six steps and stop after the outcome.
-- **Audit/review:** investigate within scope and report evidence; do not edit
-  application code unless requested. Repository-wide review does not require
-  comprehensive candidate disposition or a baseline.
+- **Bare invocation or continuation:** follow the conversational review above.
+- **Improve/fix a target:** go directly to the requested improvement and
+  validation; do not restart at A01 or require an extra approval round. Offer
+  a relevant next class after completing the requested work.
+- **Audit/review a target or the whole repository:** honor that scope; do not
+  restrict an explicit broad audit to one class. Report evidence and offer
+  concrete fixes without application edits, saved reviews or a baseline.
 - **Data fetching, N+1 or unnecessary loading:** use
   [data-access.md](reference/data-access.md) within the requested scope. This is
   part of normal source review and can also be requested as a focused pass;
-  no separate CLI command or persistent state is required.
+  no separate CLI command or persistent state is required. Include derivable
+  reads, N+1, unnecessary loading, superseded requests, workload bounds,
+  repeated refreshes/rebuilds and expensive query shapes when relevant.
 - **Ordinary feature work:** follow [prevention.md](reference/prevention.md).
 - **Explicit advanced command or persistent cleanup:** load its reference and
   preserve its existing state/validation contract.

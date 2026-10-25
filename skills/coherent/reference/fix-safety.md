@@ -1,7 +1,7 @@
 # Bounded improvement safety
 
 The agent chooses the unit of work from the request, current evidence and
-expected benefit. A default improvement requires no baseline, saved confirmation,
+expected benefit. A requested improvement requires no baseline, saved confirmation,
 DAG, metadata check or exhaustive candidate triage. Advanced `fix next` is a
 separate, explicitly selected workflow.
 
@@ -53,4 +53,6 @@ chain. Do not create reviews to make a noisy residual signal disappear.
 Explain before → after → practical effect, preserved invariants, tests and limits.
 Be candid about marginal benefits and no demonstrated performance gain. A fixed
 signal count is secondary. Report missing evidence or a concrete blocker when
-no safe edit is justified. Complete the bounded outcome and stop.
+no safe edit is justified. Complete the requested outcome, then offer to keep
+working on that problem class or inspect the next named class. Do not silently
+expand fix authority or require all findings to be resolved before moving on.

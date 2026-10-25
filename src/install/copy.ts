@@ -49,13 +49,13 @@ export async function writeManagedFile(
 export const BACKEND_ALIAS_SKILL = `---
 name: backend
 description: "Alias for /coherent. Use when the user wants Impeccable-style maintainability work on a backend or large AI-built codebase. Prefer /coherent. Not for frontend visual design."
-argument-hint: "[init|refresh|audit|inspect|review|baseline|check|plan|fix|doctor|install|update] [target]"
+argument-hint: "[optional focus or fix request]"
 ---
 
 ${ADAPTER_OPEN}
 This is a CLI and skill alias for Coherent. Prefer \`/coherent\`.
 
-Run \`coherent version . --json\`, load the exact \`runtime.skillPath\` it reports, and follow that canonical playbook. The CLI is optional for bounded source work; use the installed canonical skill directly when available. Verify capabilities before mechanical tools or advanced state writes. Do not invent a second methodology here.
+Use the installed canonical coherent skill directly when available and follow its conversational review workflow. Otherwise, an available CLI can locate it with \`coherent version . --json\` and \`runtime.skillPath\`. Missing CLI support does not block source inspection or require state setup. Verify capabilities before mechanical tools or advanced state writes. Do not invent a second methodology here.
 
 In chat, \`/backend init\` (and the other \`/backend\` commands) map to the same playbooks as \`/coherent\`.
 

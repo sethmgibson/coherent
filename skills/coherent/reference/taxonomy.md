@@ -2,9 +2,11 @@
 
 # Taxonomy
 
-Rule IDs are stable identifiers. Rule ID order is **not** cleanup execution
-order. Default work is chosen by the agent; phases and prerequisite graphs are
-optional advanced cleanup metadata. See [cleanup-phases.md](cleanup-phases.md).
+The table order is the default conversational review sequence: inspect one
+problem class, offer fixes, then suggest the next. Explicit targets override
+that sequence. Rule IDs are stable identifiers, **not** cleanup execution
+order; actual fixes respect their dependencies. Phases and prerequisite graphs
+are optional advanced cleanup metadata. See [cleanup-phases.md](cleanup-phases.md).
 
 Source of truth: `src/catalog/rules.ts`.
 
@@ -302,9 +304,9 @@ Why it matters: Callers cannot tell what is required, and every new field become
 - Prerequisites: B01, C01
 - Re-scan after: none
 
-A single business workflow is split across handlers, queues, and retries without an explicit orchestration or ownership model.
+A single business workflow is split across tightly coupled helpers, handlers, queues, or retries, hiding shared state, sequencing, or failure semantics without a cohesive owner.
 
-Why it matters: Failure, replay, and visibility become accidental. Agents add more hops because the existing path is hard to see.
+Why it matters: Helper extraction can hide rather than reduce complexity; ordering, failure, replay, and visibility become accidental as agents add more hops.
 
 ## D. Failure semantics, tests, and dependencies
 
