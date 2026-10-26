@@ -58,12 +58,12 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@types/node": "^24.3.0",
-    "eslint": "^10.9.1",
-    "knip": "6.33.0",
-    "publint": "0.3.24",
-    "tsx": "^4.20.5",
+    "eslint": "^10.13.0",
+    "knip": "6.42.1",
+    "publint": "0.3.25",
+    "tsx": "^4.23.15",
     "typescript": "^5.9.2",
-    "typescript-eslint": "^8.68.0",
+    "typescript-eslint": "^8.72.0",
     "vitest": "^4.1.12"
   }
 }
