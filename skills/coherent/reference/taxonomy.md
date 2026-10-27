@@ -12,6 +12,7 @@ Source of truth: `src/catalog/rules.ts`.
 
 | ID | Slug | Title | Detection | Phase | Work |
 |---|---|---|---|---|---|
+| F01 | whole-system-simplification | Whole-system simplification | semantic | 0 | analysis |
 | A01 | architecture-fossilization | Architecture fossilization | semantic | 2 | analysis |
 | A02 | terminology-drift | Terminology drift | semantic | 2 | analysis |
 | A03 | implicit-string-protocols | Implicit string protocols | hybrid | 2 | analysis |
@@ -48,6 +49,23 @@ Detection modes:
 - **deterministic** — conclude only from mechanical evidence. Never upgrade a semantic question into a fake deterministic result.
 - **semantic** — requires human or agent judgment about meaning, ownership, or intent.
 - **hybrid** — mechanical signals exist, but the conclusion still needs judgment.
+
+## F. Product and workflow simplification
+
+Question whether whole capabilities, workflows, pages, or subsystems are necessary to deliver the intended outcomes before cleaning up their implementation.
+
+### F01 Whole-system simplification
+
+- Slug: `whole-system-simplification`
+- Detection: semantic
+- Default phase: 0
+- Work: analysis
+- Prerequisites: none
+- Re-scan after: none
+
+Required outcomes could be delivered by a substantially smaller system, making entire capabilities, workflows, pages, subsystems, or families of code unnecessary.
+
+Why it matters: Cleaning up an unnecessary workflow preserves its largest cost. Reconstructing the smallest complete system from intended outcomes can eliminate the workflow and the complexity it creates.
 
 ## A. Leftover structure and representations
 

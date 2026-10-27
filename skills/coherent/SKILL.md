@@ -1,6 +1,6 @@
 ---
 name: coherent
-description: "Find and fix maintainability problems in backend and large AI-built codebases. Start a simple, conversational review with coherent, or request a specific audit or improvement. Inspect one problem class, offer concrete fixes, and suggest the next class. Not for frontend visual design."
+description: "Find and fix maintainability problems in backend and large AI-built codebases. General cleanup opens with whole-system simplification: question unnecessary workflows and capabilities before their implementation. Also accepts focused audits and fixes. Keep review conversational. Not for frontend visual design."
 ---
 
 Coherent is a conversational maintainability skill. The agent investigates,
@@ -13,25 +13,31 @@ Editor adapters lead here, not to another methodology.
 
 ## Default: inspect, offer fixes, suggest the next class
 
-1. **Start investigating.** On a fresh, bare invocation, begin with architecture
-   fossilization (A01): patterns copied because they exist, historical layers,
-   and conventions that no longer match living workflows. Read project guidance,
-   inspect existing edits, and trace representative entrypoints and callers.
+1. **Start investigating.** On a fresh, bare invocation or general cleanup
+   request, begin with [whole-system simplification (F01)](reference/rules/F01.md):
+   reconstruct the smallest complete system that delivers the intended outcomes
+   and look for entire workflows or capabilities it makes unnecessary. Read
+   project guidance, inspect existing edits, and trace representative entrypoints and callers.
+   Infer outcomes and workflows from the codebase first; do not require the user
+   to describe the application. Ask only targeted questions about unresolved
+   business requirements that could change the proposal after inspecting available context.
    Infer a useful scope from the repository; do not ask the user to choose a CLI
    command or approve inspection. Existing architecture documentation helps;
    missing `.coherent/ARCHITECTURE.md` does not require `init`.
 2. **Examine one problem class.** Read its playbook under
    [rules/](reference/rules/README.md), using source, callers, tests and relevant
    history to establish meaning and authority. Use the table order in
-   [taxonomy.md](reference/taxonomy.md) for the 30-class review sequence, starting
-   with architecture, terminology, and implicit protocols. Load only the current
-   playbook and relevant supporting guidance. Review order is not mandatory fix
+   [taxonomy.md](reference/taxonomy.md) for the review sequence: whole-system
+   simplification, then architecture, terminology, and implicit protocols. Load
+   only the current playbook and relevant supporting guidance. Review order is not mandatory fix
    order; prerequisites may make a proposed edit premature.
 3. **Present concrete findings before editing.** Follow
    [semantic-audits.md](reference/semantic-audits.md). Prioritize worthwhile
    candidates, distinguish proven issues from open questions, and explain what
-   could safely change. For A01, identify authoritative patterns and patterns
-   to stop propagating; for A02, explain the vocabulary before renaming anything.
+   could safely change. For F01, distinguish unnecessary behavior, equivalent
+   redesigns, and ideas requiring product or policy decisions. Explain what
+   disappears and which outcomes remain. For A01, identify authoritative patterns
+   and patterns to stop propagating; for A02, explain the vocabulary before renaming anything.
    A bare invocation or audit does not authorize application edits. After the
    findings, ask whether to fix them, investigate more of this class, or move to
    the next named class. Do not require every candidate to be resolved.
@@ -53,8 +59,13 @@ intentional distinctions. A repeated bare invocation, "next" or "move on"
 starts a read-only review of the next class offered; it never implies fix
 approval. Honor explicit choices to stay, skip, revisit, stop, or fix. If the user
 has already authorized a sequence of work, continue within that scope. In a fresh chat with
-no usable history, start at A01 unless the user names a class or starting point;
+no usable history, start at F01 unless the user names a class or starting point;
 do not invent previous coverage or reconstruct a tracking system.
+
+Whole-system simplification is also independently selectable. It is an opening
+review, not a required gate for existing classes. Keep the initial pass bounded;
+deepen a promising proposal through conversation. Users can skip it, move on to
+architecture fossilization, or request another class without resolving it.
 
 No findings, intentional differences, and insufficient evidence are valid
 outcomes. State what was examined and offer the next class; do not manufacture
@@ -121,9 +132,14 @@ meanings and stored state remain supported. Do not run them in an ordinary task.
 
 ## Routing
 
-- **Bare invocation or continuation:** follow the conversational review above.
+- **Bare invocation, general cleanup, or continuation:** follow the conversational
+  review above; continue existing chat progress instead of restarting.
+- **Whole-system, business-logic, or full-platform simplification:** use
+  [F01](reference/rules/F01.md) directly, at the requested scope. Phrases such as
+  "$coherent simplify the whole platform" select this review in chat, not a new
+  CLI command. No earlier class or persistent state is required.
 - **Improve/fix a target:** go directly to the requested improvement and
-  validation; do not restart at A01 or require an extra approval round. Offer
+  validation; do not restart at F01 or require an extra approval round. Offer
   a relevant next class after completing the requested work.
 - **Audit/review a target or the whole repository:** honor that scope; do not
   restrict an explicit broad audit to one class. Report evidence and offer

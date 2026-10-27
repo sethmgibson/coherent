@@ -12,8 +12,8 @@ export const PHASES = [
     slug: "safety-and-understanding",
     title: "Safety and understanding",
     summary:
-      "Inventory the repository, entrypoints, critical workflows, and available behavioral tests. Characterize behavior before changing it; a persisted baseline is optional advanced state. This phase is not a rule.",
-    sequence: [],
+      "Establish intended outcomes, entrypoints, critical workflows, and behavioral evidence. Whole-system simplification can identify a smaller complete design before detailed cleanup, but is independently selectable and is not a prerequisite for other rules. Characterize behavior before changing it; a persisted baseline is optional advanced state.",
+    sequence: ["F01"],
   },
   {
     id: 1,

@@ -27,6 +27,50 @@ function finding(overrides: Partial<FindingInput> & Pick<FindingInput, "ruleId" 
 }
 
 describe("cleanup DAG", () => {
+  it("keeps whole-system proposals under review without blocking existing cleanup", () => {
+    const proposal = finding({
+      ruleId: "F01", identity: "whole-system:order-submission", detectionMode: "semantic",
+      authoritativeConcept: "Orders",
+    });
+    const cleanup = finding({
+      ruleId: "A04", identity: "duplicate:order-submission", detectionMode: "semantic",
+      status: "confirmed", authoritativeConcept: "Orders",
+    });
+    const findings = [proposal, cleanup];
+    const reviewState = { needsReview: new Set([proposal.fingerprint]) };
+    const plan = buildPlan("/tmp/repo", findings, reviewState);
+
+    expect(plan.nodes.find((node) => node.ruleIds.includes("F01"))).toMatchObject({
+      state: "needs_review", defaultPhase: 0, prerequisiteNodeIds: [],
+    });
+    expect(plan.edges).toEqual([]);
+    expect(selectNextNode(plan)?.ruleIds).toEqual(["A04"]);
+
+    // A particular implementation can still explicitly depend on an investigated proposal.
+    const dependentPlan = buildPlan("/tmp/repo", [proposal, {
+      ...cleanup, prerequisiteFindingIds: [proposal.fingerprint],
+    }], reviewState);
+    expect(dependentPlan.nodes.find((node) => node.ruleIds.includes("A04"))?.state).toBe("blocked");
+    expect(dependentPlan.edges).toHaveLength(1);
+  });
+
+  it("supports whole-system simplification as an independently reviewed target", () => {
+    const proposal = finding({
+      ruleId: "F01", identity: "whole-system:order-submission", detectionMode: "semantic",
+      cleanupBenefit: "Remove intermediate stages and their synchronization job.",
+    });
+    const unreviewed = buildPlan("/tmp/repo", [proposal]);
+    expect(selectNextNode(unreviewed)).toBeUndefined();
+
+    const reviewed = buildPlan("/tmp/repo", [{ ...proposal, status: "confirmed" }], {
+      needsReview: new Set(),
+    });
+    expect(selectNextNode(reviewed)).toMatchObject({
+      ruleIds: ["F01"], state: "ready", prerequisiteNodeIds: [],
+      expectedSimplification: proposal.cleanupBenefit,
+    });
+  });
+
   it("does not block unrelated concepts behind an analysis-only prerequisite", () => {
     const analysis = finding({
       ruleId: "A01", identity: "billing-boundary", detectionMode: "semantic",

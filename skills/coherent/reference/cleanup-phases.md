@@ -15,9 +15,9 @@ after architecture collapse because those edits unlock newly unused code.
 
 `safety-and-understanding`
 
-Inventory the repository, entrypoints, critical workflows, and available behavioral tests. Characterize behavior before changing it; a persisted baseline is optional advanced state. This phase is not a rule.
+Establish intended outcomes, entrypoints, critical workflows, and behavioral evidence. Whole-system simplification can identify a smaller complete design before detailed cleanup, but is independently selectable and is not a prerequisite for other rules. Characterize behavior before changing it; a persisted baseline is optional advanced state.
 
-Default sequence: (no rules — inventory, entrypoints, tests, baseline)
+Default sequence: F01
 
 ## Phase 1 — Mechanical reduction
 

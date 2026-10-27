@@ -5,9 +5,12 @@ initialization, saved decisions, report or tracking file is required. An audit
 does not modify application code; requested fixes follow the canonical skill.
 
 For a bare invocation, review one class at a time in the table order of
-[taxonomy.md](taxonomy.md). Begin with A01 architecture fossilization, then
-A02 terminology drift, then A03 implicit protocols. The remaining classes
-follow that same table. The table is the sequence, not a checklist to persist.
+[taxonomy.md](taxonomy.md). A fresh general cleanup opens with
+[F01 whole-system simplification](rules/F01.md), then A01 architecture
+fossilization, A02 terminology drift, and A03 implicit protocols. F01 can also
+be selected independently or skipped; it is not a prerequisite for other
+classes. The remaining classes follow that same table. The table is the
+sequence, not a checklist to persist.
 Explicit focused or comprehensive audit requests override this default scope.
 
 Audit order may differ from cleanup order. Establish vocabulary and ownership
@@ -48,7 +51,11 @@ should make these points clear without imposing a verbose form or JSON output:
 - Change risk, relevant behavioral tests and missing safety evidence.
 
 Rule IDs help internal navigation; use problem names when talking to the user.
-For architecture fossilization, explain the authoritative patterns and those
+For whole-system simplification, explain the smaller alternative, the causal
+chain of what disappears, and preserved outcomes. Distinguish unnecessary
+behavior, equivalent redesigns, and conditional product or policy ideas;
+challenge the proposal with the strongest counterexample. For architecture
+fossilization, explain the authoritative patterns and those
 that should no longer be copied. For terminology, explain the dictionary before
 proposing renames. Do not overwhelm the user with weak or repeated signals.
 

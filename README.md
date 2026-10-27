@@ -17,14 +17,15 @@ $coherent
 ```
 
 Use `/coherent` in Cursor, or simply ask for "coherent" when the skill is
-available. A fresh run starts by inspecting architecture fossilization:
-patterns copied out of habit, obsolete layers, and historical conventions.
-The agent reports concrete findings and asks whether you want to fix them,
-investigate further, or move on to terminology drift.
+available. A fresh general cleanup starts with whole-system simplification:
+what is the smallest complete system that could deliver the intended outcomes?
+The agent looks for unnecessary workflows, pages, capabilities, and subsystems,
+then reports concrete proposals. Choose to investigate further, implement a
+proposal, or move on to architecture fossilization.
 
 After each requested fix, the agent offers to stay with those issues or review
 the next class. Say "fix the first one", "keep looking", or "next"; no rule IDs
-or CLI commands are needed. The review follows the 30-class
+or CLI commands are needed. The review follows the
 [catalog order](skills/coherent/reference/taxonomy.md), while actual fixes
 respect their dependencies. You can move on with issues still open.
 
@@ -40,12 +41,20 @@ You can also go directly to a specific task:
 $coherent simplify the duplicated order response contracts
 /coherent review this worker's recovery and duplicate-write safeguards
 $coherent review order loading for unnecessary fetches, derivable values and N+1 queries
+$coherent review the whole platform for unnecessary workflows and capabilities
 ```
 
 The default needs no CLI, baseline, persistent review, DAG or `.coherent/` directory.
 It uses existing project guidance and preserves unrelated work. `init` is optional
 when durable context is wanted; new context focuses on ownership, invariants and
 intentional distinctions rather than counters that stale after every edit.
+
+[Whole-system simplification](skills/coherent/reference/rules/F01.md) is also
+independently selectable. Its six lenses rebuild from outcomes, remove work
+created by the system, collapse handoffs, unify journeys, derive maintained
+information, and challenge platform scope. The review distinguishes equivalent
+redesigns from ideas requiring product or policy choices. Skip it or go directly
+to any existing class or fix; it adds no prerequisites.
 
 ## Mechanical assistance when useful
 
@@ -69,6 +78,7 @@ Hooks, rules, aliases and other integrations remain explicit opt-ins. See
 Coherent focuses on the kinds of entropy that accumulate when a codebase is changed repeatedly by people and agents:
 
 - dead code and stale compatibility paths
+- whole workflows and capabilities a smaller complete design could eliminate
 - duplicate implementations and representations
 - terminology drift and implicit string protocols
 - unnecessary layers, wrappers, helpers, and abstractions

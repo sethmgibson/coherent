@@ -2,6 +2,12 @@ import type { RuleDefinition } from "./schema.js";
 
 export const CATEGORIES = [
   {
+    id: "F",
+    title: "Product and workflow simplification",
+    summary:
+      "Question whether whole capabilities, workflows, pages, or subsystems are necessary to deliver the intended outcomes before cleaning up their implementation.",
+  },
+  {
     id: "A",
     title: "Leftover structure and representations",
     summary:
@@ -42,6 +48,21 @@ export type RuleCategory = (typeof CATEGORIES)[number];
 export const CATEGORY_IDS = CATEGORIES.map((category) => category.id) as readonly CategoryId[];
 
 export const RULES = [
+  {
+    id: "F01",
+    slug: "whole-system-simplification",
+    title: "Whole-system simplification",
+    category: "F",
+    detectionMode: "semantic",
+    description:
+      "Required outcomes could be delivered by a substantially smaller system, making entire capabilities, workflows, pages, subsystems, or families of code unnecessary.",
+    whyItMatters:
+      "Cleaning up an unnecessary workflow preserves its largest cost. Reconstructing the smallest complete system from intended outcomes can eliminate the workflow and the complexity it creates.",
+    defaultCleanupPhase: 0,
+    workKind: "analysis",
+    prerequisites: [],
+    rescanAfter: [],
+  },
   {
     id: "A01",
     slug: "architecture-fossilization",

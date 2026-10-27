@@ -29,7 +29,6 @@ describe("rule catalog", () => {
       expect(DETECTION_MODES).toContain(rule.detectionMode);
       expect(WORK_KINDS).toContain(rule.workKind);
       expect(PHASE_IDS).toContain(rule.defaultCleanupPhase);
-      expect(rule.defaultCleanupPhase).not.toBe(0);
       expect(rule.slug).toMatch(/^[a-z0-9-]+$/);
       expect(rule.title.length).toBeGreaterThan(0);
       expect(rule.description.length).toBeGreaterThan(0);
@@ -61,7 +60,7 @@ describe("rule catalog", () => {
   it("does not treat semantic rules as deterministic", () => {
     const semantic = RULES.filter((rule) => rule.detectionMode === "semantic");
     expect(semantic.map((rule) => rule.id)).toEqual(
-      expect.arrayContaining(["A01", "A02", "B01", "B02", "C01", "C02", "C05"]),
+      expect.arrayContaining(["F01", "A01", "A02", "B01", "B02", "C01", "C02", "C05"]),
     );
     expect(RULES_BY_ID.A08.detectionMode).toBe("deterministic");
     expect(RULES_BY_ID.B03.detectionMode).toBe("hybrid");
@@ -73,8 +72,14 @@ describe("cleanup phases", () => {
     expect(PHASES.map((phase) => phase.id)).toEqual([...PHASE_IDS]);
   });
 
-  it("keeps phase 0 free of rules", () => {
-    expect(PHASES_BY_ID[0].sequence).toEqual([]);
+  it("opens with whole-system analysis without making it a prerequisite", () => {
+    expect(RULES[0]?.id).toBe("F01");
+    expect(CATEGORIES[0]?.id).toBe("F");
+    expect(PHASES_BY_ID[0].sequence).toEqual(["F01"]);
+    expect(RULES_BY_ID.F01.prerequisites).toEqual([]);
+    for (const rule of RULES) {
+      expect(rule.prerequisites).not.toContain("F01");
+    }
   });
 
   it("only sequences real rules and keeps default phases consistent", () => {

@@ -13,12 +13,14 @@ architectural entropy: extra paths, names, shims, and representations instead
 of a changed design.
 
 The default is a conversational, class-by-class review: a fresh bare invocation
-inspects architecture fossilization, reports findings before application edits,
+inspects whole-system simplification, reports proposals before application edits,
 and offers fixes or the next class. Requested fixes use targeted evidence, agent
 judgment and proportionate validation, then offer to stay or move on. Review
 progress lives in the conversation, not a tracking file. The catalog's table
 order is the review sequence, not mandatory fix order. Explicit targets override
-that sequence. No CLI, baseline, review file, cleanup DAG or initialization is required.
+that sequence. Whole-system simplification is independently selectable and
+skippable; it adds no catalog prerequisites to existing classes. No CLI,
+baseline, review file, cleanup DAG or initialization is required.
 Persistent review/baseline/planning commands are explicitly selected advanced
 workflows. Their stored schemas and command contracts remain supported.
 
@@ -112,7 +114,9 @@ Observed top-level modules:
 
 > Status: confirmed
 
-- **Rule** — a stable catalog entry (`A01`–`E06`) with detection mode and default phase
+- **Rule** — a stable catalog entry (`F01`, plus the existing A–E classes) with
+  detection mode and default phase; catalog order starts with F01 and does not
+  follow ID sorting
 - **Cleanup phase** — default execution grouping; not the same as taxonomy order
 - **Cleanup DAG / cleanup node** — finding-specific work graph; authoritative for actual cleanup
 - **Finding** — one issue instance, with a stable fingerprint

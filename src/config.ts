@@ -24,6 +24,7 @@ export const DETECTOR_REVISION = 11;
  * reviewed history.
  */
 export const RULE_DETECTOR_REVISIONS: Readonly<Record<RuleId, number>> = {
+  F01: 1,
   A01: 8,
   A02: 8,
   A03: 10,

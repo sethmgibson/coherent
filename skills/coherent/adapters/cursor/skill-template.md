@@ -10,8 +10,11 @@ the complete canonical skill and needs no CLI or project dependency.
 Use the installed canonical skill directly when available. Otherwise, when a
 CLI is available, run `coherent version . --json` and load `runtime.skillPath`.
 Follow its conversational review workflow. If neither is available, use existing
-project context to inspect architecture fossilization, report issues before
-editing, and offer fixes or a terminology review. Do not require
+project context to review whole-system simplification: infer required outcomes
+and consider a smaller complete workflow before detailed cleanup. Report
+proposals before editing, and offer deeper investigation, fixes, or an
+architecture fossilization review. Honor focused requests directly; this
+opening review is not a prerequisite. Do not require
 baseline/review state or install dependencies incidentally. Verify the actual
 runtime capabilities before mechanical tool calls or advanced state writes.
 
