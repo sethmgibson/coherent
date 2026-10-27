@@ -6,7 +6,7 @@ import { createFinding, type FindingInput } from "../src/domain/finding.js";
 import { buildPlan } from "../src/plan/build.js";
 import { selectNextNode } from "../src/fix/select.js";
 import { runPlan } from "../src/plan/run.js";
-import { scannerFixture } from "./helpers/audit-fixture.js";
+import { auditFixture, scannerFixture } from "./helpers/audit-fixture.js";
 
 function finding(overrides: Partial<FindingInput> & Pick<FindingInput, "ruleId" | "identity">) {
   return createFinding({
@@ -113,7 +113,27 @@ describe("cleanup DAG", () => {
     const plan = buildPlan("/tmp/repo", findings);
     expect(selectNextNode(plan)).toBeUndefined();
     expect(plan.nodes.every((node) => node.state === "needs_review")).toBe(true);
-    expect(plan.nodes.find((node) => node.ruleIds.includes("A08"))?.expectedSimplification).toMatch(/Verify reachability/);
+    expect(plan.nodes.find((node) => node.ruleIds.includes("A08"))?.expectedSimplification)
+      .toBe("Verify reachability; remove only code proven dead after review.");
+  });
+
+  it("describes Python unreachable statements and branches as dead code", async () => {
+    const root = join(scannerFixture, "..", "python-app");
+    const result = await auditFixture(root);
+    const findings = result.findings.filter((item) => item.ruleId === "A08");
+    expect(findings.length).toBeGreaterThan(0);
+    expect(findings.every((item) => item.identity.startsWith("unreachable"))).toBe(true);
+
+    const plan = buildPlan(root, findings);
+    expect(plan.nodes.flatMap((node) => node.findingFingerprints).sort())
+      .toEqual(findings.map((item) => item.fingerprint).sort());
+    for (const node of plan.nodes) {
+      expect(node).toMatchObject({
+        state: "ready",
+        status: "confirmed",
+        expectedSimplification: `Remove dead code covered by ${node.findingFingerprints.length} finding(s) and shrink later analysis.`,
+      });
+    }
   });
 
   it("records A07 → A08 re-scan and does not treat phases as a rigid list", () => {

@@ -12,8 +12,13 @@ export function detectSwallowedErrors(ctx: AnalysisContext): Evidence[] {
   const findings: Evidence[] = [];
   for (const file of ctx.sourceFiles) {
     if (ctx.isTestFile(ctx.relativePath(file))) continue;
-    for (const clause of file.getDescendantsOfKind(SyntaxKind.CatchClause)) {
-      classifyCatch(ctx, findings, clause);
+    const clauses = file.getDescendantsOfKind(SyntaxKind.CatchClause);
+    let anchors: Map<CatchClause, string> | undefined;
+    for (const clause of clauses) {
+      classifyCatch(ctx, findings, clause, () => {
+        anchors ??= catchAnchors(clauses);
+        return anchors.get(clause)!;
+      });
     }
   }
   return findings;
@@ -23,6 +28,7 @@ function classifyCatch(
   ctx: AnalysisContext,
   findings: Evidence[],
   clause: CatchClause,
+  getAnchor: () => string,
 ): void {
   if (catchLooksLikeRethrow(clause)) return;
   const block = clause.getBlock();
@@ -48,7 +54,7 @@ function classifyCatch(
     findings.push(
       swallowFinding(ctx, clause, relative, owner, "confirmed", "high", "swallowed-empty", [
         "Empty catch block swallows the error.",
-      ]),
+      ], getAnchor),
     );
     return;
   }
@@ -69,6 +75,7 @@ function classifyCatch(
             ? ["The callable explicitly permits a nullish result, so this may be an intentional absence protocol."]
             : []),
         ],
+        getAnchor,
       ),
     );
     return;
@@ -80,7 +87,7 @@ function classifyCatch(
         ...(allowsNullish
           ? ["The callable explicitly permits a nullish result."]
           : []),
-      ]),
+      ], getAnchor),
     );
     return;
   }
@@ -89,7 +96,7 @@ function classifyCatch(
       swallowFinding(ctx, clause, relative, owner, "candidate", "medium", "log-fallback", [
         `Catch logs and returns fallback '${returnExpr}'. This may be a legitimate boundary fallback.`,
         "Not classified as definite swallowing.",
-      ]),
+      ], getAnchor),
     );
     return;
   }
@@ -104,7 +111,7 @@ function classifyCatch(
         ...(!onlyExitsLoop
           ? ["The catch performs other work, so the loop exit may be an intentional recovery policy."]
           : []),
-      ]),
+      ], getAnchor),
     );
     return;
   }
@@ -112,7 +119,7 @@ function classifyCatch(
     findings.push(
       swallowFinding(ctx, clause, relative, owner, "confirmed", "medium", "log-only", [
         "Catch logs the error and does not rethrow, translate, or change observable control flow.",
-      ]),
+      ], getAnchor),
     );
   }
 }
@@ -140,10 +147,11 @@ function swallowFinding(
   confidence: "high" | "medium",
   kind: string,
   details: string[],
+  getAnchor: () => string,
 ): Evidence {
   return makeEvidence({
     ruleId: "D03",
-    identity: `${kind}:${relative}:${owner}:${catchAnchor(clause)}`,
+    identity: `${kind}:${relative}:${owner}:${getAnchor()}`,
     title: status === "confirmed" ? "Swallowed error" : "Possible boundary fallback",
     severity: status === "confirmed" ? "high" : "medium",
     confidence,
@@ -180,14 +188,21 @@ function ownerName(clause: CatchClause): string {
   return "anonymous";
 }
 
-function catchAnchor(clause: CatchClause): string {
-  const parent = clause.getParent();
-  const text = Node.isTryStatement(parent) ? parent.getTryBlock().getText() : "catch";
-  const key = createHash("sha256").update(text.replace(/\s+/g, " ")).digest("hex").slice(0, 12);
-  const peers = clause.getSourceFile().getDescendantsOfKind(SyntaxKind.CatchClause)
-    .filter(peer => {
-      const p = peer.getParent();
-      return Node.isTryStatement(p) && p.getTryBlock().getText().replace(/\s+/g, " ") === text.replace(/\s+/g, " ");
-    });
-  return `${key}:${peers.indexOf(clause) + 1}`;
+function catchAnchors(clauses: CatchClause[]): Map<CatchClause, string> {
+  const anchors = new Map<CatchClause, string>();
+  // Ordinals include every catch in descendant order, including skipped catches.
+  const groups = new Map<string, { key: string; count: number }>();
+  for (const clause of clauses) {
+    const parent = clause.getParent();
+    const isTry = Node.isTryStatement(parent);
+    const text = (isTry ? parent.getTryBlock().getText() : "catch").replace(/\s+/g, " ");
+    let group = groups.get(text);
+    if (!group) {
+      group = { key: createHash("sha256").update(text).digest("hex").slice(0, 12), count: 0 };
+      groups.set(text, group);
+    }
+    if (isTry) group.count += 1;
+    anchors.set(clause, `${group.key}:${isTry ? group.count : 0}`);
+  }
+  return anchors;
 }

@@ -21,9 +21,6 @@ import type {
 import { reviewGroupKey } from "./group.js";
 import { portableRuntimeIdentity } from "../runtime.js";
 
-export type { ReviewRequest } from "./parse.js";
-export { parseReviewRequests } from "./parse.js";
-
 export interface ReviewResult {
   review: FindingReview;
   decisionsPath: string;

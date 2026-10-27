@@ -13,7 +13,8 @@ import { applyReviews, classifyReview } from "../src/review/apply.js";
 import { validateReviewLifecycle } from "../src/review/lifecycle.js";
 import type { FindingReview } from "../src/review/types.js";
 import { readDecisions } from "../src/review/store.js";
-import { parseReviewRequests, runReviewBatch, runReviewPrune } from "../src/review/run.js";
+import { parseReviewRequests } from "../src/review/parse.js";
+import { runReviewBatch, runReviewPrune } from "../src/review/run.js";
 import { buildPlan } from "../src/plan/build.js";
 import { selectNextNode } from "../src/fix/select.js";
 

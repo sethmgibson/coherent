@@ -3,11 +3,7 @@ import { join } from "node:path";
 import type { RuleId } from "./catalog/types.js";
 import { COHERENT_VERSION } from "./version.js";
 
-export { COHERENT_VERSION } from "./version.js";
-
 export const COHERENT_DIR = ".coherent";
-/** @deprecated Use COHERENT_DIR. Same value; kept for one release. */
-export const BACKEND_DIR = COHERENT_DIR;
 export const LEGACY_BACKEND_DIR = ".backend";
 export const BASELINE_FILE = "baseline.json";
 export const ARCHITECTURE_FILE = "ARCHITECTURE.md";

@@ -9,7 +9,8 @@ import {
 } from "../src/config.js";
 import { createFinding, type FindingInput } from "../src/domain/finding.js";
 import { applyReviews } from "../src/review/apply.js";
-import { parseReviewRequests, runReviewBatch } from "../src/review/run.js";
+import { parseReviewRequests } from "../src/review/parse.js";
+import { runReviewBatch } from "../src/review/run.js";
 import { readDecisions, updateDecisions } from "../src/review/store.js";
 import type { FindingReview } from "../src/review/types.js";
 import { runReviewQueue } from "../src/review/queue.js";

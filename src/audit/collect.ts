@@ -1,6 +1,6 @@
 import { isAbsolute, relative, resolve } from "node:path";
 import { createAnalysisContext } from "../analysis/context.js";
-import { collectPythonFindings } from "../analysis/python.js";
+import { collectPythonFindings, PYTHON_RULE_IDS } from "../analysis/python.js";
 import { stat } from "node:fs/promises";
 import { toPosix, walkFiles } from "../inventory-walk.js";
 import { isTsLikeSource } from "../inventory-scan.js";
@@ -78,8 +78,9 @@ export async function collectEvidence(root: string, options: {
   if (rules.has("E01")) observations.push(...detectRedundantDbAccess(ctx));
   if (rules.has("E05")) observations.push(...detectSequentialIo(ctx));
   if (rules.has("E06")) observations.push(...detectAlgorithmicComplexity(ctx));
-  if (["A08", "B04", "C03", "D03"].some(rule => rules.has(rule as RuleId))) {
-    observations.push(...(await collectPythonFindings(root, config, include)).filter(item => rules.has(item.ruleId)));
+  const pythonRules = PYTHON_RULE_IDS.filter(rule => rules.has(rule));
+  if (pythonRules.length > 0) {
+    observations.push(...await collectPythonFindings(root, config, include, pythonRules));
   }
   return { inventory, observations };
 }

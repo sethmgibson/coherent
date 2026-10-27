@@ -4,6 +4,8 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { runAudit } from "../src/audit/run.js";
+import { collectEvidence } from "../src/audit/collect.js";
+import { collectPythonFindings, PYTHON_RULE_IDS, type PythonRuleId } from "../src/analysis/python.js";
 import { fingerprintFinding } from "../src/domain/finding.js";
 import { collectInventory } from "../src/inventory.js";
 import { byRule, findingFor } from "./helpers/audit-fixture.js";
@@ -13,6 +15,55 @@ const pythonApp = join(fixtures, "python-app");
 const mixedApp = join(fixtures, "mixed-app");
 
 describe("Python inventory and audit", { timeout: 15_000 }, () => {
+  it("keeps selected Python evidence identical to filtering a full scan, including order and cross-file combinations", async () => {
+    const root = await mkdtemp(join(tmpdir(), "coherent-py-selection-"));
+    try {
+      const source = (name: string) => `def ${name}(enabled: bool, visible: bool, notify: bool):
+    try:
+        first()
+    except Exception:
+        pass
+    def nested():
+        try:
+            second()
+        except Exception:
+            pass
+    try:
+        third()
+    except Exception:
+        pass
+    return 1
+    return 2
+
+def forward(value):
+    return target(value)
+`;
+      await writeFile(join(root, "a.py"), source("first"));
+      await writeFile(join(root, "b.py"), source("second"));
+      await writeFile(join(root, "app.ts"), "export function forward(value: string) { return target(value); }\ndeclare function target(value: string): string;");
+      const fullPython = await collectPythonFindings(root);
+      expect(new Set(fullPython.map(item => item.ruleId))).toEqual(new Set(PYTHON_RULE_IDS));
+      expect(fullPython.find(item => item.identity.startsWith("bool-combo:"))?.evidence.details).toEqual(["first (a.py)", "second (b.py)"]);
+      const full = await collectEvidence(root);
+      const selections: PythonRuleId[][] = [...PYTHON_RULE_IDS.map(rule => [rule]), ["D03", "A08"], ["C03", "B04"], [...PYTHON_RULE_IDS], []];
+      for (const selection of selections) {
+        expect(await collectPythonFindings(root, {}, undefined, selection)).toEqual(fullPython.filter(item => selection.includes(item.ruleId as PythonRuleId)));
+        expect((await collectEvidence(root, { rules: selection })).observations).toEqual(full.observations.filter(item => selection.includes(item.ruleId as PythonRuleId)));
+      }
+      expect((await collectEvidence(root, { rules: ["A03", "D03"] })).observations).toEqual(full.observations.filter(item => item.ruleId === "A03" || item.ruleId === "D03"));
+      const scoped = await collectPythonFindings(root, {}, ["a.py"]);
+      expect(await collectPythonFindings(root, {}, ["a.py"], ["D03"])).toEqual(scoped.filter(item => item.ruleId === "D03"));
+      expect(await collectPythonFindings(root, {}, [], ["D03"])).toEqual([]);
+      expect(await collectPythonFindings(root, {}, ["app.ts"], ["D03"])).toEqual([]);
+      await writeFile(join(root, "b.py"), "def broken(\n");
+      await writeFile(join(root, "coherent.json"), JSON.stringify({ python: "/missing/python" }));
+      expect((await collectEvidence(root, { rules: [] })).observations).toEqual([]);
+      expect((await collectEvidence(root, { rules: ["A03"] })).observations).toEqual([]);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
   it("inventories .py files and pyproject/requirements signals", async () => {
     const inventory = await collectInventory(pythonApp);
     expect(inventory.languages).toEqual(["Python"]);

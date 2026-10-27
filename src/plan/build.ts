@@ -289,9 +289,9 @@ function riskOf(findings: Finding[]): string {
 function simplificationOf(group: FindingGroup, findings: Finding[]): string {
   if (group.ruleIds.includes("A08")) {
     if (findings.some((finding) => finding.status === "candidate")) {
-      return "Verify reachability; remove only declarations proven unused after review.";
+      return "Verify reachability; remove only code proven dead after review.";
     }
-    return `Remove ${findings.length} unused declaration(s) and shrink later analysis.`;
+    return `Remove dead code covered by ${findings.length} finding(s) and shrink later analysis.`;
   }
   if (group.ruleIds.includes("A07")) {
     return "Remove a compatibility path after proving it has no consumers.";

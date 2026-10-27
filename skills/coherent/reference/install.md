@@ -69,7 +69,8 @@ missing access before the change, never put credentials in a manifest or
 lockfile, and do not claim shared adoption is complete without that check.
 If access is unavailable, keep the shared dependency unchanged and use an
 existing separate Coherent checkout with an explicit target root for the
-local audit (`node /absolute/path/to/coherent/dist/cli.js inspect /target/repo`).
+local evidence audit
+(`node /absolute/path/to/coherent/dist/cli.js audit /target/repo --evidence`).
 Optional hooks still need a CLI available in their execution environment.
 
 ```bash

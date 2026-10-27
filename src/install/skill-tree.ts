@@ -1,7 +1,7 @@
 import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join, relative } from "node:path";
 import type { CopyResult } from "./copy.js";
-import { looksLikeAdapterSkill } from "./copy.js";
+import { looksLikeAdapterSkill, looksLikeStubSkill } from "./copy.js";
 
 export async function copySkillTree(sourceDir: string, destDir: string): Promise<CopyResult[]> {
   const existingSkill = await readIfExists(join(destDir, "SKILL.md"));
@@ -63,16 +63,6 @@ function kindFor(relativePath: string): ShippedKind {
   if (posix === "SKILL.md") return "skill";
   if (posix.startsWith("reference/")) return "reference";
   return "other";
-}
-
-function looksLikeStubSkill(existing: string): boolean {
-  if (existing.split("\n").length > 40) return false;
-  return (
-    existing.includes("skills/coherent/SKILL.md") &&
-    (existing.includes("This is a Cursor adapter") ||
-      existing.includes("Alias for /coherent") ||
-      existing.includes("skill alias for Coherent"))
-  );
 }
 
 async function listFiles(dir: string): Promise<string[]> {

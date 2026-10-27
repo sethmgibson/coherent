@@ -99,15 +99,58 @@ describe("CLI", { timeout: CLI_WORKFLOW_TIMEOUT_MS }, () => {
   });
 
   it.each([
-    ["audit", "--json"], ["audit", "--compact-json"], ["plan", "--json"],
-  ])("keeps %s %s stdout parseable with an explicit output file", async (command, format) => {
+    ["audit", ["--json"], 2],
+    ["audit", ["--compact-json"], 0],
+    ["audit", ["--evidence", "--json"], 2],
+    ["plan", ["--json"], 2],
+  ] as const)("keeps %s %j stdout and explicit output bytes identical", async (command, flags, space) => {
     const root = await mkdtemp(join(tmpdir(), "coherent-cli-json-output-"));
     try {
       await writeFile(join(root, "package.json"), '{"name":"clean"}\n');
-      const result = await runCli([command, root, format, "--output", "result.json"]);
-      expect(result.code).toBe(0);
-      expect(JSON.parse(result.stdout)).toEqual(JSON.parse(await readFile(join(root, "result.json"), "utf8")));
-      expect(result.stderr).toContain("Wrote ");
+      const outputPath = join(root, "artifacts/result.json");
+      const result = await runCli([command, root, ...flags, "--output", "artifacts/result.json"]);
+      expect(result.code, result.stderr).toBe(0);
+      expect(await readFile(outputPath, "utf8")).toBe(result.stdout);
+      expect(result.stdout).toBe(`${JSON.stringify(JSON.parse(result.stdout), null, space)}\n`);
+      expect(result.stderr).toBe(`Wrote ${outputPath}\n`);
+      expect((await readdir(root)).sort()).toEqual(["artifacts", "package.json"]);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it("preserves pretty evidence files with compact stdout", async () => {
+    const root = await mkdtemp(join(tmpdir(), "coherent-cli-evidence-compact-"));
+    try {
+      await writeFile(join(root, "package.json"), '{"name":"clean"}\n');
+      const result = await runCli(["audit", root, "--evidence", "--compact-json", "--output", "evidence.json"]);
+      expect(result.code, result.stderr).toBe(0);
+      const output: unknown = JSON.parse(result.stdout);
+      expect(result.stdout).toBe(`${JSON.stringify(output)}\n`);
+      expect(await readFile(join(root, "evidence.json"), "utf8")).toBe(`${JSON.stringify(output, null, 2)}\n`);
+      expect(result.stderr).toBe(`Wrote ${join(root, "evidence.json")}\n`);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it.each([
+    ["audit", ["--json"]],
+    ["audit", ["--compact-json"]],
+    ["audit", ["--evidence", "--json"]],
+    ["plan", ["--json"]],
+  ] as const)("reports %s %j output failures after printing JSON", async (command, flags) => {
+    const root = await mkdtemp(join(tmpdir(), "coherent-cli-output-error-"));
+    try {
+      await writeFile(join(root, "package.json"), '{"name":"clean"}\n');
+      await writeFile(join(root, "blocked"), "keep me");
+      const result = await runCli([command, root, ...flags, "--output", "blocked/result.json"]);
+      expect(result.code).toBe(1);
+      expect(() => JSON.parse(result.stdout) as unknown).not.toThrow();
+      expect(result.stderr).toContain(join(root, "blocked"));
+      expect(result.stderr).not.toContain("Wrote ");
+      expect(await readFile(join(root, "blocked"), "utf8")).toBe("keep me");
+      expect((await readdir(root)).sort()).toEqual(["blocked", "package.json"]);
     } finally {
       await rm(root, { recursive: true, force: true });
     }

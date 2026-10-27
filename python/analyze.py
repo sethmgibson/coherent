@@ -56,15 +56,26 @@ LOG_NAME = re.compile(
 )
 TEST_DIR = re.compile(r"(^|/)(tests?|__tests__|spec|e2e)(/|$)")
 TEST_FILE = re.compile(r"(^|/)(test_[^/]+\.py|[^/]+_test\.py|conftest\.py)$")
+PYTHON_RULE_IDS = frozenset(("A08", "B04", "C03", "D03"))
 
 
 def main() -> int:
     request = json.load(sys.stdin)
-    mode = request.get("mode") or "analyze"
+    mode = request.get("mode")
+    if mode not in ("analyze", "imports"):
+        print(f"Unsupported Python sidecar mode: {mode!r}", file=sys.stderr)
+        return 1
     files = request.get("files") or []
     if mode == "imports":
-        json.dump({"imports": collect_imports(files), "syntaxErrors": []}, sys.stdout)
+        json.dump(collect_imports(files), sys.stdout)
         return 0
+    rules = request.get("rules", sorted(PYTHON_RULE_IDS))
+    if not isinstance(rules, list) or any(
+        not isinstance(rule, str) or rule not in PYTHON_RULE_IDS for rule in rules
+    ):
+        print("Python analysis rules must be an array of supported Python rule IDs.", file=sys.stderr)
+        return 1
+    selected_rules = frozenset(rules)
     findings: list[dict[str, Any]] = []
     syntax_errors: list[dict[str, Any]] = []
     io_errors: list[dict[str, Any]] = []
@@ -78,17 +89,12 @@ def main() -> int:
             syntax_errors.append(syntax_error(relative, error))
             continue
         except OSError as error:
-            io_errors.append(
-                {
-                    "file": relative,
-                    "line": 1,
-                    "column": 1,
-                    "message": str(error),
-                }
-            )
+            io_errors.append(io_error(relative, error))
             continue
-        analyze_tree(findings, flag_sets, tree, relative, source, is_test_file(relative))
-    add_boolean_combos(findings, flag_sets)
+        if selected_rules:
+            analyze_tree(findings, flag_sets, tree, relative, source, is_test_file(relative), selected_rules)
+    if "C03" in selected_rules:
+        add_boolean_combos(findings, flag_sets)
     json.dump(
         {"findings": findings, "syntaxErrors": syntax_errors, "ioErrors": io_errors},
         sys.stdout,
@@ -110,6 +116,10 @@ def syntax_error(relative: str, error: SyntaxError) -> dict[str, Any]:
     }
 
 
+def io_error(relative: str, error: OSError) -> dict[str, Any]:
+    return {"file": relative, "line": 1, "column": 1, "message": str(error)}
+
+
 def is_test_file(relative: str) -> bool:
     return bool(TEST_DIR.search(relative) or TEST_FILE.search(relative))
 
@@ -121,6 +131,7 @@ def analyze_tree(
     relative: str,
     source: str,
     test_file: bool,
+    rules: frozenset[str],
 ) -> None:
     owners = ["anonymous"]
 
@@ -130,17 +141,20 @@ def analyze_tree(
         function = isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
         if function:
             if not test_file:
-                consider_wrapper(findings, node, relative)
-                consider_booleans(findings, flag_sets, node, relative)
+                if "B04" in rules:
+                    consider_wrapper(findings, node, relative)
+                if "C03" in rules:
+                    consider_booleans(findings, flag_sets, node, relative)
             owners.append(node.name)
-        elif isinstance(node, ast.ExceptHandler) and not test_file:
+        elif isinstance(node, ast.ExceptHandler) and not test_file and "D03" in rules:
             classify_except(findings, node, relative, owners[-1], anchor)
-        for body in statement_blocks(node):
-            if body:
-                scan_block(findings, body, relative, source)
+        if "A08" in rules:
+            for body in statement_blocks(node):
+                if body:
+                    scan_block(findings, body, relative, source)
         for child in ast.iter_child_nodes(node):
             child_anchor = ""
-            if isinstance(child, ast.ExceptHandler) and (isinstance(node, ast.Try) or try_star(node)):
+            if "D03" in rules and not test_file and isinstance(child, ast.ExceptHandler) and (isinstance(node, ast.Try) or try_star(node)):
                 structural = ast.dump(ast.Module(body=node.body, type_ignores=[]), include_attributes=False)
                 structural += ast.dump(child.type, include_attributes=False) if child.type else "bare"
                 key = owners[-1] + ":" + hashlib.sha256(structural.encode()).hexdigest()[:12]
@@ -718,30 +732,58 @@ def is_log_statement(statement: ast.stmt) -> bool:
     return False
 
 
-def collect_imports(files: list[dict[str, str]]) -> list[dict[str, str]]:
+def collect_imports(files: list[dict[str, str]]) -> dict[str, Any]:
     known = {file["relative"] for file in files}
+    suffixes = build_import_suffix_index(known)
     edges: list[dict[str, str]] = []
+    syntax_errors: list[dict[str, Any]] = []
+    io_errors: list[dict[str, Any]] = []
     for file in files:
         relative = file["relative"]
         try:
             tree = ast.parse(read_text(file["path"]), filename=relative)
-        except (SyntaxError, OSError):
+        except SyntaxError as error:
+            syntax_errors.append(syntax_error(relative, error))
+            continue
+        except OSError as error:
+            io_errors.append(io_error(relative, error))
             continue
         for node in ast.walk(tree):
             if isinstance(node, ast.Import):
                 for alias in node.names:
-                    target = resolve_module(relative, alias.name, 0, known)
+                    target = resolve_module(relative, alias.name, 0, known, suffixes)
                     if target:
                         edges.append({"from": relative, "to": target})
             elif isinstance(node, ast.ImportFrom):
                 module = node.module or ""
-                target = resolve_module(relative, module, node.level, known)
+                target = resolve_module(relative, module, node.level, known, suffixes)
                 if target:
                     edges.append({"from": relative, "to": target})
-    return edges
+    return {"imports": edges, "syntaxErrors": syntax_errors, "ioErrors": io_errors}
 
 
-def resolve_module(importer: str, module: str, level: int, known: set[str]) -> str | None:
+def build_import_suffix_index(known: set[str]) -> dict[str, str | None]:
+    # Values reuse the known path strings; None records ambiguity without
+    # retaining every matching path. The index lives for one imports request.
+    suffixes: dict[str, str | None] = {}
+    for path in known:
+        parts = path.split("/")
+        for start in range(1, len(parts)):
+            suffix = "/".join(parts[start:])
+            if suffix not in suffixes:
+                suffixes[suffix] = path
+            elif suffixes[suffix] != path:
+                suffixes[suffix] = None
+    return suffixes
+
+
+def resolve_module(
+    importer: str,
+    module: str,
+    level: int,
+    known: set[str],
+    suffixes: dict[str, str | None],
+) -> str | None:
     parts = importer.split("/")
     base = parts[:-1]
     if level:
@@ -754,17 +796,20 @@ def resolve_module(importer: str, module: str, level: int, known: set[str]) -> s
         if not module:
             return None
         candidates = module_candidates(module.split("."))
-    matches: list[str] = []
+    # Exact module/package paths take precedence over all suffix matches,
+    # including ambiguous suffixes for the earlier .py candidate.
     for candidate in candidates:
         if candidate in known:
             return candidate
-        matches.extend(
-            path for path in known if path == candidate or path.endswith("/" + candidate)
-        )
-    unique = list(dict.fromkeys(matches))
-    if len(unique) == 1:
-        return unique[0]
-    return None
+    match = None
+    for candidate in candidates:
+        if candidate not in suffixes:
+            continue
+        target = suffixes[candidate]
+        if target is None or (match is not None and target != match):
+            return None
+        match = target
+    return match
 
 
 def module_candidates(parts: list[str]) -> list[str]:

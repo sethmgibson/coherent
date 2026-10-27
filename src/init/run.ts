@@ -1,12 +1,10 @@
 import { mkdir, writeFile, stat } from "node:fs/promises";
 import { join } from "node:path";
-import { ARCHITECTURE_FILE, BACKEND_DIR, COHERENT_DIR, loadConfig } from "../config.js";
+import { ARCHITECTURE_FILE, loadConfig } from "../config.js";
 import { collectInventory, type Inventory } from "../inventory.js";
 import { generateArchitectureMarkdown } from "./architecture.js";
 import { refreshArchitectureFile } from "./refresh.js";
 import { legacyStateDirWarning, resolveStateDir } from "../state-dir.js";
-
-export { ARCHITECTURE_FILE, BACKEND_DIR, COHERENT_DIR };
 
 export interface InitResult {
   root: string;

@@ -2,6 +2,7 @@ import { homedir } from "node:os";
 import { relative } from "node:path";
 import { readFile } from "node:fs/promises";
 import { toPosix } from "../inventory-walk.js";
+import { packageRoot } from "../runtime.js";
 import {
   BACKEND_ALIAS_SKILL,
   writeManagedFile,
@@ -30,7 +31,6 @@ import {
   destAlias,
   destPrevention,
   destSkillDir,
-  packageRoot,
   preventionTemplatePath,
   sourceSkillDir,
 } from "./paths.js";
@@ -83,6 +83,16 @@ export async function runInstall(
   const detections = collectInstallDetections(root, home, options.pathEnv ?? process.env.PATH ?? "");
   const actions: CopyResult[] = [];
   const adoption = await chooseAdoption(root, home, detections, options);
+  let cli: CliDependencyResult | undefined;
+  if (adoption?.scope === "project") {
+    if (shouldInstallProjectCli(options)) {
+      cli = await installProjectCli(root, projectCliOptions(options));
+      await verifyProjectCliHandshake(root, projectCliOptions(options));
+      cli = { ...cli, handshakeVerified: true };
+    } else if (options.skillsOnly === true) {
+      cli = skillsOnlyCliResult(root, await detectRootPackageManager(root));
+    }
+  }
   if (options.adapter === true && !writesProjectCursorTree(adoption)) {
     const adapter = await readFile(adapterSkillPath(packageRoot()), "utf8");
     actions.push(rel(root, await writeManagedFile(destAdapter(root), adapter, "adapter")));
@@ -103,16 +113,6 @@ export async function runInstall(
     actions.push(rel(root, await writeGitPreventionHook(root)));
   }
 
-  let cli: CliDependencyResult | undefined;
-  if (adoption?.scope === "project") {
-    if (shouldInstallProjectCli(options)) {
-      cli = await installProjectCli(root, projectCliOptions(options));
-      await verifyProjectCliHandshake(root, projectCliOptions(options));
-      cli = { ...cli, handshakeVerified: true };
-    } else if (options.skillsOnly === true) {
-      cli = skillsOnlyCliResult(root, await detectRootPackageManager(root));
-    }
-  }
   if (adoption) {
     const pkg = packageRoot();
     for (const provider of adoption.providers) {

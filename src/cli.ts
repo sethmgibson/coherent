@@ -159,14 +159,19 @@ program
           scope: { paths: options.paths ?? ["."], rules, repositoryWide: !options.paths,
             limitation: "Source observations require agent interpretation. Scoped absence does not establish repository-wide reachability or cleanliness." },
           observations };
-        if (options.json || options.compactJson) console.log(JSON.stringify(output, null, options.compactJson ? 0 : 2));
+        const serialized = options.json || options.compactJson
+          ? JSON.stringify(output, null, options.compactJson ? 0 : 2)
+          : undefined;
+        if (serialized !== undefined) console.log(serialized);
         else {
           console.log(`Source evidence: ${observations.length} observation(s). Agent interpretation required; no cleanup queue. Scope: ${(options.paths ?? ["."]).join(", ")}.`);
           for (const item of observations) console.log(`${RULES_BY_ID[item.ruleId].title}: ${item.evidence.summary}\n${item.locations.map(loc => `  ${loc.file}:${loc.line ?? "?"}`).join("\n")}`);
         }
         if (options.output) {
           const path = resolve(resolved, options.output);
-          await writeJsonOutput(path, output);
+          // Evidence files are pretty-printed even when stdout is compact.
+          await writeJsonOutput(path, (!options.compactJson ? serialized : undefined)
+            ?? JSON.stringify(output, null, 2));
           console.error(`Wrote ${path}`);
         }
       } catch (error) {
@@ -179,16 +184,17 @@ program
     const jsonOutput = options.compactJson
       ? compactFindingsFile(result.file)
       : result.file;
-    if (options.compactJson) {
-      console.log(JSON.stringify(jsonOutput));
-    } else if (options.json) {
-      console.log(JSON.stringify(jsonOutput, null, 2));
+    const serialized = options.compactJson || options.json
+      ? JSON.stringify(jsonOutput, null, options.compactJson ? 0 : 2)
+      : undefined;
+    if (serialized !== undefined) {
+      console.log(serialized);
     } else {
       process.stdout.write(renderAudit(result));
     }
     if (options.output) {
       const path = resolve(resolved, options.output);
-      await writeJsonOutput(path, jsonOutput, options.compactJson ? 0 : 2);
+      await writeJsonOutput(path, serialized ?? JSON.stringify(jsonOutput, null, 2));
       console.error(`Wrote ${path}`);
     }
   });
@@ -348,14 +354,15 @@ program
   .action(async (root: string, options: { json: boolean; performance: boolean; output?: string }) => {
     const resolved = resolve(root);
     const result = await runPlan(resolved, { includeAdvisory: options.performance });
-    if (options.json) {
-      console.log(JSON.stringify(result.plan, null, 2));
+    const serialized = options.json ? JSON.stringify(result.plan, null, 2) : undefined;
+    if (serialized !== undefined) {
+      console.log(serialized);
     } else {
       process.stdout.write(renderPlan(result.plan));
     }
     if (options.output) {
       const path = resolve(resolved, options.output);
-      await writeJsonOutput(path, result.plan);
+      await writeJsonOutput(path, serialized ?? JSON.stringify(result.plan, null, 2));
       console.error(`Wrote ${path}`);
     }
   });
@@ -418,9 +425,9 @@ program
 
 registerReviewCommands(program, readStdin);
 
-async function writeJsonOutput(path: string, value: unknown, space = 2): Promise<void> {
+async function writeJsonOutput(path: string, serialized: string): Promise<void> {
   await mkdir(dirname(path), { recursive: true });
-  await writeFile(path, `${JSON.stringify(value, null, space)}\n`, "utf8");
+  await writeFile(path, `${serialized}\n`, "utf8");
 }
 
 async function readStdin(): Promise<string> {

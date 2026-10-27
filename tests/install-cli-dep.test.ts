@@ -1,11 +1,21 @@
 import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { detectRootPackageManager, projectLocalCliPath } from "../src/install/cli-dep.js";
 import { GITHUB_PACKAGE_SPEC } from "../src/install/spec.js";
 import { renderInstall, runInstall, runUpdate } from "../src/install/run.js";
 import type { RunCommandFn } from "../src/install/exec.js";
+import {
+  destAdapter,
+  destAlias,
+  destGitHook,
+  destHookScript,
+  destHooksJson,
+  destPrevention,
+  destSkillDir,
+} from "../src/install/paths.js";
+import { HOOK_MARKER } from "../src/install/hooks.js";
 
 interface RecordedCall {
   file: string;
@@ -155,6 +165,100 @@ describe("project CLI install", () => {
       ).rejects.toThrow(/Failed to install github:sethmgibson\/coherent/);
       expect(calls).toHaveLength(1);
       expect(await readdir(root)).toEqual([]);
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it.each([
+    { failure: "install", existing: false },
+    { failure: "install", existing: true },
+    { failure: "handshake", existing: false },
+    { failure: "handshake", existing: true },
+    { failure: "manifest conflict", existing: false },
+    { failure: "manifest conflict", existing: true },
+  ])("leaves integrations untouched on $failure (existing: $existing)", async ({ failure, existing }) => {
+    const { root, home, cleanup } = await isolatedRoots("coherent-integrations-fail");
+    try {
+      await mkdir(join(root, ".git"));
+      const manifest = `${JSON.stringify({
+        private: true,
+        ...(failure === "manifest conflict" ? { dependencies: { coherent: "^1.0.0" } } : {}),
+      })}\n`;
+      await writeFile(join(root, "package.json"), manifest);
+      const integrations = integrationFiles(root);
+      if (existing) {
+        for (const [path, content] of integrations) {
+          await mkdir(dirname(path), { recursive: true });
+          await writeFile(path, content);
+        }
+      }
+      const { runCommand, calls } = createFakeRunCommand({
+        failInstall: failure === "install",
+        failHandshake: failure === "handshake",
+      });
+      await expect(runInstall(root, {
+        home,
+        pathEnv: "",
+        providers: "codex",
+        scope: "project",
+        adapter: true,
+        alias: true,
+        rule: true,
+        cursorHook: true,
+        gitHook: true,
+        runCommand,
+      })).rejects.toThrow(failure === "manifest conflict" ? /already declares coherent/ : /failed/i);
+      expect(calls).toHaveLength(failure === "manifest conflict" ? 0 : failure === "install" ? 1 : 2);
+      for (const [path, content] of integrations) {
+        if (existing) {
+          expect(await readFile(path, "utf8")).toBe(content);
+        } else {
+          await expect(readFile(path, "utf8")).rejects.toMatchObject({ code: "ENOENT" });
+        }
+      }
+      if (failure !== "handshake") {
+        expect(await readFile(join(root, "package.json"), "utf8")).toBe(manifest);
+      }
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it("installs all selected integrations when retrying after the CLI becomes ready", async () => {
+    const { root, home, cleanup } = await isolatedRoots("coherent-integrations-retry");
+    try {
+      await mkdir(join(root, ".git"));
+      const options = {
+        home,
+        pathEnv: "",
+        providers: "codex",
+        scope: "project",
+        adapter: true,
+        alias: true,
+        rule: true,
+        cursorHook: true,
+        gitHook: true,
+      };
+      await expect(runInstall(root, {
+        ...options,
+        runCommand: createFakeRunCommand({ failInstall: true }).runCommand,
+      })).rejects.toThrow(/Failed to install/);
+      const ready = createFakeRunCommand();
+      const runCommand: RunCommandFn = async (file, args, execOptions) => {
+        for (const [path] of integrationFiles(root)) {
+          await expect(readFile(path, "utf8")).rejects.toMatchObject({ code: "ENOENT" });
+        }
+        return ready.runCommand(file, args, execOptions);
+      };
+      const result = await runInstall(root, { ...options, runCommand });
+      expect(result.cli?.handshakeVerified).toBe(true);
+      expect(ready.calls).toHaveLength(2);
+      for (const [path] of integrationFiles(root)) {
+        expect(await readFile(path, "utf8")).not.toBe("");
+      }
+      expect(await readFile(destHooksJson(root), "utf8")).toContain("coherent-check.sh");
+      expect(await readFile(destGitHook(root), "utf8")).toContain("check --changed");
     } finally {
       await cleanup();
     }
@@ -350,3 +454,15 @@ describe("project CLI install", () => {
     }
   });
 });
+
+function integrationFiles(root: string): [string, string][] {
+  return [
+    [join(destSkillDir(root, "codex"), "SKILL.md"), "User-authored skill\n"],
+    [destAdapter(root), "Before\n<!-- coherent:adapter -->\nOld adapter\n<!-- /coherent:adapter -->\nAfter\n"],
+    [destAlias(root), "<!-- coherent:adapter -->\nOld alias\n<!-- /coherent:adapter -->\n"],
+    [destPrevention(root), "<!-- coherent:prevention -->\nOld rule\n<!-- /coherent:prevention -->\n"],
+    [destHookScript(root), `#!/bin/sh\n# ${HOOK_MARKER}\necho old cursor hook\n`],
+    [destHooksJson(root), '{ "version": 1, "hooks": { "stop": [{ "command": "user-hook.sh" }] } }\n'],
+    [destGitHook(root), `#!/bin/sh\n# ${HOOK_MARKER}\necho old git hook\n`],
+  ];
+}

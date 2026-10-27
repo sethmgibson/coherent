@@ -231,6 +231,36 @@ function unusedInUsed(): number { return 2; }
     }
   });
 
+  it("fails closed when a Python importer outside the changed set has invalid syntax", async () => {
+    const root = await mkdtemp(join(tmpdir(), "coherent-importer-py-syntax-"));
+    try {
+      await writeFile(join(root, "base.py"), "value = 1\n");
+      await writeFile(join(root, "caller.py"), "import base\ndef broken(:\n");
+      await expect(expandWithImporters(root, ["base.py"])).rejects.toThrow(
+        /Incomplete analysis: Python syntax error in caller\.py:2:/,
+      );
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it("excludes ignored invalid Python importers and preserves transitive paths with spaces", async () => {
+    const root = await mkdtemp(join(tmpdir(), "coherent-importer-py-ignore-"));
+    try {
+      await mkdir(join(root, "with space"));
+      await mkdir(join(root, "ignored"));
+      await writeFile(join(root, "with space", "base.py"), "value = 1\n");
+      await writeFile(join(root, "with space", "caller.py"), "import base\n");
+      await writeFile(join(root, "consumer.py"), "import caller\n");
+      await writeFile(join(root, "ignored", "broken.py"), "def broken(:\n");
+      expect(await expandWithImporters(root, ["with space/base.py"], { ignore: ["ignored"] })).toEqual([
+        "consumer.py", "with space/base.py", "with space/caller.py",
+      ]);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
   it("requires a git work tree", async () => {
     const root = await mkdtemp(join(tmpdir(), "coherent-nogit-"));
     try {

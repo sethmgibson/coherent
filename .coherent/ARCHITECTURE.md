@@ -80,7 +80,7 @@ generic tiers:
 - `src/init` — ARCHITECTURE.md generation and fenced refresh
 - `src/install` — Codex/Cursor skill-tree adoption, Cursor adapter copy, prevention rule, and `check --changed` hooks. `InstallOptions` is the install/update command flag bag plus test seams, not a request-context object.
 - `src/cli.ts` — Commander entry
-- `src/config.ts` — optional `coherent.json` and `.coherent` filenames (`BACKEND_DIR` is a deprecated alias for `COHERENT_DIR`)
+- `src/config.ts` — optional `coherent.json` and `.coherent` filenames
 - `src/state-dir.ts` — resolves `.coherent/` vs leftover `.backend/` during one release
 - `skills/coherent/` — provider-neutral skill; taxonomy and phase markdown are generated from the catalog. Cursor adapter source uses non-discoverable `skill-template.md`, not a nested `SKILL.md`.
 - `.agents/skills/coherent` — Codex discovery adapter; not a second methodology
@@ -281,7 +281,7 @@ other compatibility shims, plugin hosts, or provider generators "for later."
 - The catalog must not import inventory, init, analysis, detectors, or the CLI.
 - Findings must not import inventory or CLI.
 - Inventory must not import the catalog or Finding.
-- Do not add a generic plugin, registry, pipeline, or executor layer. Detectors are ordinary functions called from `runAudit`. Python analysis is an explicit sidecar call, not a language-plugin host.
+- Do not add a generic plugin, registry, pipeline, or executor layer. Detectors are ordinary functions called from `collectEvidence`; `runAudit` enriches their evidence into the legacy advanced Finding envelope. Python analysis is an explicit sidecar call, not a language-plugin host.
 - Plan is ordinary functions over findings. Do not add a workflow engine.
 
 ## Testing philosophy

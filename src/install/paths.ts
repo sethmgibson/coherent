@@ -1,6 +1,5 @@
 import { join } from "node:path";
 import type { ProviderId } from "./providers.js";
-export { packageRoot } from "../runtime.js";
 
 export function adapterSkillPath(pkgRoot: string): string {
   return join(pkgRoot, "skills", "coherent", "adapters", "cursor", "skill-template.md");

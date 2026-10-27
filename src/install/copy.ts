@@ -39,7 +39,7 @@ export async function writeManagedFile(
     await writeText(dest, refreshed);
     return { path: dest, action: "updated" };
   }
-  if (looksLikeStub(existing, kind)) {
+  if (kind === "adapter" && looksLikeStubSkill(existing)) {
     await writeText(dest, shipped);
     return { path: dest, action: "updated" };
   }
@@ -77,10 +77,8 @@ export function looksLikeAdapterSkill(existing: string): boolean {
   );
 }
 
-function looksLikeStub(existing: string, kind: ManagedKind): boolean {
-  if (kind === "prevention") return false;
-  const lines = existing.split("\n").length;
-  if (lines > 40) return false;
+export function looksLikeStubSkill(existing: string): boolean {
+  if (existing.split("\n").length > 40) return false;
   return (
     existing.includes("skills/coherent/SKILL.md") &&
     (existing.includes("This is a Cursor adapter") ||
