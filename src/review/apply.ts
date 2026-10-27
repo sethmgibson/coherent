@@ -1,7 +1,7 @@
 import { detectorRevisionForRule } from "../config.js";
 import type { Finding } from "../domain/finding.js";
 import { reviewLifecycleState } from "./lifecycle.js";
-import type { FindingReview, MergedFindings } from "./types.js";
+import type { FindingReview } from "./types.js";
 
 export type ReviewMatch = "applied" | "stale" | "orphan";
 export type AppliedReviewKind = "exact" | "identity";
@@ -9,37 +9,6 @@ export type AppliedReviewKind = "exact" | "identity";
 export interface AppliedFindingReview {
   review: FindingReview;
   kind: AppliedReviewKind;
-}
-
-export function applyReviews(
-  mechanical: Finding[],
-  reviews: FindingReview[],
-  semantic: Finding[],
-): MergedFindings {
-  const findings: Finding[] = [];
-  const deferred = new Set<string>();
-  const needsReview = new Set<string>();
-  const seen = new Set<string>();
-  const peers = [...mechanical, ...semantic];
-
-  for (const finding of peers) {
-    if (seen.has(finding.fingerprint)) continue;
-    const review = matchReview(finding, reviews, peers);
-    if (review?.decision === "dismissed") {
-      seen.add(finding.fingerprint);
-      continue;
-    }
-    const next = review?.decision === "confirmed" ? applyConfirm(finding, review) : finding;
-    seen.add(next.fingerprint);
-    findings.push(next);
-    if (review?.decision === "deferred") {
-      deferred.add(next.fingerprint);
-    } else if (requiresAgentReview(next) && review?.decision !== "confirmed") {
-      needsReview.add(next.fingerprint);
-    }
-  }
-
-  return { findings, deferred, needsReview };
 }
 
 export function matchReview(
@@ -145,17 +114,4 @@ export function findingReviewState(
   if (review?.decision === "deferred") return "deferred";
   if (review?.decision === "confirmed" || !requiresAgentReview(finding)) return "ready";
   return "unreviewed";
-}
-
-function applyConfirm(finding: Finding, review: FindingReview): Finding {
-  return {
-    ...finding,
-    status: "confirmed",
-    ...(review.semanticEquivalence
-      ? { semanticEquivalence: review.semanticEquivalence }
-      : {}),
-    ...(review.authoritativeConcept
-      ? { authoritativeConcept: review.authoritativeConcept }
-      : {}),
-  };
 }

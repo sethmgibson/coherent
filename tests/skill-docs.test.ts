@@ -32,7 +32,7 @@ describe("generated skill docs", () => {
     const onDisk = await readFile(join(reference, "cleanup-phases.md"), "utf8");
     expect(onDisk).toBe(renderCleanupPhasesMarkdown());
     expect(onDisk).toContain("A08 → A07 → A08");
-    expect(onDisk).toContain("cleanup DAG is authoritative");
+    expect(onDisk).not.toContain("cleanup DAG is authoritative");
   });
 
   it("keeps runtime.md in sync with the executable compatibility contract", async () => {

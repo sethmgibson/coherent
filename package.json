@@ -30,7 +30,7 @@
     "README.md"
   ],
   "scripts": {
-    "build": "tsc",
+    "build": "node scripts/build.mjs",
     "typecheck": "tsc --project tsconfig.typecheck.json",
     "lint": "eslint . --max-warnings 0",
     "test": "vitest run",
@@ -41,7 +41,7 @@
     "check:security": "pnpm audit --audit-level high",
     "check:package": "tsx scripts/check-package.ts",
     "validate": "pnpm lint && pnpm check:dependencies && pnpm check:security && pnpm test && pnpm typecheck && pnpm check:package && pnpm check:skill-docs && pnpm check:unique-fingerprints",
-    "prepack": "tsc"
+    "prepack": "node scripts/build.mjs"
   },
   "keywords": [
     "maintainability",

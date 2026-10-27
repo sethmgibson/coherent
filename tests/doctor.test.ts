@@ -270,7 +270,7 @@ describe("doctor", () => {
     }
   });
 
-  it("rejects a decisions file with a semantic finding missing planner fields", async () => {
+  it("rejects a decisions file with a semantic finding missing required Finding fields", async () => {
     const root = await seededRoot();
     try {
       await writeFile(

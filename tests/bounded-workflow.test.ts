@@ -10,7 +10,7 @@ import { writeShippedFile } from "../src/install/skill-tree.js";
 import { runMigration } from "../src/migrate.js";
 import { runReview } from "../src/review/run.js";
 import { readDecisions } from "../src/review/store.js";
-import { applyReviews } from "../src/review/apply.js";
+import { matchReview } from "../src/review/apply.js";
 
 const roots: string[] = [];
 afterEach(async () => { await Promise.all(roots.splice(0).map(root => rm(root, { recursive: true, force: true }))); });
@@ -83,6 +83,42 @@ describe("bounded source workflow", () => {
     expect(observations[0]?.status).toBe("candidate");
   });
 
+  it("recognizes JavaScript module consumers and scoped CSS imports without counting quoted or commented imports", async () => {
+    const root = await fixture({
+      "package.json": JSON.stringify({ name: "js-deps", type: "module", dependencies: {
+        "static-lib": "1", "export-lib": "1", "dynamic-lib": "1", "jsx-lib": "1",
+        "commonjs-lib": "1", "@styles/theme": "1", "unused-control": "1",
+      } }),
+      "src/static.js": 'import value from "static-lib/subpath"; console.log(value);',
+      "src/export.mjs": 'export { default } from "export-lib";',
+      "src/dynamic.mjs": 'const value = import("dynamic-lib");',
+      "src/view.jsx": 'import View from "jsx-lib"; export const view = <View />;',
+      "src/tool.cjs": 'const value = require("commonjs-lib");',
+      "src/theme.css": '@import "~@styles/theme/base.css";',
+      "src/control.js": `const text = 'import "unused-control"'; // require("unused-control")`,
+    });
+    const { observations } = await collectEvidence(root, { rules: ["D01"] });
+    expect(observations.map(item => item.identity)).toEqual(["unused-dep:unused-control"]);
+    expect(observations[0]?.status).toBe("candidate");
+  });
+
+  it("unions exact and directory scopes without duplicates or sibling-prefix matches", async () => {
+    const root = await fixture({
+      "coherent.json": '{"ignore":["ignored.ts"]}',
+      "src/domain/a.ts": "export const legacyA = 1;",
+      "src/domain/b.ts": "export const legacyB = 2;",
+      "src/domain-sibling/c.ts": "export const legacyC = 3;",
+      "src/ignored.ts": "export const legacyIgnored = 4;",
+    });
+    const { observations } = await collectEvidence(root, {
+      include: ["src/domain/a.ts", "src/domain", "src/../src/domain/b.ts", "src/domain/a.ts"],
+      rules: ["A07"],
+    });
+    expect(observations.map(item => item.affectedSymbols[0]).sort()).toEqual(["legacyA", "legacyB"]);
+    await expect(collectEvidence(root, { include: ["src/ignored.ts"], rules: ["A07"] }))
+      .rejects.toThrow(/ignored or unsupported/);
+  });
+
   it("attributes overlapping dependencies to the owning nested manifest", async () => {
     const root = await fixture({
       "web/package.json": '{"name":"web","dependencies":{"moment":"1","dayjs":"1"}}',
@@ -136,15 +172,15 @@ def flags(first: Annotated[bool, 'query'], /, *, second: bool=False, third: bool
     const first = (await runAudit(root)).findings.find(f => f.ruleId === "A03")!;
     await runReview(root, "dismissed", first.fingerprint, "Boundary handles open states intentionally.");
     const decisions = await readDecisions(root);
-    expect(applyReviews([first], decisions.reviews, []).findings).toHaveLength(0);
+    expect(matchReview(first, decisions.reviews)?.decision).toBe("dismissed");
     await writeFile(join(root, "src/state.ts"), "\n\n" + source);
     const shifted = (await runAudit(root)).findings.find(f => f.ruleId === "A03")!;
     expect(shifted.evidenceHash).toBe(first.evidenceHash);
-    expect(applyReviews([shifted], decisions.reviews, []).findings).toHaveLength(0);
+    expect(matchReview(shifted, decisions.reviews)?.decision).toBe("dismissed");
     await writeFile(join(root, "src/state.ts"), source.replace("state:string", "state:string | number"));
     const changed = (await runAudit(root)).findings.find(f => f.ruleId === "A03")!;
     expect(changed.fingerprint).toBe(first.fingerprint);
-    expect(applyReviews([changed], decisions.reviews, []).needsReview.has(changed.fingerprint)).toBe(true);
+    expect(matchReview(changed, decisions.reviews)).toBeUndefined();
     expect(await readFile(join(root, ".coherent/decisions.json"), "utf8")).toContain(first.evidenceHash);
   });
 

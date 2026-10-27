@@ -5,8 +5,10 @@
 The table order is the default conversational review sequence: inspect one
 problem class, offer fixes, then suggest the next. Explicit targets override
 that sequence. Rule IDs are stable identifiers, **not** cleanup execution
-order; actual fixes respect their dependencies. Phases and prerequisite graphs
-are optional advanced cleanup metadata. See [cleanup-phases.md](cleanup-phases.md).
+order. The coding agent owns sequencing and identifies real prerequisites from
+source evidence. Phase, work-kind, prerequisite and re-scan fields remain legacy
+catalog data for import compatibility; no scheduler executes them.
+See [cleanup-phases.md](cleanup-phases.md).
 
 Source of truth: `src/catalog/rules.ts`.
 

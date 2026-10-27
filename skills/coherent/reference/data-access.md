@@ -159,5 +159,6 @@ For the additional checks, collect and validate:
 Report confirmed issues separately from candidates and intentional reads.
 Explain the practical benefit and remaining uncertainty; do not claim speedups
 from source inspection alone. Report in chat unless durable output was
-requested. Only an explicitly selected advanced workflow persists decisions
-or uses `--performance` to include advisory findings in its cleanup plan.
+requested. Select rule IDs in `audit --evidence` when mechanical observations
+help. Persist decisions only when durable reviews are explicitly requested.
+The agent chooses which observations warrant further work.

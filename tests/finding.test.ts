@@ -130,7 +130,7 @@ describe("parseFindingInput", () => {
     expect(parseFindingInput({ ...input, fingerprint: "ignore-me" })).toEqual(input);
   });
 
-  it("rejects missing planner fields", () => {
+  it("rejects missing required Finding fields", () => {
     const required = [
       "severity",
       "confidence",
@@ -180,7 +180,7 @@ describe("parseSemanticFindingsFile", () => {
     expect(file.findings[1]?.detectionMode).toBe("hybrid");
   });
 
-  it("rejects a surface-complete finding that is missing planner fields", () => {
+  it("rejects a surface-complete finding that is missing required Finding fields", () => {
     expect(() =>
       parseSemanticFindingsFile({
         schemaVersion: 1,

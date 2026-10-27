@@ -1,6 +1,15 @@
+import type { RuleId } from "../catalog/types.js";
 import type { Finding } from "../domain/finding.js";
 import { reviewGroupKey } from "../review/group.js";
-import type { FindingGroup } from "./types.js";
+
+export interface FindingGroup {
+  id: string;
+  ruleIds: RuleId[];
+  fingerprints: string[];
+  files: string[];
+  symbols: string[];
+  reason: string;
+}
 
 export function groupFindings(findings: Finding[]): FindingGroup[] {
   const clusters = new Map<string, Finding[]>();
@@ -31,7 +40,7 @@ function groupingReason(group: Finding[]): string {
   if (rule === "A08") return "Dead-code findings in the same file, cleaned together.";
   if (rule === "A07") return "Compatibility signals in the same file, reviewed together.";
   if (rule === "E05" || rule === "E06") {
-    return "Performance candidates on the same symbol; deferred until architecture survives.";
+    return "Performance candidates on the same symbol, grouped for investigation.";
   }
   return "Related evidence for one cleanup.";
 }

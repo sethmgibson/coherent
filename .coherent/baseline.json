@@ -2,16 +2,17 @@
   "schemaVersion": 1,
   "coherentVersion": "0.2.0",
   "fingerprintVersion": 2,
-  "detectorRevision": 10,
+  "detectorRevision": 11,
   "ruleDetectorRevisions": {
+    "F01": 1,
     "A01": 8,
     "A02": 8,
-    "A03": 9,
+    "A03": 10,
     "A04": 8,
     "A05": 8,
     "A06": 9,
     "A07": 8,
-    "A08": 9,
+    "A08": 10,
     "B01": 8,
     "B02": 8,
     "B03": 9,
@@ -20,12 +21,12 @@
     "B06": 8,
     "C01": 8,
     "C02": 8,
-    "C03": 9,
+    "C03": 10,
     "C04": 9,
     "C05": 8,
-    "D01": 8,
+    "D01": 10,
     "D02": 8,
-    "D03": 11,
+    "D03": 12,
     "D04": 8,
     "D05": 8,
     "E01": 8,
@@ -35,7 +36,7 @@
     "E05": 8,
     "E06": 8
   },
-  "createdAt": "2026-09-02T06:08:31.504Z",
+  "createdAt": "2026-10-27T20:02:37.950Z",
   "findings": [
     {
       "fingerprint": "b6470bbd7ec32af41b1c00d6ced9effa3300a5ad0e542dc5eaae2bc43de8ff2c",
@@ -68,6 +69,21 @@
       ]
     },
     {
+      "fingerprint": "cde2735ff1c80ea71f3dd35b120791bad409034be7e16ec60f2afc691ab94197",
+      "ruleId": "A08",
+      "identity": "test-only:src/catalog/phases.ts:PHASES_BY_ID",
+      "title": "Only referenced by tests",
+      "detectionMode": "deterministic",
+      "status": "candidate",
+      "severity": "medium",
+      "files": [
+        "src/catalog/phases.ts"
+      ],
+      "symbols": [
+        "PHASES_BY_ID"
+      ]
+    },
+    {
       "fingerprint": "0de916e3dae35f4d466447e98364a73d27e2fc4ca52b02bbd0f7ca29138b8e30",
       "ruleId": "A08",
       "identity": "test-only:src/catalog/rules.ts:CATEGORIES_BY_ID",
@@ -80,6 +96,36 @@
       ],
       "symbols": [
         "CATEGORIES_BY_ID"
+      ]
+    },
+    {
+      "fingerprint": "caaf859bdc7f7776140037f9452182a5649c9b0258ecb2e6376474ab8d6de12e",
+      "ruleId": "D03",
+      "identity": "swallowed-empty:src/install/detect.ts:commandOnPath:54857fe8e3ed:1",
+      "title": "Swallowed error",
+      "detectionMode": "hybrid",
+      "status": "confirmed",
+      "severity": "high",
+      "files": [
+        "src/install/detect.ts"
+      ],
+      "symbols": [
+        "commandOnPath"
+      ]
+    },
+    {
+      "fingerprint": "97251d5f740a236835b54ecf22d69aad604056b95125b85b072ca2db43714623",
+      "ruleId": "D03",
+      "identity": "swallowed-empty:src/install/skill-tree.ts:readIfExists:62573991a09a:1",
+      "title": "Possible boundary fallback",
+      "detectionMode": "hybrid",
+      "status": "candidate",
+      "severity": "medium",
+      "files": [
+        "src/install/skill-tree.ts"
+      ],
+      "symbols": [
+        "readIfExists"
       ]
     },
     {
@@ -281,36 +327,6 @@
         "runInstall",
         "runUpdate",
         "shouldInstallProjectCli"
-      ]
-    },
-    {
-      "fingerprint": "fd96f8a75a72b71418afe83cf07892095a142f6265454501bf3fbd11eb7a966b",
-      "ruleId": "D03",
-      "identity": "swallowed-empty:src/install/detect.ts:commandOnPath",
-      "title": "Swallowed error",
-      "detectionMode": "hybrid",
-      "status": "confirmed",
-      "severity": "high",
-      "files": [
-        "src/install/detect.ts"
-      ],
-      "symbols": [
-        "commandOnPath"
-      ]
-    },
-    {
-      "fingerprint": "a9039f9ffa04bb23eb6aaddd39b8d6f0588216710c5cf62eb48465195c81f655",
-      "ruleId": "D03",
-      "identity": "swallowed-empty:src/install/skill-tree.ts:readIfExists",
-      "title": "Possible boundary fallback",
-      "detectionMode": "hybrid",
-      "status": "candidate",
-      "severity": "medium",
-      "files": [
-        "src/install/skill-tree.ts"
-      ],
-      "symbols": [
-        "readIfExists"
       ]
     },
     {

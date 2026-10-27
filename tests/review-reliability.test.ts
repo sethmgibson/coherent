@@ -8,14 +8,12 @@ import {
   FINGERPRINT_VERSION,
 } from "../src/config.js";
 import { createFinding, type FindingInput } from "../src/domain/finding.js";
-import { applyReviews } from "../src/review/apply.js";
+import { matchReview } from "../src/review/apply.js";
 import { parseReviewRequests } from "../src/review/parse.js";
 import { runReviewBatch } from "../src/review/run.js";
 import { readDecisions, updateDecisions } from "../src/review/store.js";
 import type { FindingReview } from "../src/review/types.js";
-import { runReviewQueue } from "../src/review/queue.js";
-import { buildPlan } from "../src/plan/build.js";
-import { renderPlan } from "../src/plan/render.js";
+import { runReviewQueue, renderReviewQueue } from "../src/review/queue.js";
 
 function finding(overrides: Partial<FindingInput> & Pick<FindingInput, "ruleId" | "identity">) {
   return createFinding({
@@ -101,9 +99,8 @@ describe("review persistence and identity", () => {
       ...review(left, "confirmed"),
       fingerprint: "not-the-current-hash",
     };
-    const merged = applyReviews([left, right], [stale], []);
-    expect(merged.findings.map((item) => item.status)).toEqual(["candidate", "candidate"]);
-    expect(merged.needsReview.size).toBe(2);
+    expect(matchReview(left, [stale], [left, right])).toBeUndefined();
+    expect(matchReview(right, [stale], [left, right])).toBeUndefined();
   });
 
   it("does not let Refund and refund share a review identity fallback", () => {
@@ -117,17 +114,9 @@ describe("review persistence and identity", () => {
       identity: "string-protocol:kind:refund",
       affectedSymbols: ["refund"],
     });
-    const merged = applyReviews(
-      [refund, refundLower],
-      [{ ...review(refund, "confirmed"), fingerprint: "stale-hash" }],
-      [],
-    );
-    expect(merged.findings.find((item) => item.affectedSymbols.includes("Refund"))?.status).toBe(
-      "confirmed",
-    );
-    expect(merged.findings.find((item) => item.affectedSymbols.includes("refund"))?.status).toBe(
-      "candidate",
-    );
+    const recorded = { ...review(refund, "confirmed"), fingerprint: "stale-hash" };
+    expect(matchReview(refund, [recorded], [refund, refundLower])).toBe(recorded);
+    expect(matchReview(refundLower, [recorded], [refund, refundLower])).toBeUndefined();
   });
 
   it("persists batch semanticEquivalence and rejects unknown fields", async () => {
@@ -301,28 +290,25 @@ describe("review persistence and identity", () => {
     }
   });
 
-  it("keeps deferred items out of NEEDS REVIEW and shows the reason", () => {
-    const target = finding({
-      ruleId: "A06",
-      identity: "duplicate-rep:Foo+Bar",
-      affectedSymbols: ["Foo", "Bar"],
-    });
-    const deferredReview: FindingReview = {
-      ...review(target, "deferred"),
-      missingEvidence: "Need the persistence owner named.",
-      reconsiderWhen: "After the billing schema lands.",
-    };
-    const merged = applyReviews([target], [deferredReview], []);
-    expect(merged.needsReview.has(target.fingerprint)).toBe(false);
-    expect(merged.deferred.has(target.fingerprint)).toBe(true);
-      const plan = buildPlan(".", merged.findings, { ...merged, reviews: [deferredReview] });
-      expect(plan.nodes[0]?.state).toBe("deferred");
-      expect(plan.terminalState).toBe("deferred_only");
-    const rendered = renderPlan(plan);
-    expect(rendered).toMatch(/DEFERRED/);
-    expect(rendered).not.toMatch(/NEEDS REVIEW/);
-    expect(rendered).toMatch(/Need the persistence owner named/);
-    expect(rendered).toMatch(/After the billing schema lands/);
+  it("preserves deferred history and its reason in the review listing", async () => {
+    const root = await mkdtemp(join(tmpdir(), "coherent-deferred-history-"));
+    try {
+      await mkdir(join(root, ".coherent"));
+      const target = finding({ ruleId: "A06", identity: "duplicate-rep:Foo+Bar" });
+      const deferredReview: FindingReview = {
+        ...review(target, "deferred"),
+        missingEvidence: "Need the persistence owner named.",
+        reconsiderWhen: "After the billing schema lands.",
+      };
+      const original = JSON.stringify({ schemaVersion: 1, findings: [target], reviews: [deferredReview] });
+      await writeFile(join(root, ".coherent/decisions.json"), original);
+      const queue = await runReviewQueue(root);
+      expect(queue.counts).toMatchObject({ deferred: 1, unreviewed: 0, ready: 0 });
+      const rendered = renderReviewQueue(queue);
+      expect(rendered).toContain("Need the persistence owner named.");
+      expect(rendered).toContain("After the billing schema lands.");
+      expect(await readFile(join(root, ".coherent/decisions.json"), "utf8")).toBe(original);
+    } finally { await rm(root, { recursive: true, force: true }); }
   });
 });
 

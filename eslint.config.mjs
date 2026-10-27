@@ -8,7 +8,7 @@ export default defineConfig(
     ignores: ["dist/**", "coverage/**", "node_modules/**", "tests/fixtures/**"],
   },
   {
-    files: ["eslint.config.mjs"],
+    files: ["eslint.config.mjs", "scripts/*.mjs"],
     extends: [js.configs.recommended],
   },
   {

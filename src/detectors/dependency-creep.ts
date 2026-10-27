@@ -31,21 +31,17 @@ export async function detectDependencyCreep(ctx: AnalysisContext): Promise<Evide
   const imported = importedPackageNames(ctx.sourceFiles);
   for (const file of await walkFiles(ctx.root, new Set((await loadConfig(ctx.root)).ignore ?? []))) {
     if (/\.[cm]?jsx?$/.test(file.name)) {
-      const source = ts.createSourceFile(file.relativePath, await readFile(file.absolutePath, "utf8"), ts.ScriptTarget.Latest, true);
-      const visit = (node: ts.Node): void => {
-        if (ts.isCallExpression(node) && node.expression.getText(source) === "require" && node.arguments[0] && ts.isStringLiteral(node.arguments[0])) {
-          const name = packageNameFromSpecifier(node.arguments[0].text);
-          if (name) imported.add(name);
-        }
-        ts.forEachChild(node, visit);
-      };
-      visit(source);
+      const text = await readFile(file.absolutePath, "utf8");
+      for (const specifier of ts.preProcessFile(text, true, true).importedFiles) {
+        const name = packageNameFromSpecifier(specifier.fileName);
+        if (name) imported.add(name);
+      }
     }
     if (!file.name.endsWith(".css")) continue;
     const css = await readFile(file.absolutePath, "utf8");
     for (const match of css.matchAll(/@import\s+(?:url\(\s*)?["']([^"']+)["']/g)) {
-      const name = packageNameFromSpecifier(match[1]!);
-      if (name) imported.add(name.replace(/^~/, ""));
+      const name = packageNameFromSpecifier(match[1]!.replace(/^~/, ""));
+      if (name) imported.add(name);
     }
   }
   for (const pkg of ctx.inventory.packages) {

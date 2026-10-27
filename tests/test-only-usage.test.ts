@@ -3,8 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { auditFixture, byRule, findingFor } from "./helpers/audit-fixture.js";
-import { applyReviews } from "../src/review/apply.js";
-import { buildPlan } from "../src/plan/build.js";
+import { requiresAgentReview } from "../src/review/apply.js";
 
 describe("test-only usage", () => {
   it("distinguishes test consumers from production callers and preserves public API uncertainty", async () => {
@@ -34,8 +33,7 @@ describe("test-only usage", () => {
         expect(finding?.changeRisk).toContain("package exports");
       }
       expect(findingFor(dead, "live")).toBeUndefined();
-      const merged = applyReviews(dead, [], []);
-      expect(buildPlan(root, merged.findings, merged).readyNodeIds).toEqual([]);
+      expect(dead.every(requiresAgentReview)).toBe(true);
 
       await writeFile(join(root, "src/app.ts"), "import { live, loadToday } from './library'; live(); loadToday();");
       const rerun = await auditFixture(root);

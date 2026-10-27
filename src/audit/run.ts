@@ -10,8 +10,7 @@ import { type Inventory } from "../inventory.js";
 import type { Finding } from "../domain/finding.js";
 import { computeMetrics } from "./metrics.js";
 import type { Metric } from "./metrics.js";
-import { groupFindings } from "../plan/group.js";
-import type { FindingGroup } from "../plan/types.js";
+import { groupFindings, type FindingGroup } from "./group.js";
 import { assertUniqueFingerprints, mergeFindingsByFingerprint } from "./dedupe.js";
 import { portableRuntimeIdentity, type PortableRuntimeIdentity } from "../runtime.js";
 

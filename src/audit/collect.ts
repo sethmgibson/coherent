@@ -46,13 +46,16 @@ export async function collectEvidence(root: string, options: {
   let include: string[] | undefined;
   if (requested) {
     const files = await walkFiles(root, new Set(config.ignore ?? []));
+    const byPath = new Map(files.map(file => [file.relativePath, file]));
     const selected = new Set<string>();
     for (const path of requested) {
       const info = await stat(resolve(root, path)).catch((error: unknown) => {
         throw new Error(`Incomplete analysis: failed to load source file ${path}: ${error instanceof Error ? error.message : String(error)}`, { cause: error });
       });
-      const matches = files.filter(file => file.relativePath === path ||
-        (info.isDirectory() && (path === "" || file.relativePath.startsWith(path + "/"))));
+      const exact = byPath.get(path);
+      const matches = info.isDirectory()
+        ? files.filter(file => path === "" || file.relativePath.startsWith(path + "/"))
+        : exact ? [exact] : [];
       if (!info.isDirectory() && matches.length === 0) throw new Error(`Evidence path is ignored or unsupported: ${path}`);
       for (const file of matches) selected.add(file.relativePath);
     }

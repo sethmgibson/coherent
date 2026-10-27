@@ -19,7 +19,7 @@ preserve authorization, completeness, freshness and unknown-value semantics.
 Follow the default skill and [fix-safety.md](fix-safety.md). Existing architecture
 is context, not proof that a layer is necessary. A baseline or persisted review
 is never required for ordinary feature work. Do not run `baseline`, `review`,
-`plan`, `check` or `doctor` as an automatic feature-work sequence.
+`check` or `doctor` as an automatic feature-work sequence.
 
 A team may explicitly configure baseline/CI prevention through
 [check.md](check.md) and the advanced workflow. Honor those repository-required

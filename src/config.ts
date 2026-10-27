@@ -44,7 +44,7 @@ export const RULE_DETECTOR_REVISIONS: Readonly<Record<RuleId, number>> = {
   C03: 10,
   C04: 9,
   C05: 8,
-  D01: 9,
+  D01: 10,
   D02: 8,
   D03: 12,
   D04: 8,

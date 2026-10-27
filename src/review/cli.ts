@@ -79,7 +79,7 @@ export function registerReviewCommands(program: Command, readStdin: () => Promis
 
   review
     .command("dismiss")
-    .description("Drop a finding from later plans")
+    .description("Record why a finding was dismissed")
     .argument("<fingerprint>", "finding fingerprint")
     .argument("[root]", "repository root", ".")
     .requiredOption("--reason <reason>", "why this decision")
@@ -101,7 +101,7 @@ export function registerReviewCommands(program: Command, readStdin: () => Promis
 
   review
     .command("confirm")
-    .description("Mark a hybrid or semantic finding as ready work")
+    .description("Record an evidence-backed confirmation without scheduling a fix")
     .argument("<fingerprint>", "finding fingerprint")
     .argument("[root]", "repository root", ".")
     .option("--reason <reason>", "why this decision")

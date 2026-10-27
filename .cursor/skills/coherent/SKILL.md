@@ -11,6 +11,6 @@ The CLI is optional. When using an installed CLI, `coherent version . --json`
 reports `runtime.skillPath`; load that exact canonical skill before tool work.
 Missing CLI support does not block source inspection or require state setup.
 Use skills-only adoption for consumer projects; do not copy this source-relative
-adapter into them. Persistent reviews, baseline gates and managed cleanup are
+adapter into them. Persistent reviews and baseline gates are
 explicit advanced choices.
 <!-- /coherent:adapter -->

@@ -122,13 +122,16 @@ explicit output, initialization, migration, review or integration action request
 - `migrate` previews optional state/context migration; see
   [migration.md](reference/migration.md). It does not enroll a project in cleanup.
 
-Only an explicit request for persistent reviews, baseline drift/CI gates or
-managed dependency-ordered cleanup selects the **advanced workflow**. Existing
-configured hooks and direct CLI commands remain advanced opt-ins. The presence
-of stored files alone is not consent to run it. Read
-[full-cleanup.md](reference/full-cleanup.md) for `inspect`, `review`, `baseline`,
-`plan`, `fix next`, `check` and state-oriented `doctor`. Their legacy command
-meanings and stored state remain supported. Do not run them in an ordinary task.
+Only an explicit request for persistent reviews or baseline drift/CI gates
+selects those optional tools. Existing configured hooks remain explicit opt-ins;
+stored files alone are not consent. Read
+[full-cleanup.md](reference/full-cleanup.md) for `review`, `baseline`, `check`
+and state-oriented `doctor`. Their stored-state and validation contracts remain
+supported. The coding agent owns cleanup sequencing in every workflow.
+
+`plan`, `fix next`, and `inspect` are retired and return non-zero retirement
+errors. Do not invoke them, construct a replacement Coherent metadata queue,
+or translate their legacy catalog metadata into mandatory execution gates.
 
 ## Routing
 
@@ -151,7 +154,7 @@ meanings and stored state remain supported. Do not run them in an ordinary task.
   reads, N+1, unnecessary loading, superseded requests, workload bounds,
   repeated refreshes/rebuilds and expensive query shapes when relevant.
 - **Ordinary feature work:** follow [prevention.md](reference/prevention.md).
-- **Explicit advanced command or persistent cleanup:** load its reference and
+- **Explicit persistent review or CI command:** load its reference and
   preserve its existing state/validation contract.
 - **Taxonomy:** consult [taxonomy.md](reference/taxonomy.md) only as needed.
 

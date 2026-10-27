@@ -21,8 +21,9 @@ order is the review sequence, not mandatory fix order. Explicit targets override
 that sequence. Whole-system simplification is independently selectable and
 skippable; it adds no catalog prerequisites to existing classes. No CLI,
 baseline, review file, cleanup DAG or initialization is required.
-Persistent review/baseline/planning commands are explicitly selected advanced
-workflows. Their stored schemas and command contracts remain supported.
+Persistent reviews and baseline/CI checks are explicitly selected optional
+workflows. Their stored schemas and review history remain supported. The coding
+agent owns sequencing; `plan`, `fix next` and `inspect` return retirement errors.
 
 ## Major applications/services
 
@@ -45,7 +46,7 @@ Detected frameworks:
 
 Languages: JavaScript, TypeScript
 
-Approximate size: 190 files, 18541 source lines.
+Approximate size: 189 files, 18540 source lines.
 
 Dependencies: 2 runtime, 9 development.
 <!-- /coherent:discovered -->
@@ -70,12 +71,10 @@ generic tiers:
 - `src/detectors` — one function per implemented rule, called explicitly
 - `src/analysis/nest-reachability.ts` — bounded static Nest module/provider resolution and evidence for exact port calls, HTTP handlers, and lifecycle methods. It uses the current analysis context, respects module visibility, and leaves opaque or ambiguous bindings unresolved; it does not execute Nest or infer bindings from type shapes.
 - `src/audit/collect.ts` — source evidence collection without stored reviews, fingerprints or planning; detectors return minimal Evidence. `audit/run.ts` enriches it into the legacy advanced Finding envelope.
+- `src/audit/group.ts` — shared evidence grouping and its JSON shape, consumed by audit output independently of scheduling. Audit text groups findings by catalog category and rule; it does not prescribe cleanup execution order.
 - `src/baseline`, `src/check` — optional advanced snapshots and drift checks
 - `src/migrate.ts` — explicit context conversion preview/write; preserves baseline and decisions
 - `src/review` — durable review decisions and semantic-only findings
-- `src/plan` — cleanup DAG from merged findings; default phases are tie-breaks only
-- `src/fix` — select one unlocked node and write a work brief
-- `src/inspect.ts` — one read-only audit snapshot feeding the reviewed plan and next-node selection
 - `src/doctor` — read-only integrity checks
 - `src/runtime.ts` — portable workflow/detector/capability identity plus diagnostic package and lock revision evidence
 - `src/inventory.ts`, `src/inventory-walk.ts`, `src/inventory-scan.ts`, `src/inventory-python.ts` — repository inventory, including `.py` files and pyproject/requirements signals
@@ -103,10 +102,8 @@ Observed top-level modules:
 - `src/detectors`
 - `src/doctor`
 - `src/domain`
-- `src/fix`
 - `src/init`
 - `src/install`
-- `src/plan`
 - `src/review`
 <!-- /coherent:discovered -->
 
@@ -117,8 +114,7 @@ Observed top-level modules:
 - **Rule** — a stable catalog entry (`F01`, plus the existing A–E classes) with
   detection mode and default phase; catalog order starts with F01 and does not
   follow ID sorting
-- **Cleanup phase** — default execution grouping; not the same as taxonomy order
-- **Cleanup DAG / cleanup node** — finding-specific work graph; authoritative for actual cleanup
+- **Cleanup phase** — legacy catalog data retained for public import compatibility; not an execution schedule
 - **Finding** — one issue instance, with a stable fingerprint
 - **Identity** — evidence key used for fingerprints (rule + path + symbol + identity; not line numbers)
 - **Review** — durable `confirmed` / `dismissed` / `deferred` decision keyed by fingerprint
@@ -126,7 +122,6 @@ Observed top-level modules:
 - **Baseline** — committed fingerprint snapshot of current findings
 - **Architecture context** — durable markdown in `.coherent/ARCHITECTURE.md`
 - **Runtime identity** — executable package, workflow, detector, fingerprint, schema, and capability contract used to pair the skill with the CLI
-- **Terminal state** — reviewed plan outcome (`ready`, `awaiting_review`, `blocked`, `deferred_only`, or `clean`)
 
 ## Canonical terminology
 
@@ -139,7 +134,7 @@ Observed top-level modules:
 - Use **finding**, not "violation" or "diagnostic".
 - Use **detection mode** (`deterministic` | `semantic` | `hybrid`).
 - Use **cleanup phase**, not "priority" or "severity", for default grouping.
-- Use **cleanup DAG** for actual work order. Phases only break ties.
+- The coding agent owns actual work order. Coherent has no cleanup scheduler.
 - Do not introduce a second name for the catalog, inventory, or Finding.
 
 ## Data ownership
@@ -162,7 +157,6 @@ Observed top-level modules:
 - A cleanup phase exists only in `src/catalog/phases.ts`.
 - The release version exists only in `package.json`; `src/version.ts` reads it for artifacts and the CLI.
 - Runtime workflow revision and capabilities are owned by `src/runtime.ts`; generated `skills/coherent/reference/runtime.md` keeps the skill requirement synchronized.
-- A cleanup node exists only in the plan built from current findings and decisions; JSON is written only through explicit `--output`.
 - `RuleCategory` and `CleanupPhase` share `id`/`title`/`summary` by coincidence. They are intentionally different; do not merge. That decision is also recorded in `.coherent/decisions.json`.
 - `FindingStatus` (`confirmed` | `candidate`) is the typed status protocol. Review decisions remain distinct from Finding status inside the consolidated decisions file.
 - A Finding's identity is its fingerprint of rule ID, `identity`, files, and symbols. Line and column are presentation only.
@@ -177,19 +171,19 @@ Observed top-level modules:
 - Semantic questions must not be reported as deterministic conclusions.
 - `init` must not invent architecture. Unknown sections stay incomplete.
 - `init --force` and `refresh` replace only fenced discovered interiors. Semantic prose stays. Unfenced migration (one-release `.backend/` / pre-fence files) keeps unknown human-authored `##` sections verbatim.
-- In the advanced DAG only, candidates (including deterministic unused exports), hybrid findings, and semantic findings are not `fix next` targets until `coherent review confirm`. Plan building and review application share the same review predicate. Public/protected methods may be reached through structural ports even in non-exported classes; absent direct references remain candidates.
+- Candidate and semantic findings require evidence-backed interpretation before any requested fix. Review confirmation is a recorded judgment, not a task selection or authorization to implement. Public/protected methods may be reached through structural ports even in non-exported classes; absent direct references remain candidates.
 - Dead-code `test-only` findings preserve test caller locations and stay candidates. Public APIs and intentional test support require review; production-file references are not recursively classified as test-only. Proven static Nest registrations and port bindings count as use before classifying direct references.
 - Advanced mechanical reviews bind to current source evidence; changed content or missing historical evidence reopens them without rewriting stored state.
 - New architecture starters focus on ownership/invariants; legacy refresh remains fenced and focused context is unchanged.
-- Dismissed findings are absent from the cleanup DAG. Architecture prose alone does not dismiss them. Mechanical and hybrid reviews require a matching `detectorRevision`, including exact fingerprints; exact pure-semantic reviews may survive detector bumps.
+- Review dispositions annotate findings and do not change raw evidence or the CI failure policy. Architecture prose alone does not change a review disposition. Mechanical and hybrid reviews require a matching `detectorRevision`, including exact fingerprints; exact pure-semantic reviews may survive detector bumps.
 - A review whose exact fingerprint remains in the current baseline but is absent from the current audit is resolved history, not an orphan. Deep doctor still rejects reviews absent from both.
 - `check` fails only on new confirmed high/critical deterministic findings. Version-skewed baselines are stale and must be regenerated.
 - Baseline drift and review disposition are separate. Full `check` may apply identity review matching with the complete peer set; scoped `check --changed` applies exact reviews only and labels possible identity matches `requires_full_scan`.
-- An explicitly selected advanced full cleanup must pass the generated runtime compatibility command before scanning or writing reviews. A missing command, workflow/detector mismatch, or missing capability is a hard stop.
+- Explicit persistent review and CI operations must pass the generated runtime compatibility command before using those tools. A missing command, workflow/detector mismatch, or missing capability is a hard stop.
 - CLI lock, detector-version baseline, and mechanical/hybrid decisions are coupled commit state. Worktree doctor success is not proof about the Git index or a committed ref; use `doctor --staged` and `doctor --ref` for those exact boundaries.
-- Taxonomy ID order is not cleanup execution order. The cleanup DAG is authoritative.
-- `prerequisiteFindingIds` names current finding fingerprints. The planner maps them through finding groups, ignores same-node references, treats absent fingerprints as satisfied, and preserves explicit `unlocks` text in work briefs.
-- Analysis-only prerequisite matching requires a genuinely shared concept, not merely two non-empty concept names. Work briefs preserve all explicit `changeRisk` warnings; high confidence does not imply a low-risk edit.
+- Taxonomy order guides conversational review; the coding agent chooses implementation order.
+- `prerequisiteFindingIds` and catalog scheduling fields are retained for stored/public compatibility; no execution order is inferred from them.
+- Preserve explicit `changeRisk` warnings in evidence and proposals; high confidence does not imply a low-risk edit.
 - Dead-code (A08) is re-scanned after A07, after canonicalization, and after architecture collapse. Python dead-code reports only mechanically certain unreachable statements; unused functions, classes, and imports stay unreported because dynamic reachability, decorators, public/module exports, `__all__`, framework registration, reflection, and unknown imports are not deletion evidence.
 - Analysis parses repository tsconfigs and uses the owning config for each containing file, so inherited options, path aliases, and child project-reference configs participate in module resolution.
 
@@ -241,7 +235,8 @@ Probable entrypoint files:
 > Status: confirmed
 
 User-facing commands are `version`, `init`, `refresh`, `audit`, `review`, `baseline`,
-`inspect`, `plan`, `fix next`, `check`, `install`, `update`, and `doctor`. Catalog
+`check`, `install`, `update`, and `doctor`. Retired `inspect`, `plan` and
+`fix next` only return non-zero errors. Catalog
 types are also exported for tests and callers.
 
 ## Async/event boundaries
@@ -258,16 +253,13 @@ None. The CLI is synchronous process work. No queues, cron, or subscriptions.
 - `coherent refresh [root]` updates fenced discovered facts only.
 - `coherent version [root]` reports portable runtime identity, resolved package/source evidence, and target lock revision; expectation flags fail closed when the active skill and CLI are incompatible.
 - `coherent audit [root]` parses TypeScript once and, when `.py` files are in scope, runs the packaged Python stdlib-`ast` sidecar in one subprocess. It fails closed if those files are in scope and no supported interpreter exists, and it identifies Python syntax errors by file and line. `--output` is explicit and includes portable runtime identity. Inventory skips `__pycache__`, `site-packages`, and local virtualenv directories. The sidecar writes no pycache or other caches.
-- `coherent inspect [root]` uses one audit snapshot for compact findings, the reviewed cleanup DAG, terminal-state classification, and next-node selection without writing metadata.
 - `coherent review dismiss|confirm|defer <fingerprint>` writes one decision to `.coherent/decisions.json`; dismissed or deferred live A07 reviews require a future expiry or named removal milestone, expiry reopens the finding, and reviewed false signals are explicitly marked `notCompatibility`. Deferred reviews require `missingEvidence` or `reconsiderWhen`. `review apply` validates a JSON batch against one audit before one locked write, persists supported judgment fields, rejects unknown fields, and accepts `--dry-run` plus a JSON receipt. `review queue` is a read-only item-level view of unreviewed, deferred, and ready findings. `review prune` previews stale, expired, and orphaned records and writes only with `--write`, retaining baseline-backed resolved history only while its lifecycle is current. Review writes use a cross-process lock and atomic replacement. Identity fallback is refused when more than one current finding shares the identity.
 - `coherent baseline [root]` snapshots finding fingerprints with portable schema versions and leaves an equivalent existing file byte-for-byte unchanged.
-- `coherent plan [root]` builds a cleanup DAG from a fresh audit merged with reviews and semantic findings.
-- `coherent fix next [root]` selects one unlocked `ready` node and prints a work brief with reviewed finding fingerprints, exact locations, and evidence from the same scan. JSON exposes selected `findings`; `inspect` exposes them as `nextFindings`, keeping raw audit status separate. An empty reviewed plan is a successful clean terminal; remaining blocked or review-only nodes are not.
 - `coherent check [root]` compares a fresh audit to the baseline, classifies new debt, and reports gate status separately from drift and review disposition. `--changed` uses lossless target-relative Git paths (including both rename sides) plus TypeScript-resolved and Python-ast transitive importers, respects inventory ignores, does not treat unscoped baseline findings as resolved, and conservatively requires a full scan for identity-only review matches. Full `check` remains necessary for repository-wide conclusions and config-only changes.
 - JSON output stays parseable on stdout when combined with explicit `--output`; write acknowledgements go to stderr.
 - `coherent install [root]` and `update` write nothing on a non-TTY without `--yes`, `--providers`, `--scope`, or an explicit adapter, rule, Cursor hook, or Git hook flag. TTY `install` can prompt for Codex/Cursor and project vs global. Project adoption installs `github:sethmgibson/coherent` through the detected package manager, verifies the project-local `coherent version` handshake, then copies the packaged skill tree. A failed CLI install or handshake does not copy skills or report success. A different existing `coherent` specifier or malformed `package.json` fails project adoption; a same-repo pin is kept and not rewritten to the unpinned GitHub spec. `--adapter` together with project Cursor adoption writes the skill tree, not a handshake adapter that would block it. `--skills-only` copies skill files without installing the CLI. Global adoption copies skill files only and does not claim the CLI is on `PATH`. `update` refreshes those files only and explicitly does not update the CLI dependency.
 - `coherent doctor [root]` checks stale discovery, decision integrity, stale review revisions, baseline/decision revision coupling, compatibility review lifecycles, baseline integrity when present, and leftover `.backend/` state without auditing; `--deep` adds orphan and current-finding review validation through one full audit while retaining baseline-backed resolved reviews whose lifecycle remains current. `--staged` exports the Git index and `--ref` exports a committed tree to a temporary snapshot so the exact artifact is validated without modifying the target repository.
-- `pnpm test` covers catalog integrity, inventory fixtures, init, detectors, fingerprints, baseline/check, planner, review merge, and CLI behavior.
+- `pnpm test` covers catalog integrity, inventory fixtures, init, detectors, fingerprints, baseline/check, review matching, and CLI behavior.
 - `pnpm validate` runs zero-warning type-aware ESLint, dependency hygiene/security checks, tests, typecheck, packed-package validation (including the prepack build), generated skill-doc consistency, and committed fingerprint uniqueness. CI runs the same gates plus Coherent check and deep doctor. `pnpm check:package` applies strict publint to the tarball and tests installed CLI aliases and public exports in an isolated runtime-only consumer. ESLint uses `tsconfig.typecheck.json` for source, tests, scripts, and the Vitest configuration while excluding generated output and intentionally problematic fixtures. `pnpm generate:skill-docs` owns the generated catalog and runtime references.
 
 ## Transitional/legacy architecture
@@ -286,7 +278,7 @@ other compatibility shims, plugin hosts, or provider generators "for later."
 - Findings must not import inventory or CLI.
 - Inventory must not import the catalog or Finding.
 - Do not add a generic plugin, registry, pipeline, or executor layer. Detectors are ordinary functions called from `collectEvidence`; `runAudit` enriches their evidence into the legacy advanced Finding envelope. Python analysis is an explicit sidecar call, not a language-plugin host.
-- Plan is ordinary functions over findings. Do not add a workflow engine.
+- Do not reintroduce cleanup scheduling, priority scoring, or a workflow engine.
 
 ## Testing philosophy
 

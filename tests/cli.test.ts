@@ -102,7 +102,6 @@ describe("CLI", { timeout: CLI_WORKFLOW_TIMEOUT_MS }, () => {
     ["audit", ["--json"], 2],
     ["audit", ["--compact-json"], 0],
     ["audit", ["--evidence", "--json"], 2],
-    ["plan", ["--json"], 2],
   ] as const)("keeps %s %j stdout and explicit output bytes identical", async (command, flags, space) => {
     const root = await mkdtemp(join(tmpdir(), "coherent-cli-json-output-"));
     try {
@@ -138,7 +137,6 @@ describe("CLI", { timeout: CLI_WORKFLOW_TIMEOUT_MS }, () => {
     ["audit", ["--json"]],
     ["audit", ["--compact-json"]],
     ["audit", ["--evidence", "--json"]],
-    ["plan", ["--json"]],
   ] as const)("reports %s %j output failures after printing JSON", async (command, flags) => {
     const root = await mkdtemp(join(tmpdir(), "coherent-cli-output-error-"));
     try {
@@ -189,7 +187,7 @@ describe("CLI", { timeout: CLI_WORKFLOW_TIMEOUT_MS }, () => {
       expect(report.compatible).toBe(true);
       expect(report.runtime).toMatchObject({
         coherentVersion: "0.2.0",
-        workflowRevision: 2,
+        workflowRevision: 3,
         packageRoot: repoRoot,
         declaredRevision: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
       });
@@ -243,153 +241,49 @@ describe("CLI", { timeout: CLI_WORKFLOW_TIMEOUT_MS }, () => {
     }
   });
 
-  it("builds a cleanup plan without writing project state", async () => {
-    const root = await mkdtemp(join(tmpdir(), "coherent-plan-"));
-    await cp(expressFixture, root, { recursive: true });
+  it.each([
+    ["inspect", ["inspect"]],
+    ["plan", ["plan"]],
+    ["fix next", ["fix", "next"]],
+  ] as const)("retires %s without reading source or modifying history", async (name, command) => {
+    const root = await mkdtemp(join(tmpdir(), "coherent-retired-cli-"));
     try {
-      const result = await runCli(["plan", root]);
-      expect(result.code).toBe(0);
-      expect(result.stdout).toMatch(/Coherent cleanup plan|READY|No cleanup nodes/);
-      expect(result.stdout).toMatch(/Signals: \d+.*Dismissed:/);
-      await expect(readdir(join(root, ".coherent"))).rejects.toMatchObject({ code: "ENOENT" });
-
-      const output = "artifacts/plan.json";
-      const saved = await runCli(["plan", root, "--output", output]);
-      expect(saved.code).toBe(0);
-      const plan: unknown = JSON.parse(await readFile(join(root, output), "utf8"));
-      expect(plan).toHaveProperty("nodes", expect.any(Array));
-    } finally {
-      await rm(root, { recursive: true, force: true });
-    }
-  });
-
-  it("inspects one audit snapshot, reviewed plan, and next node", async () => {
-    const root = await mkdtemp(join(tmpdir(), "coherent-inspect-"));
-    await cp(scannerFixture, root, { recursive: true });
-    try {
-      await mkdir(join(root, ".coherent"), { recursive: true });
-      const stateBefore = await readdir(join(root, ".coherent"));
-      const result = await runCli(["inspect", root, "--json"]);
-      expect(result.code).toBe(0);
-      const inspection = JSON.parse(result.stdout) as {
-        runtime: { workflowRevision: number };
-        terminalState: string;
-        audit: {
-          runtime: { detectorRevision: number };
-          summary: { total: number };
-          findings: Array<{ fingerprint: string }>;
-          candidates?: unknown;
-        };
-        plan: {
-          readyNodeIds: string[];
-          reviewSummary?: { detected: number };
-        };
-        nextNode: { id: string } | null;
-      };
-      expect(inspection.audit.findings).toHaveLength(inspection.audit.summary.total);
-      expect(inspection.runtime.workflowRevision).toBe(2);
-      expect(inspection.terminalState).toEqual(expect.any(String));
-      expect(inspection.audit.runtime.detectorRevision).toEqual(expect.any(Number));
-      expect(inspection.plan).toHaveProperty("terminalState");
-      expect(inspection.audit.candidates).toBeUndefined();
-      expect(inspection.plan.reviewSummary?.detected).toBe(
-        inspection.audit.summary.total,
-      );
-      if (inspection.nextNode) {
-        expect(inspection.plan.readyNodeIds).toContain(inspection.nextNode.id);
+      await mkdir(join(root, ".coherent"));
+      await writeFile(join(root, "broken.ts"), "export function broken( {");
+      const baseline = "invalid baseline must stay untouched";
+      const decisions = "invalid decisions must stay untouched";
+      await writeFile(join(root, ".coherent/baseline.json"), baseline);
+      await writeFile(join(root, ".coherent/decisions.json"), decisions);
+      for (const json of [false, true]) {
+        const result = await runCli([
+          ...command, root, "--performance",
+          ...(name === "plan" ? ["--output", ".coherent/decisions.json"] : []),
+          ...(json ? ["--json"] : []),
+        ]);
+        expect(result.code).toBe(1);
+        if (json) {
+          const retired = JSON.parse(result.stdout) as { error: { code: string; command: string; message: string } };
+          expect(retired).toMatchObject({
+            error: { code: "scheduler_retired", command: name },
+          });
+          expect(retired.error.message).toContain("coding agent owns cleanup sequencing");
+          expect(result.stderr).toBe("");
+        } else {
+          expect(result.stdout).toBe("");
+          expect(result.stderr).toContain(`coherent ${name} is retired`);
+        }
+        expect(await readFile(join(root, ".coherent/baseline.json"), "utf8")).toBe(baseline);
+        expect(await readFile(join(root, ".coherent/decisions.json"), "utf8")).toBe(decisions);
+        expect((await readdir(root)).sort()).toEqual([".coherent", "broken.ts"]);
+        expect((await readdir(join(root, ".coherent"))).sort()).toEqual(["baseline.json", "decisions.json"]);
       }
-      expect(await readdir(join(root, ".coherent"))).toEqual(stateBefore);
-
-      const plain = await runCli(["inspect", root]);
-      expect(plain.code).toBe(0);
-      expect(plain.stdout).toContain("Coherent inspect");
-      expect(plain.stdout).toContain("Coherent cleanup plan");
-      expect(plain.stdout).toContain("Coherent fix next");
-    } finally {
-      await rm(root, { recursive: true, force: true });
-    }
+      const missing = join(root, "missing");
+      const result = await runCli([...command, missing, "--json"]);
+      expect(result.code).toBe(1);
+      expect(JSON.parse(result.stdout)).toHaveProperty("error.code", "scheduler_retired");
+      await expect(readdir(missing)).rejects.toMatchObject({ code: "ENOENT" });
+    } finally { await rm(root, { recursive: true, force: true }); }
   });
-
-  it("selects one fix-next node from a fixture", async () => {
-    const root = await mkdtemp(join(tmpdir(), "coherent-fix-"));
-    await cp(expressFixture, root, { recursive: true });
-    try {
-      const result = await runCli(["fix", "next", root]);
-      expect([0, 1]).toContain(result.code);
-      expect(result.stdout).toMatch(/Coherent fix next|No unlocked cleanup node/);
-      await expect(readdir(join(root, ".coherent"))).rejects.toMatchObject({ code: "ENOENT" });
-    } finally {
-      await rm(root, { recursive: true, force: true });
-    }
-  });
-
-  it("treats an empty reviewed plan as a successful fix-next terminal", async () => {
-    const root = await mkdtemp(join(tmpdir(), "coherent-fix-clean-"));
-    try {
-      await writeFile(join(root, "package.json"), '{"name":"clean"}\n', "utf8");
-      const result = await runCli(["fix", "next", root]);
-      expect(result.code).toBe(0);
-      expect(result.stdout).toMatch(/reviewed plan is clean/i);
-    } finally {
-      await rm(root, { recursive: true, force: true });
-    }
-  });
-
-  it("requires candidate review and returns exact evidence without another audit", async () => {
-    const root = await mkdtemp(join(tmpdir(), "coherent-fix-review-"));
-    try {
-      await writeFile(join(root, "package.json"), '{"name":"candidate"}\n');
-      await writeFile(join(root, "helper.ts"), "export function orphan(): number { return 1; }\n");
-      const before = await runCli(["fix", "next", root]);
-      expect(before.code).toBe(1);
-      expect(before.stdout).toContain("inspect --json");
-      expect(before.stdout).toContain("not clean");
-      await expect(readdir(join(root, ".coherent"))).rejects.toMatchObject({ code: "ENOENT" });
-
-      const initial = await runCli(["inspect", root, "--json"]);
-      const snapshot = JSON.parse(initial.stdout) as {
-        audit: { findings: Array<{ fingerprint: string; status: string }> };
-        nextNode: unknown;
-        nextFindings: unknown[];
-      };
-      expect(snapshot.nextNode).toBeNull();
-      expect(snapshot.nextFindings).toEqual([]);
-      const target = snapshot.audit.findings[0]!;
-      expect(target.status).toBe("candidate");
-      const reviewBatch = JSON.stringify([{
-        fingerprint: target.fingerprint,
-        decision: "confirmed",
-        reason: "Internal app helper; checked all imports, package exports, and runtime registration.",
-      }]);
-      await writeFile(join(root, "review-batch.json"), reviewBatch);
-      const confirmed = await runCli([
-        "review", "apply", root, "--input", "review-batch.json",
-      ]);
-      expect(confirmed.code).toBe(0);
-
-      const selected = await runCli(["fix", "next", root, "--json"]);
-      expect(selected.code).toBe(0);
-      const brief = JSON.parse(selected.stdout) as {
-        node: { findingFingerprints: string[]; status: string };
-        findings: Array<{ fingerprint: string; status: string; locations: unknown[]; evidence: { summary: string } }>;
-      };
-      expect(brief.node.status).toBe("confirmed");
-      expect(brief.findings.map((finding) => finding.fingerprint)).toEqual(brief.node.findingFingerprints);
-      expect(brief.findings[0]).toMatchObject({
-        fingerprint: target.fingerprint,
-        status: "confirmed",
-        locations: [{ file: "helper.ts", line: 1, column: 1, symbol: "orphan" }],
-        evidence: { summary: "No static references to function 'orphan' were found." },
-      });
-
-      const inspected = await runCli(["inspect", root, "--json"]);
-      const reviewed = JSON.parse(inspected.stdout) as typeof snapshot;
-      expect(reviewed.audit.findings[0]?.status).toBe("candidate");
-      expect(reviewed.nextFindings).toEqual(brief.findings);
-    } finally {
-      await rm(root, { recursive: true, force: true });
-    }
-  }, CLI_WORKFLOW_TIMEOUT_MS);
 
   it("reviews, refreshes, and doctors a fixture", async () => {
     const root = await mkdtemp(join(tmpdir(), "coherent-review-cli-"));
@@ -417,7 +311,7 @@ describe("CLI", { timeout: CLI_WORKFLOW_TIMEOUT_MS }, () => {
             ...(index === 1
               ? {
                   missingEvidence: "Need the owning module named.",
-                  reconsiderWhen: "After the next inspect.",
+                  reconsiderWhen: "After the next audit.",
                 }
               : {}),
           })),
@@ -445,11 +339,11 @@ describe("CLI", { timeout: CLI_WORKFLOW_TIMEOUT_MS }, () => {
     expect(check.code).toBe(0);
     expect(check.stdout).toContain("--changed");
     const inspect = await runCli(["inspect", "--help"]);
-    expect(inspect.stdout).toContain("--performance");
+    expect(inspect.stdout).toContain("Retired:");
     const plan = await runCli(["plan", "--help"]);
-    expect(plan.stdout).toContain("--performance");
+    expect(plan.stdout).toContain("Retired:");
     const fix = await runCli(["fix", "next", "--help"]);
-    expect(fix.stdout).toContain("--performance");
+    expect(fix.stdout).toContain("Retired:");
     const doctorHelp = await runCli(["doctor", "--help"]);
     expect(doctorHelp.stdout).toContain("--deep");
     expect(doctorHelp.stdout).toContain("--staged");
@@ -501,7 +395,7 @@ describe("CLI", { timeout: CLI_WORKFLOW_TIMEOUT_MS }, () => {
         await readFile(join(root, output), "utf8"),
       );
       expect(findings).toHaveProperty("findings", expect.any(Array));
-      expect(findings).toHaveProperty("runtime.workflowRevision", 2);
+      expect(findings).toHaveProperty("runtime.workflowRevision", 3);
     } finally {
       await rm(root, { recursive: true, force: true });
     }
@@ -533,7 +427,7 @@ describe("CLI", { timeout: CLI_WORKFLOW_TIMEOUT_MS }, () => {
         metrics?: unknown;
       };
       expect(compact.findings).toHaveLength(compact.summary.total);
-      expect(compact.runtime.workflowRevision).toBe(2);
+      expect(compact.runtime.workflowRevision).toBe(3);
       expect(compact.summary.confirmed + compact.summary.candidates).toBe(
         compact.summary.total,
       );

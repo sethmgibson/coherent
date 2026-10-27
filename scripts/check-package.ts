@@ -57,6 +57,9 @@ try {
   ], consumer);
 
   const installed = await realpath(join(consumer, "node_modules", "coherent"));
+  for (const retired of ["dist/plan", "dist/fix", "dist/inspect.js", "dist/catalog/rescan.js"]) {
+    await assert.rejects(access(join(installed, retired)), { code: "ENOENT" });
+  }
   const installedRelative = relative(temporaryRoot, installed);
   assert(!isAbsolute(installedRelative) && !installedRelative.startsWith(".."), "Install escaped the isolated consumer");
   const manifest = JSON.parse(await readFile(join(installed, "package.json"), "utf8")) as {
@@ -139,6 +142,17 @@ try {
   assert.equal(evidence.scope.repositoryWide, false);
   assert(Array.isArray(evidence.observations));
   assert(!(await readdir(target)).includes(".coherent"), "Targeted evidence wrote state");
+  const originalSource = await readFile(join(target, "index.ts"), "utf8");
+  for (const command of [["plan"], ["inspect"], ["fix", "next"]]) {
+    const result = spawnSync(coherent, [
+      ...command, target, "--json",
+      ...(command[0] === "plan" ? ["--output", "index.ts"] : []),
+    ], { cwd: consumer, encoding: "utf8" });
+    assert.equal(result.status, 1, "Retired command must not report success");
+    assert.equal((JSON.parse(result.stdout) as { error: { code: string } }).error.code, "scheduler_retired");
+    assert.equal(await readFile(join(target, "index.ts"), "utf8"), originalSource);
+    assert(!(await readdir(target)).includes(".coherent"), "Retired command wrote state");
+  }
   console.log("Installed CLI aliases, runtime identity, legacy audit, and state-free targeted evidence passed.");
 
   const smoke = join(temporaryRoot, "smoke repo");

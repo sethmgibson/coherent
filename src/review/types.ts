@@ -52,12 +52,6 @@ export interface DecisionsFile {
   findings: Finding[];
 }
 
-export interface MergedFindings {
-  findings: Finding[];
-  deferred: Set<string>;
-  needsReview: Set<string>;
-}
-
 export interface ReviewTarget {
   fingerprint: string;
   identity: string;

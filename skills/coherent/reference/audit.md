@@ -38,5 +38,5 @@ turn a residual heuristic into a dismissal bookkeeping task.
 legacy full-scan Finding shapes, groups and metrics for advanced consumers.
 They still write no metadata without `--output`. `--paths` and `--rules` require
 `--evidence`; they cannot accidentally turn a legacy full-audit assertion into
-a partial result. See [full-cleanup.md](full-cleanup.md) for explicit managed
-cleanup and [semantic-triage.md](semantic-triage.md) for optional broader review.
+a partial result. See [full-cleanup.md](full-cleanup.md) for explicitly selected persistent
+reviews and CI checks and [semantic-triage.md](semantic-triage.md) for optional broader review.

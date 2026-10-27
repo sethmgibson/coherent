@@ -17,8 +17,8 @@ function finding(overrides: Partial<FindingInput> & Pick<FindingInput, "identity
     status: "candidate",
     explanation: "test",
     evidence: { summary: ".find() nested under iteration.", details: ["first site"] },
-    locations: [{ file: "src/plan/build.ts", symbol: "buildPlan" }],
-    affectedSymbols: ["buildPlan", "find"],
+    locations: [{ file: "src/example.ts", symbol: "example" }],
+    affectedSymbols: ["example", "find"],
     cleanupBenefit: "smaller",
     changeRisk: "review",
     prerequisiteFindingIds: [],
@@ -28,11 +28,11 @@ function finding(overrides: Partial<FindingInput> & Pick<FindingInput, "identity
 
 describe("finding uniqueness", () => {
   it("merges duplicate E06 fingerprints into one finding with occurrence evidence", () => {
-    const first = finding({ identity: "loop-find:src/plan/build.ts:buildPlan" });
+    const first = finding({ identity: "loop-find:src/example.ts:example" });
     const second = finding({
-      identity: "loop-find:src/plan/build.ts:buildPlan",
+      identity: "loop-find:src/example.ts:example",
       evidence: { summary: ".find() nested under iteration.", details: ["second site"] },
-      locations: [{ file: "src/plan/build.ts", line: 54, symbol: "buildPlan" }],
+      locations: [{ file: "src/example.ts", line: 54, symbol: "example" }],
     });
     expect(first.fingerprint).toBe(second.fingerprint);
     const merged = mergeFindingsByFingerprint([first, second]);

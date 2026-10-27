@@ -1,32 +1,11 @@
-# `inspect`
+# `inspect` — retired
 
-Inspect the current cleanup state with one audit snapshot.
+The coding agent owns cleanup sequencing. `coherent inspect` returns a
+non-zero retirement error without reading source, changing review history, or
+writing output files. `--json` returns an `error` object with code
+`scheduler_retired`; it never returns a successful plan or clean terminal state.
 
-```bash
-coherent inspect
-coherent inspect --json
-coherent inspect --performance
-```
-
-The command runs one audit, reads durable decisions in parallel, applies those
-reviews to the exact audit findings, builds the cleanup DAG, and selects the
-next ready node. It does not write Coherent metadata. E01, E05, and E06 stay
-advisory unless `--performance` is set. It warns when the selected node's
-likely files already have uncommitted Git changes.
-
-Text includes exact finding locations and evidence for the selected node.
-JSON also includes `nextFindings`, the selected findings after review, so
-their status matches `nextNode` while `audit` preserves raw detector status.
-
-Plain output contains a compact raw-signal summary, the reviewed plan, and the
-same bounded work brief as `fix next`. JSON output contains the compact audit
-shape, full plan, and `nextNode`; each audit finding appears only once.
-
-The plan and top-level inspection expose `terminalState`: `ready`,
-`awaiting_review`, `blocked`, `deferred_only`, or `clean`. `deferred_only` is a
-valid bounded stopping state only when every deferral includes concrete
-missing evidence or a reconsideration condition; it is distinct from a clean
-empty plan.
-
-Use `inspect` for the normal full-cleanup loop. Run standalone `audit`, `plan`,
-or `fix next` when only that individual view is needed.
+Use [audit.md](audit.md) for evidence, `review queue` for recorded judgments,
+and [check.md](check.md) for CI drift. Follow the conversational skill for
+investigation and requested fixes. See [full-cleanup.md](full-cleanup.md) only
+when persistent reviews or CI checks are explicitly selected.

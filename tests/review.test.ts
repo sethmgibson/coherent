@@ -9,14 +9,12 @@ import {
   FINGERPRINT_VERSION,
 } from "../src/config.js";
 import { createFinding, type FindingInput } from "../src/domain/finding.js";
-import { applyReviews, classifyReview } from "../src/review/apply.js";
+import { matchReview, findingReviewState, classifyReview } from "../src/review/apply.js";
 import { validateReviewLifecycle } from "../src/review/lifecycle.js";
 import type { FindingReview } from "../src/review/types.js";
 import { readDecisions } from "../src/review/store.js";
 import { parseReviewRequests } from "../src/review/parse.js";
 import { runReviewBatch, runReviewPrune } from "../src/review/run.js";
-import { buildPlan } from "../src/plan/build.js";
-import { selectNextNode } from "../src/fix/select.js";
 
 function finding(overrides: Partial<FindingInput> & Pick<FindingInput, "ruleId" | "identity">) {
   return createFinding({
@@ -53,113 +51,28 @@ function review(
   };
 }
 
-describe("review merge into plan", () => {
-  it("drops a dismissed A06 and leaves unreviewed hybrid as needs_review", () => {
-    const a06 = finding({
-      ruleId: "A06",
-      identity: "duplicate-rep:CleanupPhase+RuleCategory",
-      title: "Structurally similar representations",
-      affectedSymbols: ["CleanupPhase", "RuleCategory"],
-    });
-    const unused = finding({
-      ruleId: "A08",
-      identity: "unused-candidate:src/util.ts:helper",
-      title: "Possibly unused export",
-      detectionMode: "deterministic",
-      status: "candidate",
-      confidence: "medium",
-      locations: [{ file: "src/util.ts", symbol: "helper" }],
-      affectedSymbols: ["helper"],
-    });
-    const merged = applyReviews([a06, unused], [review(a06, "dismissed")], []);
-    expect(merged.findings.map((item) => item.ruleId)).toEqual(["A08"]);
-
-    const leftover = finding({
-      ruleId: "A06",
-      identity: "duplicate-rep:Foo+Bar",
-      affectedSymbols: ["Foo", "Bar"],
-    });
-    const pending = applyReviews([leftover, unused], [], []);
-    const plan = buildPlan(".", pending.findings, pending);
-    expect(plan.nodes.find((node) => node.ruleIds.includes("A06"))?.state).toBe("needs_review");
-    expect(plan.nodes.find((node) => node.ruleIds.includes("A08"))?.state).toBe("needs_review");
-    expect(selectNextNode(plan)).toBeUndefined();
-  });
-
-  it("requires a current confirmation for deterministic candidates and respects deferrals", () => {
+describe("review matching and disposition", () => {
+  it("preserves raw candidate evidence while reporting recorded judgments", () => {
     const target = finding({ ruleId: "A08", identity: "unused-candidate:src/a.ts:foo", detectionMode: "deterministic" });
     const confirmed = review(target, "confirmed");
-    for (const reviews of [[], [review(target, "deferred")], [{ ...confirmed, ruleDetectorRevision: detectorRevisionForRule(target.ruleId) - 1 }]]) {
-      const merged = applyReviews([target], reviews, []);
-      expect(selectNextNode(buildPlan(".", merged.findings, merged))).toBeUndefined();
+    const deferred = review(target, "deferred");
+    const dismissed = review(target, "dismissed");
+    expect(findingReviewState(target, matchReview(target, []))).toBe("unreviewed");
+    expect(findingReviewState(target, matchReview(target, [confirmed]))).toBe("ready");
+    expect(findingReviewState(target, matchReview(target, [deferred]))).toBe("deferred");
+    expect(findingReviewState(target, matchReview(target, [dismissed]))).toBe("dismissed");
+    expect(target.status).toBe("candidate");
+    expect(matchReview(target, [{ ...confirmed, ruleDetectorRevision: detectorRevisionForRule(target.ruleId) - 1 }])).toBeUndefined();
+  });
+
+  it("keeps hybrid and semantic confirmations separate from detector evidence", () => {
+    const hybrid = finding({ ruleId: "A06", identity: "duplicate-rep:User+UserDto" });
+    const semantic = finding({ ruleId: "A01", identity: "fossil:OldLayer", detectionMode: "semantic" });
+    const reviews = [review(hybrid, "confirmed"), review(semantic, "confirmed")];
+    for (const target of [hybrid, semantic]) {
+      expect(matchReview(target, reviews)?.decision).toBe("confirmed");
+      expect(target.status).toBe("candidate");
     }
-    const merged = applyReviews([target], [confirmed], []);
-    expect(selectNextNode(buildPlan(".", merged.findings, merged))?.status).toBe("confirmed");
-    expect(merged.findings[0]?.fingerprint).toBe(target.fingerprint);
-  });
-
-  it("promotes a confirmed hybrid and a confirmed semantic-only finding to plan nodes", () => {
-    const hybrid = finding({
-      ruleId: "A06",
-      identity: "duplicate-rep:User+UserDto",
-      affectedSymbols: ["User", "UserDto"],
-    });
-    const semantic = finding({
-      ruleId: "A01",
-      identity: "fossil:OldLayer",
-      title: "Fossil layer",
-      detectionMode: "semantic",
-      locations: [{ file: "src/legacy.ts", symbol: "OldLayer" }],
-      affectedSymbols: ["OldLayer"],
-    });
-    const merged = applyReviews(
-      [hybrid],
-      [review(hybrid, "confirmed"), review(semantic, "confirmed")],
-      [semantic],
-    );
-    const plan = buildPlan(".", merged.findings, merged);
-    expect(plan.nodes.some((node) => node.ruleIds.includes("A06") && node.state === "ready")).toBe(
-      true,
-    );
-    expect(plan.nodes.some((node) => node.ruleIds.includes("A01") && node.state === "ready")).toBe(
-      true,
-    );
-  });
-
-  it("keeps a same-file A07 node in needs_review when any finding is unreviewed", () => {
-    const file = "src/payment.ts";
-    const confirmed = finding({
-      ruleId: "A07",
-      identity: "compat:name:src/payment.ts:legacyHandler",
-      title: "Likely compatibility path",
-      locations: [{ file, symbol: "legacyHandler" }],
-      affectedSymbols: ["legacyHandler"],
-    });
-    const unreviewedA = finding({
-      ruleId: "A07",
-      identity: "compat:name:src/payment.ts:oldPaymentPath",
-      title: "Likely compatibility path",
-      locations: [{ file, symbol: "oldPaymentPath" }],
-      affectedSymbols: ["oldPaymentPath"],
-    });
-    const unreviewedB = finding({
-      ruleId: "A07",
-      identity: "compat:name:src/payment.ts:compatResolver",
-      title: "Likely compatibility path",
-      locations: [{ file, symbol: "compatResolver" }],
-      affectedSymbols: ["compatResolver"],
-    });
-    const merged = applyReviews(
-      [confirmed, unreviewedA, unreviewedB],
-      [review(confirmed, "confirmed")],
-      [],
-    );
-    const plan = buildPlan(".", merged.findings, merged);
-    const a07 = plan.nodes.filter((node) => node.ruleIds.includes("A07"));
-    expect(a07).toHaveLength(1);
-    expect(a07[0]?.findingFingerprints).toHaveLength(3);
-    expect(a07[0]?.state).toBe("needs_review");
-    expect(selectNextNode(plan)).toBeUndefined();
   });
 
   it("matches a review by ruleId and identity when the fingerprint is stale", () => {
@@ -179,8 +92,7 @@ describe("review merge into plan", () => {
       detectorRevision: DETECTOR_REVISION,
       ruleDetectorRevision: detectorRevisionForRule("A06"),
     };
-    const merged = applyReviews([current], [staleFingerprint], []);
-    expect(merged.findings).toEqual([]);
+    expect(matchReview(current, [staleFingerprint], [current])).toBe(staleFingerprint);
   });
 
   it("does not apply identity fallback when detectorRevision is missing or skewed", () => {
@@ -201,8 +113,8 @@ describe("review merge into plan", () => {
       ...missingRevision,
       detectorRevision: DETECTOR_REVISION + 3,
     };
-    expect(applyReviews([current], [missingRevision], []).findings).toEqual([current]);
-    expect(applyReviews([current], [skewedRevision], []).findings).toEqual([current]);
+    expect(matchReview(current, [missingRevision], [current])).toBeUndefined();
+    expect(matchReview(current, [skewedRevision], [current])).toBeUndefined();
     expect(classifyReview(missingRevision, [current])).toBe("stale");
     expect(classifyReview(skewedRevision, [current])).toBe("stale");
   });
@@ -224,7 +136,7 @@ describe("review merge into plan", () => {
       detectorRevision: DETECTOR_REVISION - 1,
       ruleDetectorRevision: detectorRevisionForRule("A06") - 1,
     };
-    expect(applyReviews([current], [oldRevision], []).findings).toEqual([current]);
+    expect(matchReview(current, [oldRevision], [current])).toBeUndefined();
     expect(classifyReview(oldRevision, [current])).toBe("stale");
   });
 
@@ -238,7 +150,7 @@ describe("review merge into plan", () => {
       ...review(current, "dismissed"),
       detectorRevision: DETECTOR_REVISION - 1,
     };
-    expect(applyReviews([], [oldRevision], [current]).findings).toEqual([]);
+    expect(matchReview(current, [oldRevision], [current])).toBe(oldRevision);
     expect(classifyReview(oldRevision, [current])).toBe("applied");
   });
 
@@ -247,7 +159,7 @@ describe("review merge into plan", () => {
     const old = { ...review(current, "dismissed"), ruleDetectorRevision: detectorRevisionForRule("A01") - 1 };
     expect(classifyReview(old, [current])).toBe("applied");
     const fallback = { ...old, fingerprint: "older-hash" };
-    expect(applyReviews([], [fallback], [current]).findings).toEqual([current]);
+    expect(matchReview(current, [fallback], [current])).toBeUndefined();
     expect(classifyReview(fallback, [current])).toBe("stale");
   });
 
@@ -275,13 +187,13 @@ describe("review merge into plan", () => {
       notCompatibility: true,
     };
 
-    expect(applyReviews([], [missing], [current]).findings).toEqual([current]);
+    expect(matchReview(current, [missing], [current])).toBeUndefined();
     expect(classifyReview(missing, [current])).toBe("stale");
-    expect(applyReviews([], [milestone], [current]).findings).toEqual([]);
-    expect(applyReviews([], [expired], [current]).findings).toEqual([current]);
+    expect(matchReview(current, [milestone], [current])).toBe(milestone);
+    expect(matchReview(current, [expired], [current])).toBeUndefined();
     expect(classifyReview(expired, [current])).toBe("stale");
-    expect(applyReviews([], [future], [current]).findings).toEqual([]);
-    expect(applyReviews([], [falsePositive], [current]).findings).toEqual([]);
+    expect(matchReview(current, [future], [current])).toBe(future);
+    expect(matchReview(current, [falsePositive], [current])).toBe(falsePositive);
     expect(classifyReview(falsePositive, [current])).toBe("applied");
   });
 
@@ -302,7 +214,7 @@ describe("review merge into plan", () => {
       detectorRevision: DETECTOR_REVISION,
       ruleDetectorRevision: detectorRevisionForRule("A06"),
     };
-    expect(applyReviews([current], [churned], []).findings).toEqual([]);
+    expect(matchReview(current, [churned], [current])).toBe(churned);
   });
 
   it("migrates legacy review and semantic files into decisions.json on the next write", async () => {

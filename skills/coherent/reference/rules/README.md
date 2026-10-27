@@ -29,9 +29,9 @@ notes apply only when the user requested durable context. Preserve authored
 content and use existing documentation rather than creating another file.
 
 Per-rule sections labeled **Advanced recording** apply only when the user
-explicitly selects persistent reviews or managed cleanup. Use
+explicitly selects persistent reviews. Use
 [full-cleanup.md](../full-cleanup.md) and the advanced section of
 [semantic-audits.md](../semantic-audits.md). Review an existing mechanical finding
 instead of duplicating it; semantic-only findings use the existing `Finding`
 shape in `decisions.json`. A recorded dismissal is distinct from fixing a real
-issue. Never mass-dismiss unrelated candidates to empty a plan.
+issue. Never mass-dismiss unrelated candidates to clear a listing.

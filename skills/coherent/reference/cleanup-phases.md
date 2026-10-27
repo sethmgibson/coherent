@@ -1,11 +1,11 @@
 <!-- Generated from src/catalog. Do not edit by hand. Run pnpm generate:skill-docs -->
 
-# Cleanup phases
+# Legacy cleanup phases
 
-Taxonomy, audit order, cleanup execution, and finding prerequisites are not
-the same. In the optional advanced workflow, the cleanup DAG is authoritative
-for actual work. Ordinary bounded improvements do not require phases or a DAG. These default
-phases only break ties when dependencies are otherwise equal.
+The phase catalog remains available for public import compatibility. Its
+historical ordering is informational. Coherent no longer builds cleanup DAGs,
+scores work, or chooses the next fix; the coding agent owns cleanup sequencing.
+These phases are not prerequisites or an execution schedule.
 
 Dead-code reduction (A08) happens early so later analysis has less surface.
 It is re-run after stale-compatibility removal, after canonicalization, and

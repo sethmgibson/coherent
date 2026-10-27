@@ -1,104 +1,75 @@
-# Advanced persistent cleanup
+# Persistent reviews and CI checks
 
-Use this playbook only when the user explicitly requests persistent reviews,
-baseline drift gates, or dependency-managed cleanup. A request to improve or
-review a repository otherwise follows the bounded default skill. Existing state
-files do not enroll the project. Direct legacy CLI commands retain their meanings.
+Use this playbook only when the user explicitly requests durable reviews,
+baseline drift gates, or a repository's configured CI checks. Ordinary reviews
+and fixes follow the conversational skill. Existing state files alone do not
+select this workflow.
 
-## Prepare
+The coding agent owns investigation, cleanup sequencing, and implementation.
+`plan`, `fix next`, and `inspect` are retired. They return a non-zero retirement
+error without scanning or writing state. There is no CLI cleanup queue to drain
+and no scheduler terminal state to reach.
 
-1. Run the exact compatibility command in [runtime.md](runtime.md). Stop on a
-   missing command, revision mismatch, missing capability, or unexpected
-   package/lock revision. Do not continue with a newer skill and older CLI.
-2. Read `.coherent/ARCHITECTURE.md`; run `coherent init` only when it is absent.
-3. Run `coherent doctor`, then `coherent inspect`. Use `inspect --json` when
-   complete finding evidence is needed for review.
-4. Apply the compact [semantic triage](semantic-triage.md) once. A zero-node
-   mechanical plan does not prove that rules without detectors are clean.
-5. Create a baseline only when it is missing, stale, or the user intentionally
-   wants to reset the comparison point. An equivalent baseline is left
-   byte-for-byte unchanged.
+## Prepare only the tools needed
 
-When dogfooding the Coherent repository itself, its package binary is not a
-workspace dependency. Before build use `pnpm exec tsx src/cli.ts <command>`;
-after build use `node dist/cli.js <command>`.
+- Verify the actual runtime using [runtime.md](runtime.md) before persistent
+  operations. Workflow revision 3 preserves detector and stored-state contracts
+  while removing scheduling.
+- Read existing architecture and project guidance. Use `init` only when durable
+  context is requested or a selected doctor gate requires the document.
+- Use `audit --json` for a full source snapshot, or targeted `audit --evidence`
+  for bounded observations. `review queue --json` lists findings and recorded
+  judgments when that history is relevant; it does not prescribe work order.
+- Create a baseline only for explicitly selected CI adoption or an intentional
+  comparison reset. An equivalent baseline stays byte-for-byte unchanged.
 
-## Review and fix loop
+For Coherent's own repository, use `pnpm exec tsx src/cli.ts <command>` before
+build or `node dist/cli.js <command>` afterward.
 
-1. Treat the audit portion of `inspect` as raw mechanical signal. Its reviewed
-   cleanup DAG is the action queue.
-2. Inspect candidates by finding group and actual workflow. Do not bulk-dismiss
-   heterogeneous findings merely to reach zero nodes; defer when evidence is
-   incomplete.
-3. The default `review queue` groups by the narrow evidence boundary used for
-   safe batch decisions. `review apply --input path/to/reviews.json` accepts
-   either `fingerprint` or `fingerprints` on each item; a multi-fingerprint
-   item is rejected when its targets cross evidence groups. `--group-by rule`
-   is a navigation view, not permission to share one conclusion.
-4. All candidates, including unused exports, require an evidence-backed
-   `review confirm` before `fix next` can select them. Confirming a finding is
-   an agent review decision, not a request for another user approval. When no
-   node is ready, investigate the highest-value unreviewed group, confirm,
-   dismiss, or defer it, and rebuild the plan. A full-cleanup request already
-   authorizes this review loop; do not stop merely because ready is zero.
-5. Perform only the next ready node, then typecheck, run targeted tests,
-   `coherent check`, and `coherent inspect` again. Use evidence from the same
-   inspection rather than rerunning audit, plan, and fix next for each view.
-   Investigators return proposals only. One coordinator writes decisions and
-   architecture notes, then verifies with `review queue` and `doctor`. Do not
-   run concurrent `review apply` agents. Serialize review writes and code
-   edits so decisions apply to the snapshot actually inspected. Do not delete
-   many unrelated nodes in one batch.
-6. Stop when the reviewed plan is empty, or every remaining group has a
-   concrete deferral/blocker that cannot be resolved within the request. Do
-   not repeatedly reconsider deferred groups without new evidence. Report
-   ready, unreviewed, deferred, and blocked work separately. Zero ready nodes
-   with outstanding reviews is not a clean repository. `fix next` exits
-   successfully only for an empty plan or a selected ready node.
+## Keep useful review history
 
-E01, E05, and E06 heuristics are advisory during an ordinary cleanup. They do
-not prevent a clean terminal state unless the user requested performance work;
-use `inspect --performance`, `plan --performance`, and `fix next --performance`
-for that scope. Evidence-backed non-performance findings remain mandatory.
+Investigate the requested scope and choose worthwhile work using source,
+callers, contracts and tests. Use [semantic-triage.md](semantic-triage.md) for
+an explicitly comprehensive audit. The agent identifies real prerequisites;
+legacy catalog phase and dependency fields do not schedule work.
 
-Mechanical findings disappear on rescan. Semantic-only findings do not:
-after tests and source inspection prove one fixed, remove that exact entry
-from the active `findings` array in `decisions.json`. Preserve unrelated
-findings and reviews. Do not dismiss a real fixed issue as a false positive;
-report its evidence and fix in the final response, then preview review pruning.
+When durable judgments are requested, use `review confirm|dismiss|defer` or
+`review apply --input path/to/reviews.json`. Give each batch item its own
+evidence-backed reason; a multi-fingerprint item must stay within one review
+evidence group. Use `--dry-run` to preview exact targets and replacements.
+Do not manufacture decisions to clear a listing.
 
-Reviews for findings proven by the baseline but absent from the current audit
-are resolved history, not doctor errors. Keep them so a recurrence remains
-reviewed. A review absent from both current findings and the current baseline
-is still an orphan that needs investigation. After a detector-revision change,
-only reviews for affected rules become stale. Use `coherent review prune` to
-preview obsolete records and
-`coherent review prune --write` only after the preview is correct.
+Confirmation records a judgment, not permission to implement or a deterministic
+proof. The legacy `ready` label in review/check JSON remains a review disposition,
+not an executable task. Preserve candidate uncertainty and the distinction
+between semantic judgment and mechanical evidence.
 
-## Finish
+Keep evidence hashes, detector revisions, compatibility expiry or removal
+milestones, ambiguity checks, and missing-evidence/reconsideration reasons.
+Changed source assumptions or expired reviews require fresh investigation.
+Never retry a write automatically after an uncertain result.
 
-Run `coherent refresh` when discovered architecture facts changed, then:
+Stored semantic findings remain in `decisions.json`; fixed findings can be
+removed from its active `findings` array only after validation and within the
+requested persistent workflow. Preserve unrelated findings and reviews.
+Baseline-backed resolved reviews remain history, not orphans. `review prune`
+previews stale, expired or genuinely orphaned records; `--write` is explicit.
+There is no automatic history reset or schema migration for scheduler retirement.
 
-```bash
-coherent check --changed
-coherent check
-coherent doctor --deep
-```
+## Validate the selected change and configured gates
 
-Run the repository's normal tests, typecheck, and build. Coherent's own
-repository can run the complete validation set with `pnpm validate` (tests,
-typecheck, build, skill-doc consistency, and fingerprint uniqueness).
+Follow [fix-safety.md](fix-safety.md), then run the repository's required tests,
+typecheck and build. For configured prevention, use `check --changed` for scoped
+feedback and full `check` for repository-wide conclusions. The gate fails only
+for new confirmed high/critical deterministic findings; reviews annotate drift
+without changing that failure policy.
 
-`check: NEW 0` reports drift against the baseline, not correct behavior or
-completed semantic review. `doctor` verifies Coherent state, not application
-health. Report which normal validation gates passed, failed, or were not run.
+Use `doctor` for stored-state integrity and `doctor --deep` when current-finding
+validation warrants a full scan. `doctor --staged` checks the exact Git index;
+`doctor --ref HEAD` checks the committed artifact. Preserve compatible CLI pins,
+baselines and review revisions when changing those contracts. Gate success is
+not proof of correct business behavior or a completed semantic review.
 
-Before committing, stage the intended artifact and run `coherent doctor
---staged --deep`. After committing, run `coherent doctor --ref HEAD --deep` if
-the commit includes Coherent decisions, a baseline, or a CLI dependency
-change. A dirty-worktree doctor pass is not proof that the selected commit is
-valid. Treat the CLI lock, detector-version baseline, and mechanical/hybrid
-decisions as coupled state; do not split incompatible revisions across commits.
-
-Do not run `install` or `update` during cleanup unless the user explicitly
-selected an optional Cursor or Git integration.
+Do not run every command for every fix. Report the selected scope, before/after
+behavior, validation, and remaining uncertainty. Continue only within the user's
+authorized scope; review history does not choose the next task.

@@ -53,7 +53,7 @@ export interface Finding {
   unlocks?: string;
   changeRisk: string;
   testSafetyEvidence?: string;
-  /** Current-finding fingerprints that must be cleaned first. Absent fingerprints are already satisfied. */
+  /** Legacy scheduling metadata, retained for stored/public Finding compatibility; no execution order is inferred. */
   prerequisiteFindingIds: string[];
   /** Current source evidence used only to validate advanced persisted decisions. */
   evidenceHash?: string;

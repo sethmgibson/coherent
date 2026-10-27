@@ -12,10 +12,11 @@ export interface RuleDefinition<Category extends string = string> {
   detectionMode: DetectionMode;
   description: string;
   whyItMatters: string;
+  /** Legacy scheduling metadata, retained for catalog compatibility. */
   defaultCleanupPhase: number;
   workKind: WorkKind;
   prerequisites: readonly string[];
   rescanAfter: readonly string[];
-  /** Exclude this heuristic from the cleanup DAG unless performance work is requested. */
+  /** Report this heuristic as advisory unless explicitly reviewed. */
   advisoryByDefault?: true;
 }

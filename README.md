@@ -94,14 +94,18 @@ candidates; derivable values and unnecessary loading require tracing callers,
 data authority and freshness. See the
 [data-access playbook](skills/coherent/reference/data-access.md).
 
-## Optional advanced cleanup
+## Optional persistent reviews and CI
 
-Teams can explicitly choose persistent `review`, `baseline`, `check`, `inspect`,
-`plan`, `fix next` and state-oriented `doctor` workflows. Existing commands,
-version-1 stored schemas, package pins and configured hooks remain supported.
-Their presence does not enroll ordinary work. See the
-[advanced playbook](skills/coherent/reference/full-cleanup.md) and
-[migration guide](skills/coherent/reference/migration.md).
+Teams can explicitly choose persistent `review`, `baseline`, `check` and
+state-oriented `doctor` workflows. Stored schemas, package pins, review history
+and configured checks remain supported. Their presence does not enroll ordinary
+work. See the [persistent tools playbook](skills/coherent/reference/full-cleanup.md).
+
+The coding agent owns cleanup sequencing. `plan`, `fix next`, and `inspect` are
+retired: they exit non-zero with an explicit retirement error and do not scan or
+write state. `--json` returns an `error` object with code `scheduler_retired`.
+Legacy phase exports and finding fields remain readable; no review-history reset
+or stored-state migration is required.
 
 `coherent migrate` previews optional conversion of legacy inventory context;
 only `--write` changes managed context sections. Baselines and reviews are not

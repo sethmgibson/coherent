@@ -2,8 +2,8 @@
 
 The agent chooses the unit of work from the request, current evidence and
 expected benefit. A requested improvement requires no baseline, saved confirmation,
-DAG, metadata check or exhaustive candidate triage. Advanced `fix next` is a
-separate, explicitly selected workflow.
+DAG, metadata check or exhaustive candidate triage. The coding agent owns
+cleanup sequencing; scheduler commands are retired.
 
 ## Before editing
 

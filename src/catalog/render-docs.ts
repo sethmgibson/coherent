@@ -24,8 +24,10 @@ export function renderTaxonomyMarkdown(): string {
 The table order is the default conversational review sequence: inspect one
 problem class, offer fixes, then suggest the next. Explicit targets override
 that sequence. Rule IDs are stable identifiers, **not** cleanup execution
-order; actual fixes respect their dependencies. Phases and prerequisite graphs
-are optional advanced cleanup metadata. See [cleanup-phases.md](cleanup-phases.md).
+order. The coding agent owns sequencing and identifies real prerequisites from
+source evidence. Phase, work-kind, prerequisite and re-scan fields remain legacy
+catalog data for import compatibility; no scheduler executes them.
+See [cleanup-phases.md](cleanup-phases.md).
 
 Source of truth: \`src/catalog/rules.ts\`.
 
@@ -61,12 +63,12 @@ Default sequence: ${sequence}
 
   return `${GENERATED_BANNER}
 
-# Cleanup phases
+# Legacy cleanup phases
 
-Taxonomy, audit order, cleanup execution, and finding prerequisites are not
-the same. In the optional advanced workflow, the cleanup DAG is authoritative
-for actual work. Ordinary bounded improvements do not require phases or a DAG. These default
-phases only break ties when dependencies are otherwise equal.
+The phase catalog remains available for public import compatibility. Its
+historical ordering is informational. Coherent no longer builds cleanup DAGs,
+scores work, or chooses the next fix; the coding agent owns cleanup sequencing.
+These phases are not prerequisites or an execution schedule.
 
 Dead-code reduction (A08) happens early so later analysis has less surface.
 It is re-run after stale-compatibility removal, after canonicalization, and

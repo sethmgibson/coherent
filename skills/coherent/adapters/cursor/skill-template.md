@@ -20,6 +20,6 @@ runtime capabilities before mechanical tool calls or advanced state writes.
 
 Project adoption for the default skill:
 `npx --yes --package github:sethmgibson/coherent -- coherent install --skills-only --yes`.
-Persistent reviews, baseline gates and managed cleanup remain explicit advanced
+Persistent reviews and baseline gates remain explicit advanced
 choices. `/backend` remains a compatibility alias.
 <!-- /coherent:adapter -->

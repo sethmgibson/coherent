@@ -1,66 +1,16 @@
-# Cleanup planning
+# Agent-owned cleanup sequencing
 
-The cleanup DAG is authoritative. Default phases guide prioritization when dependencies are otherwise equal. Taxonomy IDs are not an execution schedule.
+The coding agent chooses worthwhile changes and identifies real prerequisites
+from source, contracts and current user intent. Coherent no longer builds a
+cleanup DAG, scores findings, or chooses the next fix. Its legacy catalog phase
+and prerequisite fields remain for public import compatibility.
 
-Run:
+Start from the requested outcome, investigate a useful scope, explain proposals,
+and implement only authorized changes. Group work when it shares a contract or
+validation boundary. After consolidation or deletion, inspect what became
+obsolete. Do not optimize a path that a larger simplification would remove.
 
-```bash
-coherent plan
-coherent plan --json
-coherent plan --output path/to/plan.json
-```
-
-The CLI rebuilds the DAG from a fresh audit and prints ready vs blocked nodes. It writes nothing by default and does not execute the plan. `--output` is an explicit export, not required workflow state.
-
-## What every node contains
-
-- Findings addressed
-- Prerequisite nodes
-- Default phase
-- Reason for ordering
-- Concepts affected
-- Likely files
-- Confidence
-- Behavioral risk
-- Expected simplification
-- Deletion potential
-- What downstream work it unlocks
-- Existing test and safety evidence
-
-Analysis-only prerequisites on separate files require an actually shared
-authoritative concept. Confidence describes the finding, not the safety of
-the edit: nodes retain the explicit change-risk warnings from every finding.
-
-## Priority (in this order)
-
-1. Prerequisite readiness
-2. High confidence
-3. Reduction of repository surface
-4. Downstream unlock value
-5. Simplification benefit
-6. Behavioral risk
-7. Test coverage
-8. Default cleanup phase
-
-A high-confidence A08 deletion can outrank a higher-severity semantic issue when removing it reduces the area that must later be reasoned about.
-
-## Prefer early / be cautious early
-
-Prefer early: unreachable code, verified obsolete compatibility, superseded implementations, collapsed representations after semantic equivalence is confirmed.
-
-Be cautious early about: huge renames, rewriting boundaries before obsolete layers are removed, optimizing code likely to disappear, rewriting tests around architecture likely to change.
-
-## Re-scan edges
-
-These are explicit, not a workflow engine. After a node lands, re-run `coherent audit` and `coherent plan`.
-
-- A07 removed → rerun A08
-- A04 consolidated → rerun A08; reconsider B04, B05, D04, D05
-- A06 collapsed → rerun A08; reconsider mapping helpers and serialization
-- B01–B05 collapsed → rerun A08; reconsider D01 and performance findings
-
-The catalog field `rescanAfter` is the source of these edges.
-
-## Why a DAG beats a rigid list
-
-Fixing one issue can resolve another indirectly or unlock a new cleanup. A rigid A01→A08 list would delay cheap surface reduction and would miss newly dead code after consolidations. The DAG encodes actual prerequisites; phases are only the default when those are equal.
+Use [audit.md](audit.md) when mechanical evidence helps and
+[fix-safety.md](fix-safety.md) for implementation and validation. Findings and
+progress stay in chat unless durable reviews are explicitly requested. For
+those reviews and configured CI checks, see [full-cleanup.md](full-cleanup.md).

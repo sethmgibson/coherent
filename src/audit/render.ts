@@ -1,6 +1,4 @@
-import { PHASES } from "../catalog/phases.js";
-import { RULES_BY_ID } from "../catalog/rules.js";
-import type { Finding } from "../domain/finding.js";
+import { CATEGORIES, RULES } from "../catalog/rules.js";
 import { renderMetrics } from "./metrics.js";
 import type { AuditResult } from "./run.js";
 import { renderRuntimeIdentity } from "../runtime.js";
@@ -21,21 +19,14 @@ export function renderAudit(result: AuditResult): string {
     "",
   ];
 
-  const byPhase = new Map<number, Finding[]>();
-  for (const finding of findings) {
-    const phase = RULES_BY_ID[finding.ruleId].defaultCleanupPhase;
-    const list = byPhase.get(phase) ?? [];
-    list.push(finding);
-    byPhase.set(phase, list);
-  }
-
-  for (const phase of PHASES) {
-    const group = byPhase.get(phase.id);
-    if (!group || group.length === 0) continue;
-    lines.push(phase.title.toUpperCase());
-    const byRule = groupBy(group, (finding) => finding.ruleId);
-    for (const [ruleId, ruleFindings] of byRule) {
-      const rule = RULES_BY_ID[ruleId as keyof typeof RULES_BY_ID];
+  const byRule = groupBy(findings, (finding) => finding.ruleId);
+  for (const category of CATEGORIES) {
+    const rules = RULES.filter((rule) => rule.category === category.id);
+    if (!rules.some((rule) => byRule.has(rule.id))) continue;
+    lines.push(category.title.toUpperCase());
+    for (const rule of rules) {
+      const ruleFindings = byRule.get(rule.id);
+      if (!ruleFindings) continue;
       const conf = ruleFindings.filter((finding) => finding.status === "confirmed").length;
       const cand = ruleFindings.filter((finding) => finding.status === "candidate").length;
       lines.push(`  ${rule.title}: ${conf} confirmed, ${cand} candidates`);
@@ -63,7 +54,7 @@ export function renderAudit(result: AuditResult): string {
     lines.push(
       "Confirmed and candidates are listed separately. The catalog is not a cleanup order.",
     );
-    lines.push("A later `coherent plan` builds the DAG. Do not treat this dump as a work queue.");
+    lines.push("Findings are grouped by category and rule. The coding agent chooses cleanup order.");
     lines.push("");
     lines.push(renderMetrics(result.file.metrics).trimEnd());
   }

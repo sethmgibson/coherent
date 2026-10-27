@@ -1,10 +1,8 @@
 import type { RuleId } from "./rules.js";
 
 /**
- * Default cleanup phase order. Taxonomy IDs, audit order, cleanup
- * execution, and finding prerequisites are not the same thing.
- * The planner builds a finding-specific DAG; these phases only
- * break ties when dependencies are otherwise equal.
+ * Legacy phase catalog, retained for public import compatibility.
+ * Cleanup sequencing belongs to the coding agent; no scheduler consumes this data.
  */
 export const PHASES = [
   {

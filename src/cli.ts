@@ -14,10 +14,6 @@ import { runBaseline } from "./baseline/run.js";
 import { renderCheck, runCheck } from "./check/run.js";
 import { renderInstall, runInstall, runUpdate } from "./install/run.js";
 import type { InstallOptions } from "./install/run.js";
-import { runPlan } from "./plan/run.js";
-import { renderPlan } from "./plan/render.js";
-import { renderFixNext, runFixNext } from "./fix/run.js";
-import { inspectJson, renderInspect, runInspect } from "./inspect.js";
 import { runDoctor } from "./doctor/run.js";
 import { renderDoctor } from "./doctor/render.js";
 import { registerReviewCommands } from "./review/cli.js";
@@ -232,20 +228,7 @@ program
     console.log(`${action} ${result.baselinePath} (${result.baseline.findings.length} fingerprint(s)).`);
   });
 
-program
-  .command("inspect")
-  .description("Audit once, build the reviewed plan, and show the next cleanup node")
-  .argument("[root]", "repository root", ".")
-  .option("--json", "print compact audit, plan, and next node as JSON", false)
-  .option("--performance", "include advisory performance heuristics in the cleanup DAG", false)
-  .action(async (root: string, options: { json: boolean; performance: boolean }) => {
-    const result = await runInspect(resolve(root), { includeAdvisory: options.performance });
-    if (options.json) {
-      console.log(JSON.stringify(inspectJson(result), null, 2));
-    } else {
-      process.stdout.write(renderInspect(result));
-    }
-  });
+retiredSchedulerCommand(program.command("inspect"), "inspect");
 
 program
   .command("check")
@@ -344,54 +327,11 @@ program
     }
   });
 
-program
-  .command("plan")
-  .description("Build a cleanup DAG from current findings")
-  .argument("[root]", "repository root", ".")
-  .option("--json", "print the plan as JSON", false)
-  .option("--performance", "include advisory performance heuristics in the cleanup DAG", false)
-  .option("--output <path>", "write JSON to an explicit path relative to the repository")
-  .action(async (root: string, options: { json: boolean; performance: boolean; output?: string }) => {
-    const resolved = resolve(root);
-    const result = await runPlan(resolved, { includeAdvisory: options.performance });
-    const serialized = options.json ? JSON.stringify(result.plan, null, 2) : undefined;
-    if (serialized !== undefined) {
-      console.log(serialized);
-    } else {
-      process.stdout.write(renderPlan(result.plan));
-    }
-    if (options.output) {
-      const path = resolve(resolved, options.output);
-      await writeJsonOutput(path, serialized ?? JSON.stringify(result.plan, null, 2));
-      console.error(`Wrote ${path}`);
-    }
-  });
-
-program
-  .command("fix")
-  .description("Bounded cleanup against the current plan")
-  .command("next")
-  .description("Select one unlocked cleanup node and print a work brief")
-  .argument("[root]", "repository root", ".")
-  .option("--json", "print the selected node and its finding evidence as JSON", false)
-  .option("--performance", "include advisory performance heuristics in the cleanup DAG", false)
-  .action(async (root: string, options: { json: boolean; performance: boolean }) => {
-    const result = await runFixNext(resolve(root), { includeAdvisory: options.performance });
-    if (options.json) {
-      console.log(JSON.stringify({
-        runtime: result.plan.runtime,
-        terminalState: result.plan.terminalState,
-        node: result.node ?? null,
-        findings: result.findings,
-        dirtyTargetFiles: result.dirtyTargetFiles,
-        worktreeInspectionWarning: result.worktreeInspectionWarning,
-        planReady: result.plan.readyNodeIds,
-      }, null, 2));
-    } else {
-      process.stdout.write(renderFixNext(result));
-    }
-    if (!result.node && result.plan.nodes.length > 0) process.exitCode = 1;
-  });
+retiredSchedulerCommand(
+  program.command("plan").option("--output <path>", "legacy option; no file is written"),
+  "plan",
+);
+retiredSchedulerCommand(program.command("fix").command("next"), "fix next");
 
 program
   .command("doctor")
@@ -424,6 +364,23 @@ program
   });
 
 registerReviewCommands(program, readStdin);
+
+function retiredSchedulerCommand(command: Command, name: string): void {
+  command
+    .description("Retired: cleanup sequencing belongs to the coding agent")
+    .argument("[root]", "legacy repository argument; no source or state is read", ".")
+    .option("--json", "print the retirement error as JSON", false)
+    .option("--performance", "legacy option; no scheduling is performed", false)
+    .action((_root: string, options: { json: boolean }) => {
+      const message = `coherent ${name} is retired. The coding agent owns cleanup sequencing. Use audit --evidence for source observations, review queue for recorded judgments, and check for CI drift.`;
+      if (options.json) {
+        console.log(JSON.stringify({ error: { code: "scheduler_retired", command: name, message } }, null, 2));
+      } else {
+        console.error(message);
+      }
+      process.exitCode = 1;
+    });
+}
 
 async function writeJsonOutput(path: string, serialized: string): Promise<void> {
   await mkdir(dirname(path), { recursive: true });
