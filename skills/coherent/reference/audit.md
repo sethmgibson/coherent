@@ -18,6 +18,12 @@ no selection, evidence mode runs duplicate-representation checks (A06), not the
 entire heuristic catalog. Paths outside the repository are rejected. A scoped
 result never establishes repository-wide reachability or cleanliness.
 
+Mechanical detectors exist for A03, A06, A07, A08, B03, B04, C03, C04, D01,
+D03, E01, E05 and E06. Selecting any other rule fails with an error because it
+requires semantic investigation. TypeScript sources (`.ts`, `.tsx`, `.mts`,
+`.cts`) are analyzed for all of these; Python sources are analyzed for A08,
+B04, C03 and D03.
+
 The evidence JSON envelope contains `runtime`, `scope` and `observations`.
 Each observation gives its rule/name, identity, confidence, detection mode,
 explanation, source evidence, locations and symbols. There are no fingerprints,
@@ -26,6 +32,12 @@ No baseline, decisions or architecture document is required or parsed.
 Explicit `--output path` writes only the requested result; acknowledgements go
 to stderr so JSON stdout stays parseable. Missing Python support or unreadable
 in-scope inputs fail clearly; unused language analyzers are not required.
+
+An optional `coherent.json` at the target root configures scanning. `ignore`
+lists file or directory names (exact names, matched at any depth) to skip in
+addition to built-in skips such as `node_modules`, `dist` and virtualenvs.
+`python` names the interpreter; otherwise `COHERENT_PYTHON`, then `python3`
+and `python`, are tried. Python analysis requires CPython 3.9+.
 
 Broad string repetition, wrapper counts, catch shapes and performance patterns
 are targeted investigative aids, not default work queues. Trace ownership,
