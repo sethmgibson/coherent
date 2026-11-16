@@ -1,0 +1,54 @@
+name: Finding is wrong
+description: A false positive, a missed issue, or a finding with the wrong confidence or status.
+labels: ["bug", "detector"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Precise reports here are the fastest way to improve Coherent. A minimal code sample that reproduces the finding is worth more than a long description.
+  - type: input
+    id: rule
+    attributes:
+      label: Rule ID
+      description: For example A08, D03, or E01. Leave blank if unsure.
+      placeholder: A08
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What kind of problem is it?
+      options:
+        - False positive (reported, but not a real issue)
+        - False negative (a real issue was not reported)
+        - Wrong status or confidence (for example, confirmed when it should be a candidate)
+        - Unclear or misleading explanation
+    validations:
+      required: true
+  - type: textarea
+    id: sample
+    attributes:
+      label: Minimal code sample
+      description: The smallest TypeScript or Python code that reproduces it, including any tsconfig or framework registration that matters.
+      render: ts
+    validations:
+      required: true
+  - type: textarea
+    id: finding
+    attributes:
+      label: Reported finding
+      description: The relevant part of `coherent audit --json` or `coherent audit --evidence --json`, or the agent's message.
+      render: text
+  - type: textarea
+    id: expected
+    attributes:
+      label: Why is it wrong?
+      description: For example, the symbol is registered through dependency injection, or the two types are intentionally distinct.
+    validations:
+      required: true
+  - type: textarea
+    id: version
+    attributes:
+      label: Coherent version
+      description: Paste the output of `coherent version`.
+      render: text
+    validations:
+      required: true

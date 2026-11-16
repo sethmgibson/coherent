@@ -1,0 +1,27 @@
+name: Feature or rule proposal
+description: Suggest an improvement, a new detector, or a change to a rule playbook.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Coherent stays small on purpose. Proposals that make existing rules more precise are more likely to land than new infrastructure.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem are you trying to solve?
+      description: Describe the maintainability problem or workflow gap, with a real (or realistic) example.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed change
+      description: What should Coherent do differently? For a detector, say whether the signal would be deterministic, hybrid, or semantic.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Could an existing rule, playbook, or flag cover this?
