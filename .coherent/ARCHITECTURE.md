@@ -46,7 +46,7 @@ Detected frameworks:
 
 Languages: JavaScript, TypeScript
 
-Approximate size: 189 files, 18540 source lines.
+Approximate size: 198 files, 18540 source lines.
 
 Dependencies: 2 runtime, 9 development.
 <!-- /coherent:discovered -->
@@ -234,8 +234,8 @@ Probable entrypoint files:
 
 > Status: confirmed
 
-User-facing commands are `version`, `init`, `refresh`, `audit`, `review`, `baseline`,
-`check`, `install`, `update`, and `doctor`. Retired `inspect`, `plan` and
+User-facing commands are `version`, `init`, `refresh`, `audit`, `migrate`, `review`,
+`baseline`, `check`, `install`, `update`, and `doctor`. Retired `inspect`, `plan` and
 `fix next` only return non-zero errors. Catalog
 types are also exported for tests and callers.
 
