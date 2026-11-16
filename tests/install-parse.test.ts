@@ -71,13 +71,16 @@ describe("install CLI specifier argv", () => {
     expect(addCliCommand("pnpm")).toBe(`pnpm add --save-dev ${GITHUB_PACKAGE_SPEC}`);
   });
 
-  it("treats the same GitHub package as compatible and other specs as conflicts", () => {
+  it("treats the same GitHub package or a registry version as compatible and other specs as conflicts", () => {
     expect(isSameCoherentPackageSpec(GITHUB_PACKAGE_SPEC)).toBe(true);
     expect(isSameCoherentPackageSpec("github:sethmgibson/coherent#abc123")).toBe(true);
     expect(isSameCoherentPackageSpec("github:sethmgibson/coherent.git")).toBe(true);
     expect(isSameCoherentPackageSpec("sethmgibson/coherent")).toBe(true);
     expect(isSameCoherentPackageSpec("git+https://github.com/sethmgibson/coherent.git")).toBe(true);
-    expect(isSameCoherentPackageSpec("^1.0.0")).toBe(false);
+    expect(isSameCoherentPackageSpec("^0.2.0")).toBe(true);
+    expect(isSameCoherentPackageSpec("latest")).toBe(true);
+    expect(isSameCoherentPackageSpec(">=0.2.0 <1")).toBe(true);
+    expect(isSameCoherentPackageSpec("npm:other@^1.0.0")).toBe(false);
     expect(isSameCoherentPackageSpec("github:other/coherent")).toBe(false);
     expect(isSameCoherentPackageSpec("github:sethmgibson/coherent-evil")).toBe(false);
     expect(isSameCoherentPackageSpec("file:../coherent.tgz")).toBe(false);

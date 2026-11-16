@@ -1,7 +1,7 @@
-import { CATEGORIES_BY_ID, RULES, type Rule } from "coherent/catalog/rules";
-import { PHASES, type CleanupPhase } from "coherent/catalog/phases";
-import { DETECTION_MODES, type RuleId } from "coherent/catalog/types";
-import { createFinding, parseFinding, serializeFinding, type Finding, type FindingInput } from "coherent/finding";
+import { CATEGORIES_BY_ID, RULES, type Rule } from "@aevumvector/coherent/catalog/rules";
+import { PHASES, type CleanupPhase } from "@aevumvector/coherent/catalog/phases";
+import { DETECTION_MODES, type RuleId } from "@aevumvector/coherent/catalog/types";
+import { createFinding, parseFinding, serializeFinding, type Finding, type FindingInput } from "@aevumvector/coherent/finding";
 
 const rule: Rule | undefined = RULES[0];
 const phase: CleanupPhase | undefined = PHASES[0];

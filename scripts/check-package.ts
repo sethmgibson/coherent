@@ -1,4 +1,5 @@
 import { portableRuntimeIdentity } from "../src/runtime.ts";
+import { COHERENT_PACKAGE_NAME } from "../src/version.ts";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { access, cp, mkdir, mkdtemp, readFile, readdir, realpath, rm, writeFile, chmod } from "node:fs/promises";
@@ -42,13 +43,21 @@ try {
   assert(!messages.some((message) => message.type === "error"), "Packed package failed publint");
   console.log("publint passed (warnings are errors).");
 
+  // Only build output, the skill tree, the Python sidecar, and package metadata may ship.
+  const packed = run("tar", ["-tzf", tarball], temporaryRoot).trim().split("\n");
+  const allowed = /^package\/(?:dist\/.+\.(?:js|d\.ts)|skills\/coherent\/.+\.(?:md|mdc)|python\/[^/]+\.py|LICENSE|README\.md|package\.json)$/;
+  const unexpected = packed.filter((path) => !allowed.test(path));
+  assert.deepEqual(unexpected, [], `Tarball contains files outside the publish allowlist:\n${unexpected.join("\n")}`);
+  assert(packed.includes("package/dist/cli.js"), "Tarball is missing the CLI entrypoint");
+  console.log(`Tarball contains only allowlisted files (${packed.length}).`);
+
   const consumer = join(temporaryRoot, "consumer");
   await mkdir(consumer);
   await writeFile(join(consumer, "package.json"), JSON.stringify({
     name: "coherent-packed-package-consumer",
     private: true,
     type: "module",
-    dependencies: { coherent: `file:${tarball}` },
+    dependencies: { [COHERENT_PACKAGE_NAME]: `file:${tarball}` },
   }));
   console.log("Installing only the tarball and its runtime dependencies outside the checkout...");
   run("pnpm", [
@@ -56,7 +65,7 @@ try {
     "--config.package-import-method=copy",
   ], consumer);
 
-  const installed = await realpath(join(consumer, "node_modules", "coherent"));
+  const installed = await realpath(join(consumer, "node_modules", COHERENT_PACKAGE_NAME));
   for (const retired of ["dist/plan", "dist/fix", "dist/inspect.js", "dist/catalog/rescan.js"]) {
     await assert.rejects(access(join(installed, retired)), { code: "ENOENT" });
   }
@@ -195,6 +204,12 @@ process.exit(result.status ?? 1);
     COHERENT_REAL_NPM: realNpm.stdout.trim(),
     COHERENT_PACKED_TARBALL: `file:${tarball}`,
   };
+  // A bare `npx <package>` must resolve the scoped package's default `coherent` bin.
+  const npxVersion = spawnSync("npx", ["--yes", `file:${tarball}`, "--version"], {
+    cwd: smoke, encoding: "utf8", timeout: 180_000, env: smokeEnv,
+  });
+  assert.equal(npxVersion.status, 0, `npx against the tarball failed\n${npxVersion.stdout}\n${npxVersion.stderr}`);
+  assert.equal(npxVersion.stdout.trim(), manifest.version);
   const smokeResult = spawnSync("npm", [
     "exec", "--yes", "--package", tarball, "--",
     "coherent", "install", smoke, "--providers=codex,cursor", "--scope=project", "--yes",
@@ -221,9 +236,9 @@ process.exit(result.status ?? 1);
   assert.match(await readFile(smokeTaxonomy, "utf8"), /A08/);
   assert.match(await readFile(smokeCursor, "utf8"), /name: coherent/);
   const smokeManifest = JSON.parse(await readFile(join(smoke, "package.json"), "utf8")) as {
-    devDependencies?: { coherent?: string };
+    devDependencies?: Record<string, string>;
   };
-  assert.equal(typeof smokeManifest.devDependencies?.coherent, "string");
+  assert.equal(typeof smokeManifest.devDependencies?.[COHERENT_PACKAGE_NAME], "string");
   await access(join(smoke, "node_modules", ".bin", "coherent"));
   const homeEntries = await readdir(smokeHome);
   assert.ok(

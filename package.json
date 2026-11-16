@@ -1,12 +1,17 @@
 {
-  "name": "coherent",
+  "name": "@aevumvector/coherent",
   "version": "0.2.0",
-  "description": "Impeccable-style maintainability tooling for backend and large AI-built codebases.",
+  "description": "Maintainability skill and CLI for backend and large AI-built TypeScript and Python codebases: find and fix architectural entropy, dead code, and duplicated paths.",
   "type": "module",
   "license": "MIT",
+  "author": "Seth Gibson / Aevum Vector",
+  "homepage": "https://github.com/sethmgibson/coherent#readme",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/sethmgibson/coherent.git"
+  },
+  "bugs": {
+    "url": "https://github.com/sethmgibson/coherent/issues"
   },
   "engines": {
     "node": ">=20"
@@ -17,18 +22,34 @@
     "backend": "./dist/cli.js"
   },
   "exports": {
-    "./catalog/rules": "./dist/catalog/rules.js",
-    "./catalog/phases": "./dist/catalog/phases.js",
-    "./catalog/types": "./dist/catalog/types.js",
-    "./finding": "./dist/domain/finding.js"
+    "./catalog/rules": {
+      "types": "./dist/catalog/rules.d.ts",
+      "default": "./dist/catalog/rules.js"
+    },
+    "./catalog/phases": {
+      "types": "./dist/catalog/phases.d.ts",
+      "default": "./dist/catalog/phases.js"
+    },
+    "./catalog/types": {
+      "types": "./dist/catalog/types.d.ts",
+      "default": "./dist/catalog/types.js"
+    },
+    "./finding": {
+      "types": "./dist/domain/finding.d.ts",
+      "default": "./dist/domain/finding.js"
+    }
   },
   "files": [
     "dist",
     "skills",
-    "python",
+    "python/*.py",
     "LICENSE",
     "README.md"
   ],
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
   "scripts": {
     "build": "node scripts/build.mjs",
     "typecheck": "tsc --project tsconfig.typecheck.json",
@@ -49,7 +70,17 @@
     "backend",
     "dead-code",
     "cleanup",
-    "ai"
+    "refactoring",
+    "code-quality",
+    "static-analysis",
+    "typescript",
+    "python",
+    "cli",
+    "ai",
+    "ai-agents",
+    "agent-skill",
+    "cursor",
+    "codex"
   ],
   "dependencies": {
     "commander": "^14.0.0",

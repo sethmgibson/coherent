@@ -4,6 +4,7 @@ import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { detectRootPackageManager, projectLocalCliPath } from "../src/install/cli-dep.js";
 import { GITHUB_PACKAGE_SPEC } from "../src/install/spec.js";
+import { COHERENT_PACKAGE_NAME } from "../src/version.js";
 import { renderInstall, runInstall, runUpdate } from "../src/install/run.js";
 import type { RunCommandFn } from "../src/install/exec.js";
 import {
@@ -47,7 +48,7 @@ function createFakeRunCommand(options: {
     }
     await writeFile(
       dest,
-      `${JSON.stringify({ ...pkg, devDependencies: { ...pkg.devDependencies, coherent: spec } }, null, 2)}\n`,
+      `${JSON.stringify({ ...pkg, devDependencies: { ...pkg.devDependencies, [COHERENT_PACKAGE_NAME]: spec } }, null, 2)}\n`,
     );
     const bin = projectLocalCliPath(execOptions.cwd);
     await mkdir(join(execOptions.cwd, "node_modules", ".bin"), { recursive: true });
@@ -293,7 +294,7 @@ describe("project CLI install", () => {
     try {
       const manifest = `${JSON.stringify({
         private: true,
-        dependencies: { coherent: "github:sethmgibson/coherent-evil" },
+        dependencies: { [COHERENT_PACKAGE_NAME]: "github:sethmgibson/coherent-evil" },
       }, null, 2)}\n`;
       await writeFile(join(root, "package.json"), manifest, "utf8");
       const { runCommand, calls } = createFakeRunCommand();
@@ -306,7 +307,7 @@ describe("project CLI install", () => {
           scope: "project",
           runCommand,
         }),
-      ).rejects.toThrow(/already declares coherent as "github:sethmgibson\/coherent-evil"/);
+      ).rejects.toThrow(/already declares @aevumvector\/coherent as "github:sethmgibson\/coherent-evil"/);
       expect(calls).toEqual([]);
       expect(await readFile(join(root, "package.json"), "utf8")).toBe(manifest);
     } finally {
@@ -320,7 +321,7 @@ describe("project CLI install", () => {
       const pinned = "github:sethmgibson/coherent#abc123";
       await writeFile(
         join(root, "package.json"),
-        `${JSON.stringify({ private: true, devDependencies: { coherent: pinned } }, null, 2)}\n`,
+        `${JSON.stringify({ private: true, devDependencies: { [COHERENT_PACKAGE_NAME]: pinned } }, null, 2)}\n`,
       );
       const { runCommand, calls } = createFakeRunCommand();
       const result = await runInstall(root, {
@@ -334,8 +335,57 @@ describe("project CLI install", () => {
       expect(calls[0]?.args.at(-1)).toBe(pinned);
       expect(result.cli).toMatchObject({ alreadyPresent: true, specifier: pinned, handshakeVerified: true });
       expect(JSON.parse(await readFile(join(root, "package.json"), "utf8"))).toMatchObject({
-        devDependencies: { coherent: pinned },
+        devDependencies: { [COHERENT_PACKAGE_NAME]: pinned },
       });
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it("keeps a registry version declared under the scoped package name", async () => {
+    const { root, home, cleanup } = await isolatedRoots("coherent-registry");
+    try {
+      await writeFile(
+        join(root, "package.json"),
+        `${JSON.stringify({ private: true, devDependencies: { [COHERENT_PACKAGE_NAME]: "^0.2.0" } }, null, 2)}\n`,
+      );
+      const { runCommand, calls } = createFakeRunCommand();
+      const result = await runInstall(root, {
+        home,
+        pathEnv: "",
+        yes: true,
+        providers: "codex",
+        scope: "project",
+        runCommand,
+      });
+      expect(calls[0]?.args.at(-1)).toBe("^0.2.0");
+      expect(result.cli).toMatchObject({ alreadyPresent: true, specifier: "^0.2.0", handshakeVerified: true });
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it("fails closed on a pre-rename unscoped coherent dependency even from the same repo", async () => {
+    const { root, home, cleanup } = await isolatedRoots("coherent-unscoped");
+    try {
+      const manifest = `${JSON.stringify({
+        private: true,
+        devDependencies: { coherent: GITHUB_PACKAGE_SPEC },
+      }, null, 2)}\n`;
+      await writeFile(join(root, "package.json"), manifest, "utf8");
+      const { runCommand, calls } = createFakeRunCommand();
+      await expect(
+        runInstall(root, {
+          home,
+          pathEnv: "",
+          yes: true,
+          providers: "codex",
+          scope: "project",
+          runCommand,
+        }),
+      ).rejects.toThrow(/Coherent is published as @aevumvector\/coherent/);
+      expect(calls).toEqual([]);
+      expect(await readFile(join(root, "package.json"), "utf8")).toBe(manifest);
     } finally {
       await cleanup();
     }
@@ -446,7 +496,7 @@ describe("project CLI install", () => {
         }),
       ).rejects.toThrow(/handshake failed/);
       expect(JSON.parse(await readFile(join(root, "package.json"), "utf8"))).toMatchObject({
-        devDependencies: { coherent: GITHUB_PACKAGE_SPEC },
+        devDependencies: { [COHERENT_PACKAGE_NAME]: GITHUB_PACKAGE_SPEC },
       });
       await expect(readdir(join(root, ".agents"))).rejects.toMatchObject({ code: "ENOENT" });
     } finally {

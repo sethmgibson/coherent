@@ -39,8 +39,11 @@ const SAME_GITHUB_SPEC =
   /^(?:github:)?sethmgibson\/coherent(?:\.git)?(?:[#?].*)?$/i;
 const SAME_GIT_HTTPS_SPEC =
   /^git\+https:\/\/github\.com\/sethmgibson\/coherent(?:\.git)?(?:[#?].*)?$/i;
+/** A registry version, range, or dist-tag; protocols and paths contain `:` or `/`. */
+const REGISTRY_SPEC = /^[^:/]+$/;
 
+/** Accepts specifiers declared under Coherent's own scoped package name. */
 export function isSameCoherentPackageSpec(spec: string): boolean {
   const value = spec.trim();
-  return SAME_GITHUB_SPEC.test(value) || SAME_GIT_HTTPS_SPEC.test(value);
+  return SAME_GITHUB_SPEC.test(value) || SAME_GIT_HTTPS_SPEC.test(value) || REGISTRY_SPEC.test(value);
 }
