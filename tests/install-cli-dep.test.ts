@@ -38,7 +38,11 @@ function createFakeRunCommand(options: {
       return { stdout, stderr: "" };
     }
     if (options.failInstall === true) throw new Error("package manager failed");
-    const spec = args[args.length - 1] ?? GITHUB_PACKAGE_SPEC;
+    const installSpec = args[args.length - 1] ?? GITHUB_PACKAGE_SPEC;
+    // Package managers save the registry selector, not the name@selector CLI argument.
+    const spec = installSpec.startsWith(`${COHERENT_PACKAGE_NAME}@`)
+      ? installSpec.slice(COHERENT_PACKAGE_NAME.length + 1)
+      : installSpec;
     const dest = join(execOptions.cwd, "package.json");
     let pkg: { devDependencies?: Record<string, string>; private?: boolean } = { private: true };
     try {
@@ -289,12 +293,12 @@ describe("project CLI install", () => {
     }
   });
 
-  it("treats a similarly prefixed GitHub repo as a conflict", async () => {
+  it.each(["github:sethmgibson/coherent-evil", "npm:coherent@^0.1.1"])("treats %s as a conflict under the scoped name", async (spec) => {
     const { root, home, cleanup } = await isolatedRoots("coherent-prefix-conflict");
     try {
       const manifest = `${JSON.stringify({
         private: true,
-        dependencies: { [COHERENT_PACKAGE_NAME]: "github:sethmgibson/coherent-evil" },
+        dependencies: { [COHERENT_PACKAGE_NAME]: spec },
       }, null, 2)}\n`;
       await writeFile(join(root, "package.json"), manifest, "utf8");
       const { runCommand, calls } = createFakeRunCommand();
@@ -307,7 +311,7 @@ describe("project CLI install", () => {
           scope: "project",
           runCommand,
         }),
-      ).rejects.toThrow(/already declares @aevumvector\/coherent as "github:sethmgibson\/coherent-evil"/);
+      ).rejects.toThrow(`already declares ${COHERENT_PACKAGE_NAME} as ${JSON.stringify(spec)}`);
       expect(calls).toEqual([]);
       expect(await readFile(join(root, "package.json"), "utf8")).toBe(manifest);
     } finally {
@@ -342,28 +346,74 @@ describe("project CLI install", () => {
     }
   });
 
-  it("keeps a registry version declared under the scoped package name", async () => {
+  it.each(["npm", "pnpm", "yarn", "bun"])("installs named registry specifications with %s", async (manager) => {
     const { root, home, cleanup } = await isolatedRoots("coherent-registry");
     try {
-      await writeFile(
-        join(root, "package.json"),
-        `${JSON.stringify({ private: true, devDependencies: { [COHERENT_PACKAGE_NAME]: "^0.2.0" } }, null, 2)}\n`,
-      );
-      const { runCommand, calls } = createFakeRunCommand();
-      const result = await runInstall(root, {
-        home,
-        pathEnv: "",
-        yes: true,
-        providers: "codex",
-        scope: "project",
-        runCommand,
-      });
-      expect(calls[0]?.args.at(-1)).toBe("^0.2.0");
-      expect(result.cli).toMatchObject({ alreadyPresent: true, specifier: "^0.2.0", handshakeVerified: true });
+      for (const spec of ["0.2.0", "^0.2.0", ">=0.2.0 <1", "latest", "next", "coherent"]) {
+        await writeFile(
+          join(root, "package.json"),
+          `${JSON.stringify({ private: true, packageManager: `${manager}@1.0.0`, devDependencies: { [COHERENT_PACKAGE_NAME]: spec } }, null, 2)}\n`,
+        );
+        const { runCommand, calls } = createFakeRunCommand();
+        const result = await runInstall(root, {
+          home,
+          pathEnv: "",
+          yes: true,
+          providers: "codex",
+          scope: "project",
+          runCommand,
+        });
+        const expectedArgs = [
+          manager === "npm" ? "install" : "add",
+          manager === "npm" || manager === "pnpm" ? "--save-dev" : "--dev",
+          `${COHERENT_PACKAGE_NAME}@${spec}`,
+        ];
+        expect(calls[0]).toEqual({
+          file: manager,
+          args: expectedArgs,
+          cwd: root,
+        });
+        expect(result.cli).toMatchObject({
+          alreadyPresent: true,
+          specifier: spec,
+          argv: [manager, ...expectedArgs],
+          handshakeVerified: true,
+        });
+        const manifest = JSON.parse(await readFile(join(root, "package.json"), "utf8")) as {
+          devDependencies: Record<string, string>;
+        };
+        expect(manifest.devDependencies).toEqual({ [COHERENT_PACKAGE_NAME]: spec });
+      }
     } finally {
       await cleanup();
     }
   });
+
+  it.each(["dependencies", "devDependencies", "optionalDependencies", "peerDependencies"])(
+    "rejects unscoped coherent in %s even alongside the scoped dependency",
+    async (section) => {
+      const { root, home, cleanup } = await isolatedRoots("coherent-unscoped-conflict");
+      try {
+        for (const spec of ["^0.1.1", "latest", GITHUB_PACKAGE_SPEC]) {
+          const manifest = `${JSON.stringify({
+            private: true,
+            devDependencies: { [COHERENT_PACKAGE_NAME]: "^0.2.0" },
+            [section]: { ...(section === "devDependencies" ? { [COHERENT_PACKAGE_NAME]: "^0.2.0" } : {}), coherent: spec },
+          }, null, 2)}\n`;
+          await writeFile(join(root, "package.json"), manifest);
+          const { runCommand, calls } = createFakeRunCommand();
+          await expect(runInstall(root, {
+            home, pathEnv: "", yes: true, providers: "codex", scope: "project", runCommand,
+          })).rejects.toThrow(/the unscoped npm name is a different package/);
+          expect(calls).toEqual([]);
+          expect(await readFile(join(root, "package.json"), "utf8")).toBe(manifest);
+          expect(await readdir(root)).toEqual(["package.json"]);
+        }
+      } finally {
+        await cleanup();
+      }
+    },
+  );
 
   it("fails closed on a pre-rename unscoped coherent dependency even from the same repo", async () => {
     const { root, home, cleanup } = await isolatedRoots("coherent-unscoped");

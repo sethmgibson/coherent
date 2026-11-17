@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { rm } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
+import { COHERENT_PACKAGE_NAME } from "../src/version.js";
 import {
   collectInstallDetections,
   commandOnPath,
@@ -22,6 +23,7 @@ import {
   cliInstallArgv,
   isSameCoherentPackageSpec,
   resolveInstallManager,
+  type SupportedManager,
 } from "../src/install/spec.js";
 
 describe("install provider and scope parsing", () => {
@@ -49,6 +51,37 @@ describe("install provider and scope parsing", () => {
 });
 
 describe("install CLI specifier argv", () => {
+  const managers: { manager: SupportedManager; args: string[] }[] = [
+    { manager: "npm", args: ["install", "--save-dev"] },
+    { manager: "pnpm", args: ["add", "--save-dev"] },
+    { manager: "yarn", args: ["add", "--dev"] },
+    { manager: "bun", args: ["add", "--dev"] },
+  ];
+
+  it.each(managers)("names registry specifications for $manager", ({ manager, args }) => {
+    for (const spec of ["0.2.0", "^0.2.0", "~0.2.0", ">=0.2.0 <1", "*", "latest", "next", "coherent", " ^0.2.0 "]) {
+      expect(cliInstallArgv(manager, spec)).toEqual({
+        command: manager,
+        args: [...args, `${COHERENT_PACKAGE_NAME}@${spec.trim()}`],
+      });
+    }
+    expect(cliInstallArgv("unknown", "next")).toEqual(cliInstallArgv("npm", "next"));
+  });
+
+  it.each(managers)("preserves GitHub specifications for $manager", ({ manager, args }) => {
+    for (const spec of [
+      GITHUB_PACKAGE_SPEC,
+      "github:sethmgibson/coherent#abc123",
+      "github:sethmgibson/coherent.git#v0.2.0",
+      "sethmgibson/coherent#v0.2.0",
+      "git+https://github.com/sethmgibson/coherent.git#abc123",
+      "git+https://github.com/sethmgibson/coherent.git#semver:^0.2.0",
+    ]) {
+      expect(isSameCoherentPackageSpec(spec)).toBe(true);
+      expect(cliInstallArgv(manager, spec)).toEqual({ command: manager, args: [...args, spec] });
+    }
+  });
+
   it("builds fixed argv for each supported manager and defaults unknown to npm", () => {
     expect(cliInstallArgv("pnpm")).toEqual({
       command: "pnpm",
