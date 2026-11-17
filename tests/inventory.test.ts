@@ -106,7 +106,7 @@ describe("repository inventory", () => {
 
   it("does not treat this repository's test fixtures as applications", async () => {
     const inventory = await collectInventory(repoRoot, await loadConfig(repoRoot));
-    expect(inventory.packages.map((pkg) => pkg.name)).toEqual(["coherent"]);
+    expect(inventory.packages.map((pkg) => pkg.name)).toEqual(["@aevumvector/coherent"]);
     expect(inventory.frameworks).toEqual([]);
     expect(inventory.packageJsonFiles).toEqual(["package.json"]);
     expect(inventory.languages).toEqual(["JavaScript", "TypeScript"]);

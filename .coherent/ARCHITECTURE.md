@@ -34,7 +34,7 @@ Package manager: `pnpm`
 
 Packages:
 
-- `coherent` (`package.json`)
+- `@aevumvector/coherent` (`package.json`)
 
 Python manifests:
 
@@ -46,7 +46,7 @@ Detected frameworks:
 
 Languages: JavaScript, TypeScript
 
-Approximate size: 189 files, 18540 source lines.
+Approximate size: 190 files, 18738 source lines.
 
 Dependencies: 2 runtime, 9 development.
 <!-- /coherent:discovered -->
@@ -155,7 +155,7 @@ Observed top-level modules:
 
 - A rule exists only in `src/catalog/rules.ts`. Skill markdown is generated.
 - A cleanup phase exists only in `src/catalog/phases.ts`.
-- The release version exists only in `package.json`; `src/version.ts` reads it for artifacts and the CLI.
+- The published package name (`@aevumvector/coherent`) and release version exist only in `package.json`; `src/version.ts` reads them for artifacts, the CLI, install dependency lookup, and lock revision lookup.
 - Runtime workflow revision and capabilities are owned by `src/runtime.ts`; generated `skills/coherent/reference/runtime.md` keeps the skill requirement synchronized.
 - `RuleCategory` and `CleanupPhase` share `id`/`title`/`summary` by coincidence. They are intentionally different; do not merge. That decision is also recorded in `.coherent/decisions.json`.
 - `FindingStatus` (`confirmed` | `candidate`) is the typed status protocol. Review decisions remain distinct from Finding status inside the consolidated decisions file.
@@ -220,12 +220,16 @@ Observed persistence libraries:
 <!-- coherent:discovered -->
 Declared entrypoints and exports:
 
-- `coherent` bin: `coherent` → `./dist/cli.js`
-- `coherent` bin: `backend` → `./dist/cli.js`
-- `coherent` export: `./dist/catalog/rules.js`
-- `coherent` export: `./dist/catalog/phases.js`
-- `coherent` export: `./dist/catalog/types.js`
-- `coherent` export: `./dist/domain/finding.js`
+- `@aevumvector/coherent` bin: `coherent` → `./dist/cli.js`
+- `@aevumvector/coherent` bin: `backend` → `./dist/cli.js`
+- `@aevumvector/coherent` export: `./dist/catalog/rules.d.ts`
+- `@aevumvector/coherent` export: `./dist/catalog/rules.js`
+- `@aevumvector/coherent` export: `./dist/catalog/phases.d.ts`
+- `@aevumvector/coherent` export: `./dist/catalog/phases.js`
+- `@aevumvector/coherent` export: `./dist/catalog/types.d.ts`
+- `@aevumvector/coherent` export: `./dist/catalog/types.js`
+- `@aevumvector/coherent` export: `./dist/domain/finding.d.ts`
+- `@aevumvector/coherent` export: `./dist/domain/finding.js`
 
 Probable entrypoint files:
 
@@ -257,7 +261,7 @@ None. The CLI is synchronous process work. No queues, cron, or subscriptions.
 - `coherent baseline [root]` snapshots finding fingerprints with portable schema versions and leaves an equivalent existing file byte-for-byte unchanged.
 - `coherent check [root]` compares a fresh audit to the baseline, classifies new debt, and reports gate status separately from drift and review disposition. `--changed` uses lossless target-relative Git paths (including both rename sides) plus TypeScript-resolved and Python-ast transitive importers, respects inventory ignores, does not treat unscoped baseline findings as resolved, and conservatively requires a full scan for identity-only review matches. Full `check` remains necessary for repository-wide conclusions and config-only changes.
 - JSON output stays parseable on stdout when combined with explicit `--output`; write acknowledgements go to stderr.
-- `coherent install [root]` and `update` write nothing on a non-TTY without `--yes`, `--providers`, `--scope`, or an explicit adapter, rule, Cursor hook, or Git hook flag. TTY `install` can prompt for Codex/Cursor and project vs global. Project adoption installs `github:sethmgibson/coherent` through the detected package manager, verifies the project-local `coherent version` handshake, then copies the packaged skill tree. A failed CLI install or handshake does not copy skills or report success. A different existing `coherent` specifier or malformed `package.json` fails project adoption; a same-repo pin is kept and not rewritten to the unpinned GitHub spec. `--adapter` together with project Cursor adoption writes the skill tree, not a handshake adapter that would block it. `--skills-only` copies skill files without installing the CLI. Global adoption copies skill files only and does not claim the CLI is on `PATH`. `update` refreshes those files only and explicitly does not update the CLI dependency.
+- `coherent install [root]` and `update` write nothing on a non-TTY without `--yes`, `--providers`, `--scope`, or an explicit adapter, rule, Cursor hook, or Git hook flag. TTY `install` can prompt for Codex/Cursor and project vs global. Project adoption installs `github:sethmgibson/coherent` through the detected package manager, verifies the project-local `coherent version` handshake, then copies the packaged skill tree. A failed CLI install or handshake does not copy skills or report success. The dependency is recorded under `@aevumvector/coherent`. Any unscoped `coherent` dependency (a different npm package, or a pre-rename entry), a different `@aevumvector/coherent` specifier, or malformed `package.json` fails project adoption; a same-repo pin or registry version is kept and not rewritten to the unpinned GitHub spec. `--adapter` together with project Cursor adoption writes the skill tree, not a handshake adapter that would block it. `--skills-only` copies skill files without installing the CLI. Global adoption copies skill files only and does not claim the CLI is on `PATH`. `update` refreshes those files only and explicitly does not update the CLI dependency.
 - `coherent doctor [root]` checks stale discovery, decision integrity, stale review revisions, baseline/decision revision coupling, compatibility review lifecycles, baseline integrity when present, and leftover `.backend/` state without auditing; `--deep` adds orphan and current-finding review validation through one full audit while retaining baseline-backed resolved reviews whose lifecycle remains current. `--staged` exports the Git index and `--ref` exports a committed tree to a temporary snapshot so the exact artifact is validated without modifying the target repository.
 - `pnpm test` covers catalog integrity, inventory fixtures, init, detectors, fingerprints, baseline/check, review matching, and CLI behavior.
 - `pnpm validate` runs zero-warning type-aware ESLint, dependency hygiene/security checks, tests, typecheck, packed-package validation (including the prepack build), generated skill-doc consistency, and committed fingerprint uniqueness. CI runs the same gates plus Coherent check and deep doctor. `pnpm check:package` applies strict publint to the tarball and tests installed CLI aliases and public exports in an isolated runtime-only consumer. ESLint uses `tsconfig.typecheck.json` for source, tests, scripts, and the Vitest configuration while excluding generated output and intentionally problematic fixtures. `pnpm generate:skill-docs` owns the generated catalog and runtime references.

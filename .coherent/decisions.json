@@ -490,19 +490,6 @@
       "ruleDetectorRevision": 8
     },
     {
-      "fingerprint": "2ef3134954857d5882756fa6716778ba9ebc44edec5426812b89ebcfebce96af",
-      "evidenceHash": "039120c2598c9f1b3ba5b626527ef56a97825cf8269c35d13e56351f1373f218",
-      "ruleId": "A07",
-      "identity": "compat:name:scripts/check-package.ts:temporaryRoot",
-      "decision": "dismissed",
-      "reason": "scripts/check-package.ts creates temporaryRoot with mkdtemp under the OS temporary directory and removes it in finally. The substring 'temporary' describes an isolated smoke-test workspace, not a compatibility path.",
-      "reviewedAt": "2026-10-27T19:49:48.526Z",
-      "fingerprintVersion": 2,
-      "detectorRevision": 11,
-      "ruleDetectorRevision": 8,
-      "notCompatibility": true
-    },
-    {
       "fingerprint": "587ce5fda4c1469b424793f2d888bbe1ed8e3f0902f1878209739ef3635cce15",
       "evidenceHash": "7435a942f84c0dc8f3467815c974fa3ca9349c261faf1a9a47adca11b92d75e4",
       "ruleId": "E06",
@@ -577,19 +564,6 @@
       "ruleDetectorRevision": 8,
       "missingEvidence": "A large-review-batch profile and an indexed lookup comparison preserving duplicate-target rejection and replacement receipts.",
       "reconsiderWhen": "Bulk review processing with many persisted decisions makes replacement lookup material."
-    },
-    {
-      "fingerprint": "836bdca2a307d5e6dbcc07b11bccd2ea17a43612b0d73139f007330a9cc2e601",
-      "evidenceHash": "10d4b87045857d09fe4b7b6ea64a4ab82f391be80a262a51ad3219f40c9def02",
-      "ruleId": "A07",
-      "identity": "compat:branch:src/install/cli-dep.ts:parsed.compatible !== true",
-      "decision": "dismissed",
-      "reason": "verifyProjectCliHandshake checks parsed.compatible after invoking the project-local CLI with exact workflow/detector expectations and required capabilities. This rejects an incompatible current installation; it is a runtime contract check rather than old/new execution paths.",
-      "reviewedAt": "2026-10-27T19:49:48.526Z",
-      "fingerprintVersion": 2,
-      "detectorRevision": 11,
-      "ruleDetectorRevision": 8,
-      "notCompatibility": true
     },
     {
       "fingerprint": "f7b1e3bc503991a4cf73e7a111f42831571f058abd18dffb6d7aede73c083d1b",
@@ -730,6 +704,32 @@
       "fingerprintVersion": 2,
       "detectorRevision": 11,
       "ruleDetectorRevision": 8
+    },
+    {
+      "fingerprint": "2ef3134954857d5882756fa6716778ba9ebc44edec5426812b89ebcfebce96af",
+      "evidenceHash": "f8d8ce93acc04b4e8aae8e57a2b14d9ba5c1cc5b83f6806f1c8e03426f3273ba",
+      "ruleId": "A07",
+      "identity": "compat:name:scripts/check-package.ts:temporaryRoot",
+      "decision": "dismissed",
+      "reason": "scripts/check-package.ts creates temporaryRoot with mkdtemp under the OS temporary directory and removes it in finally. The substring 'temporary' describes an isolated smoke-test workspace, not a compatibility path.",
+      "reviewedAt": "2026-11-16T05:41:04.360Z",
+      "fingerprintVersion": 2,
+      "detectorRevision": 11,
+      "ruleDetectorRevision": 8,
+      "notCompatibility": true
+    },
+    {
+      "fingerprint": "836bdca2a307d5e6dbcc07b11bccd2ea17a43612b0d73139f007330a9cc2e601",
+      "evidenceHash": "7d712a9a16420385f8b3fc6637384c06e38f10ab5f909776b97a70906bbfea9c",
+      "ruleId": "A07",
+      "identity": "compat:branch:src/install/cli-dep.ts:parsed.compatible !== true",
+      "decision": "dismissed",
+      "reason": "verifyProjectCliHandshake checks parsed.compatible after invoking the project-local CLI with exact workflow/detector expectations and required capabilities. This rejects an incompatible current installation; it is a runtime contract check rather than old/new execution paths.",
+      "reviewedAt": "2026-11-16T05:41:08.271Z",
+      "fingerprintVersion": 2,
+      "detectorRevision": 11,
+      "ruleDetectorRevision": 8,
+      "notCompatibility": true
     }
   ],
   "findings": []

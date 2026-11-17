@@ -8,6 +8,7 @@ import { describe, expect, it } from "vitest";
 import { projectLocalCliPath } from "../src/install/cli-dep.js";
 import type { RunCommandFn } from "../src/install/exec.js";
 import { GITHUB_PACKAGE_SPEC } from "../src/install/spec.js";
+import { COHERENT_PACKAGE_NAME } from "../src/version.js";
 import { isInteractive } from "../src/install/prompt.js";
 import { runInstall, runUpdate } from "../src/install/run.js";
 
@@ -31,7 +32,7 @@ function fakeRunCommand(): RunCommandFn {
     }
     await writeFile(
       dest,
-      `${JSON.stringify({ ...pkg, devDependencies: { ...pkg.devDependencies, coherent: spec } }, null, 2)}\n`,
+      `${JSON.stringify({ ...pkg, devDependencies: { ...pkg.devDependencies, [COHERENT_PACKAGE_NAME]: spec } }, null, 2)}\n`,
     );
     await mkdir(join(options.cwd, "node_modules", ".bin"), { recursive: true });
     await writeFile(projectLocalCliPath(options.cwd), "#!/bin/sh\n");
@@ -100,9 +101,9 @@ describe("install onboarding", () => {
       expect(await readFile(taxonomy, "utf8")).toContain("A08");
       expect(await readFile(cursorSkill, "utf8")).toContain("name: coherent");
       const manifest = JSON.parse(await readFile(join(root, "package.json"), "utf8")) as {
-        devDependencies: { coherent: string };
+        devDependencies: Record<string, string>;
       };
-      expect(manifest.devDependencies.coherent).toBe(GITHUB_PACKAGE_SPEC);
+      expect(manifest.devDependencies[COHERENT_PACKAGE_NAME]).toBe(GITHUB_PACKAGE_SPEC);
 
       const second = await runInstall(root, {
         home,
@@ -301,7 +302,7 @@ const cwd = process.cwd();
 const spec = process.argv[process.argv.length - 1];
 let pkg = { private: true };
 try { pkg = JSON.parse(readFileSync(join(cwd, "package.json"), "utf8")); } catch {}
-pkg.devDependencies = { ...pkg.devDependencies, coherent: spec };
+pkg.devDependencies = { ...pkg.devDependencies, "@aevumvector/coherent": spec };
 writeFileSync(join(cwd, "package.json"), JSON.stringify(pkg, null, 2) + "\\n");
 mkdirSync(join(cwd, "node_modules", ".bin"), { recursive: true });
 const bin = join(cwd, "node_modules", ".bin", "coherent");

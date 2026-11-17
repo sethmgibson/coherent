@@ -1,3 +1,5 @@
+import { COHERENT_PACKAGE_NAME } from "../version.js";
+
 export const GITHUB_PACKAGE_SPEC = "github:sethmgibson/coherent";
 
 /** Public launcher. The unscoped npm name `coherent` is a different package. */
@@ -18,15 +20,18 @@ export function cliInstallArgv(
   manager: ProjectManager,
   spec: string = GITHUB_PACKAGE_SPEC,
 ): { command: string; args: string[] } {
+  // Manifest registry selectors need a package name; GitHub specs are already complete.
+  const value = spec.trim();
+  const installSpec = REGISTRY_SPEC.test(value) ? `${COHERENT_PACKAGE_NAME}@${value}` : spec;
   switch (resolveInstallManager(manager)) {
     case "npm":
-      return { command: "npm", args: ["install", "--save-dev", spec] };
+      return { command: "npm", args: ["install", "--save-dev", installSpec] };
     case "yarn":
-      return { command: "yarn", args: ["add", "--dev", spec] };
+      return { command: "yarn", args: ["add", "--dev", installSpec] };
     case "bun":
-      return { command: "bun", args: ["add", "--dev", spec] };
+      return { command: "bun", args: ["add", "--dev", installSpec] };
     case "pnpm":
-      return { command: "pnpm", args: ["add", "--save-dev", spec] };
+      return { command: "pnpm", args: ["add", "--save-dev", installSpec] };
   }
 }
 
@@ -39,8 +44,11 @@ const SAME_GITHUB_SPEC =
   /^(?:github:)?sethmgibson\/coherent(?:\.git)?(?:[#?].*)?$/i;
 const SAME_GIT_HTTPS_SPEC =
   /^git\+https:\/\/github\.com\/sethmgibson\/coherent(?:\.git)?(?:[#?].*)?$/i;
+/** A registry version, range, or dist-tag; protocols and paths contain `:` or `/`. */
+const REGISTRY_SPEC = /^[^:/]+$/;
 
+/** Accepts specifiers declared under Coherent's own scoped package name. */
 export function isSameCoherentPackageSpec(spec: string): boolean {
   const value = spec.trim();
-  return SAME_GITHUB_SPEC.test(value) || SAME_GIT_HTTPS_SPEC.test(value);
+  return SAME_GITHUB_SPEC.test(value) || SAME_GIT_HTTPS_SPEC.test(value) || REGISTRY_SPEC.test(value);
 }

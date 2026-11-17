@@ -5,6 +5,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import { artifactVersions } from "./config.js";
+import { COHERENT_PACKAGE_NAME } from "./version.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -219,8 +220,8 @@ function revisionFromPackageLock(
       packages?: Record<string, { resolved?: unknown }>;
       dependencies?: Record<string, { resolved?: unknown }>;
     };
-    const resolved = lock.packages?.["node_modules/coherent"]?.resolved
-      ?? lock.dependencies?.coherent?.resolved;
+    const resolved = lock.packages?.[`node_modules/${COHERENT_PACKAGE_NAME}`]?.resolved
+      ?? lock.dependencies?.[COHERENT_PACKAGE_NAME]?.resolved;
     const revision = typeof resolved === "string" ? revisionFrom(resolved) : undefined;
     return revision ? { revision } : {};
   } catch (error) {

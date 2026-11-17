@@ -1,6 +1,7 @@
 import { access, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { portableRuntimeIdentity } from "../runtime.js";
+import { COHERENT_PACKAGE_NAME } from "../version.js";
 import type { CopyResult } from "./copy.js";
 import { defaultRunCommand, type RunCommandFn } from "./exec.js";
 import {
@@ -14,6 +15,8 @@ import {
 } from "./spec.js";
 
 export type { ProjectManager, SupportedManager };
+
+const UNSCOPED_NAME = "coherent";
 
 export interface CliDependencyResult {
   action: CopyResult;
@@ -67,12 +70,20 @@ export async function installProjectCli(
   let alreadyPresent = false;
   let spec = GITHUB_PACKAGE_SPEC;
   if (existing !== "missing") {
-    const current = declaredCoherentSpec(existing);
+    const unscoped = declaredSpec(existing, UNSCOPED_NAME);
+    if (typeof unscoped === "string") {
+      throw new Error(
+        `package.json already declares ${UNSCOPED_NAME} as ${JSON.stringify(unscoped)}. ` +
+          `Coherent is published as ${COHERENT_PACKAGE_NAME}; the unscoped npm name is a different package ` +
+          "and would conflict with the coherent binary. Remove that dependency, or pass --skills-only.",
+      );
+    }
+    const current = declaredSpec(existing, COHERENT_PACKAGE_NAME);
     if (typeof current === "string") {
       if (!isSameCoherentPackageSpec(current)) {
         throw new Error(
-          `package.json already declares coherent as ${JSON.stringify(current)}. ` +
-            `Project adoption requires ${GITHUB_PACKAGE_SPEC} and will not overwrite a different specifier. ` +
+          `package.json already declares ${COHERENT_PACKAGE_NAME} as ${JSON.stringify(current)}. ` +
+            `Project adoption requires ${GITHUB_PACKAGE_SPEC} or a registry version and will not overwrite a different specifier. ` +
             "Remove or align that dependency, or pass --skills-only.",
         );
       }
@@ -98,10 +109,10 @@ export async function installProjectCli(
       `Package manager ${resolvedManager} finished but package.json is missing or invalid. Project adoption did not succeed.`,
     );
   }
-  const recorded = declaredCoherentSpec(after);
+  const recorded = declaredSpec(after, COHERENT_PACKAGE_NAME);
   if (typeof recorded !== "string") {
     throw new Error(
-      `Package manager ${resolvedManager} finished but package.json does not declare a coherent dependency.`,
+      `Package manager ${resolvedManager} finished but package.json does not declare a ${COHERENT_PACKAGE_NAME} dependency.`,
     );
   }
 
@@ -201,12 +212,12 @@ interface PackageJson {
   [key: string]: unknown;
 }
 
-function declaredCoherentSpec(pkg: PackageJson): string | undefined {
+function declaredSpec(pkg: PackageJson, name: string): string | undefined {
   const current =
-    pkg.dependencies?.coherent
-    ?? pkg.devDependencies?.coherent
-    ?? pkg.optionalDependencies?.coherent
-    ?? pkg.peerDependencies?.coherent;
+    pkg.dependencies?.[name]
+    ?? pkg.devDependencies?.[name]
+    ?? pkg.optionalDependencies?.[name]
+    ?? pkg.peerDependencies?.[name];
   return typeof current === "string" ? current : undefined;
 }
 
